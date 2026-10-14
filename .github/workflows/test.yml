@@ -27,3 +27,11 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
       - run: uv run --locked playwright install --with-deps chromium
       - run: uv run --locked pytest -m e2e
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
+      - run: uv run --locked --only-group docs zensical build --strict

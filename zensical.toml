@@ -1,0 +1,43 @@
+[project]
+site_name = "Vox Paginae"
+site_description = "Item-block labeler for death-duty deed scans (MVP, work in progress)"
+site_url = "https://nlesc-rags2riches.github.io/vox-paginae/"
+repo_url = "https://github.com/nlesc-rags2riches/vox-paginae"
+edit_uri = "edit/main/docs/"
+nav = [
+  { "Home" = "index.md" },
+  { "Tutorials" = ["tutorials/label-your-first-person.md"] },
+  { "How-to guides" = [
+    "how-to/install-and-run.md",
+    "how-to/fix-a-saved-block.md",
+    "how-to/report-a-problem.md",
+    "how-to/develop.md",
+  ] },
+  { "Reference" = [
+    "reference/input-and-output.md",
+    "reference/labeling-screen.md",
+    "reference/known-issues.md",
+  ] },
+  { "Explanation" = ["explanation/design-decisions.md"] },
+]
+
+[project.theme]
+features = [
+  "content.action.edit",
+  "content.code.copy",
+  "navigation.sections",
+  "navigation.footer",
+  "navigation.instant",
+  "search.highlight",
+]
+
+[project.markdown_extensions]
+admonition = {}
+attr_list = {}
+toc.permalink = true
+pymdownx.details = {}
+pymdownx.highlight = {}
+pymdownx.inlinehilite = {}
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
