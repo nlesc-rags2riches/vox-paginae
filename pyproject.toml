@@ -1,0 +1,45 @@
+[project]
+name = "vox-paginae"
+version = "0.1.0"
+description = "Item-block labeler for death-duty deed scans (MVP, work in progress)"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Abel Soares Siqueira", email = "abel.siqueira@esciencecenter.nl" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "marimo>=0.25.1",
+    "matplotlib>=3.11.2",
+    "numpy>=2.4.6",
+    "pillow>=12.3.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+exclude-newer = "1 week"
+
+[tool.pytest.ini_options]
+markers = ["e2e: browser tests (Playwright); run with `pytest -m e2e`"]
+addopts = "-m 'not e2e'"
+
+[tool.marimo.runtime]
+# marimo sizes outputs with sys.getsizeof, so one character outside Latin-1 (ƒ, ’) in the
+# item-block labeler's layout counts its ~5 MB page PNG double, an emoji 4x. The PNG
+# itself is capped in the notebook; this only stops the overcount.
+output_max_bytes = 25_000_000
+
+[dependency-groups]
+dev = [
+    "playwright>=1.63.0",
+    "pytest>=9.1.1",
+    "pytest-playwright>=0.9.0",
+    "ruff>=0.16.10",
+]
+docs = [
+    "zensical>=0.0.68",
+]
