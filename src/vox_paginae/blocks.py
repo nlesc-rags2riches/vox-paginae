@@ -1,5 +1,7 @@
 """Item-block labeling: books, pages, person records and their blocks (non-UI part)."""
 
+# TODO: Split this into appropriate files and detailed human review
+
 import copy
 import functools
 import io

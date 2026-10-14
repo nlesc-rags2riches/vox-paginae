@@ -1,7 +1,7 @@
 [project]
 name = "vox-paginae"
 version = "0.1.0"
-description = "Item-block labeler for death-duty deed scans (MVP, work in progress)"
+description = "Labeling tool (MVP, work in progress)"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
