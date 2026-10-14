@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Docs build and test artifacts
+site/
+test-results/
+
+# Local caches and tool state
+__marimo__/
+.claude/
+.DS_Store
