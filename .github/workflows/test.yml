@@ -20,3 +20,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: uv run --locked pytest
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv run --locked playwright install --with-deps chromium
+      - run: uv run --locked pytest -m e2e
