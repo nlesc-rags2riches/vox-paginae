@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 # TODO: Together with the `src` correspondent, split and human-review
@@ -5,9 +7,11 @@ import pytest
 from vox_paginae.blocks import (
     add_block,
     block_labels,
+    deed_choices,
     delete_block,
     find_books,
     last_person_id,
+    load_deeds,
     load_person_records,
     new_person_record,
     next_page,
@@ -213,6 +217,34 @@ def test_person_choices_go_to_each_start_page(tmp_path):
     save_person_record(tmp_path, 1, p1, "Anna", "")
     save_person_record(tmp_path, 2, p2, "Bert", "")
     assert person_choices(tmp_path) == {
-        "person-0001 · Anna · pages 1-2": 0,
-        "person-0002 · Bert · page 3": 2,
+        "person-0001 · Anna · pages 1-2": (1, 0),
+        "person-0002 · Bert · page 3": (2, 2),
+    }
+
+
+def test_deed_choices_sort_by_aktenummer_then_place(tmp_path):
+    def deed(deed_id, aktenummer, plaats, name):
+        return {
+            "deed_id": deed_id,
+            "aktenummer": aktenummer,
+            "plaats": plaats,
+            "personen": [{"naam_volledig": name}],
+        }
+
+    assert load_deeds(tmp_path) is None
+    (tmp_path / "deeds.json").write_text(
+        json.dumps(
+            [
+                deed("d1", "93", "Westdorp", "B"),
+                deed("d2", "105", "Alphen", "C"),
+                deed("d3", "93", "Oostdorp", "A"),
+            ]
+        )
+    )
+    deeds = load_deeds(tmp_path)
+    assert list(deeds) == ["d1", "d2", "d3"]
+    assert deed_choices(deeds) == {
+        "93 · Oostdorp · A": "d3",
+        "93 · Westdorp · B": "d1",
+        "105 · Alphen · C": "d2",
     }

@@ -91,7 +91,7 @@ def test_draw_save_close_writes_person(marimo_server, data_root, page, click):
     page.get_by_role("radio", name="assets").check()
     expect(button(page, "save")).to_be_enabled()
     save(page, click)
-    expect(status(page, "person 1")).to_be_visible()
+    expect(status(page, "editing person-0001")).to_be_visible()
 
     click("close person")
     expect(text_input(page, "name")).to_have_value("")
@@ -121,7 +121,7 @@ def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
     page.get_by_role("radio", name="liabilities").check()
     fill(page, "value", "1,-")  # save needs value or description
     save(page, click)
-    expect(status(page, "person 1 · page 2/3 · pending 0")).to_be_visible()
+    expect(status(page, "editing person-0001 · page 2/3 · pending 0")).to_be_visible()
     click("close person")
     expect(status(page, "no person")).to_be_visible()
 
@@ -143,13 +143,15 @@ def test_restart_resumes_on_last_page_with_no_person(data_root, page, click):
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "person 1 · page 1/3")).to_be_visible()
+        expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
         click("next page")
         expect(status(page, "page 2/3")).to_be_visible()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "person 1 · page 2/3 · pending 0")).to_be_visible()
+        expect(
+            status(page, "editing person-0001 · page 2/3 · pending 0")
+        ).to_be_visible()
         # No close: a restart mid-deed must still land here, without reopening person 1.
 
     with serve(data_root) as url:
@@ -162,7 +164,7 @@ def test_restart_resumes_on_last_page_with_no_person(data_root, page, click):
         drag_box(page, 0.2, 0.5, 0.8, 0.6)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "person 2 · page 2/3")).to_be_visible()
+        expect(status(page, "editing person-0002 · page 2/3")).to_be_visible()
 
     assert person_record(data_root, 1)["scans"] == ["page_01.jpg", "page_02.jpg"]
     second = person_record(data_root, 2)
@@ -200,7 +202,7 @@ def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, cl
     expect(button(page, "continue")).to_be_disabled()
     expect(button(page, "save")).to_be_enabled()
     save(page, click)
-    expect(status(page, "person 1 · page 1/3 · pending 0")).to_be_visible()
+    expect(status(page, "editing person-0001 · page 1/3 · pending 0")).to_be_visible()
     expect(button(page, "close person")).to_be_enabled()
 
     drag_box(page, 0.2, 0.5, 0.8, 0.6)
@@ -235,7 +237,9 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         expect(button(page, "next page")).to_be_disabled()  # would drop the block
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "person 1 · page 3/3 · pending 0")).to_be_visible()
+        expect(
+            status(page, "editing person-0001 · page 3/3 · pending 0")
+        ).to_be_visible()
         expect(button(page, "next page")).to_be_enabled()
 
         click("next page")  # last page of book1: writes and closes person 1
@@ -256,14 +260,14 @@ def test_delete_writes_and_drops_page(marimo_server, data_root, page, click):
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")  # save needs value or description
     save(page, click)
-    expect(status(page, "person 1 · page 1/3")).to_be_visible()
+    expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
     click("next page")
     expect(status(page, "page 2/3")).to_be_visible()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "12,-")
     fill(page, "description", "Een stoel")
     save(page, click)
-    expect(status(page, "person 1 · page 2/3 · pending 0")).to_be_visible()
+    expect(status(page, "editing person-0001 · page 2/3 · pending 0")).to_be_visible()
     assert person_record(data_root, 1)["scans"] == ["page_01.jpg", "page_02.jpg"]
 
     options = page.locator("select option")
@@ -388,7 +392,7 @@ def test_jump_is_view_only_while_a_person_is_open(data_root, page, click):
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "person 1 · page 1/3")).to_be_visible()
+        expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
         jump_to(page, 4)
         expect(page.get_by_text("4 book2")).to_be_visible()  # the strip follows
         expect(
@@ -424,7 +428,7 @@ def test_jump_is_view_only_while_a_person_is_open(data_root, page, click):
         drag_box(page, 0.2, 0.5, 0.8, 0.6)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "person 2 · page 1/1")).to_be_visible()
+        expect(status(page, "editing person-0002 · page 1/1")).to_be_visible()
 
     names = {
         p.name: json.loads(p.read_text())["metadata"]["deceased"]["full_name"]
@@ -486,11 +490,39 @@ def test_debug_panel_shows_the_file(data_root, page, click):
         click("delete")  # every write refreshes the panel
         expect(page.get_by_text('"12,-"')).to_have_count(0)
 
+        debug = page.get_by_role("switch")
+        debug.click()  # hides the panel for a demo; the switch itself stays
+        expect(page.get_by_text("DEBUG PANE")).to_have_count(0)
+        expect(debug).to_be_visible()
+        debug.click()
+        expect(page.get_by_text("DEBUG PANE")).to_be_visible()
+
 
 def test_no_debug_panel_by_default(marimo_server, page):
     open_app(page, marimo_server)
     expect(text_input(page, "name")).to_be_visible()
     expect(page.get_by_text("DEBUG PANE")).to_have_count(0)
+    expect(page.get_by_role("switch")).to_have_count(0)
+
+
+def test_pick_right_after_close_person_is_kept(marimo_server, page, click):
+    # The status line changes only together with the rebuilt dropdown. Before, it said
+    # "no person" while the old dropdown still showed person 1 picked: picking it again
+    # sent nothing, and the rebuilt dropdown then came in empty.
+    open_app(page, marimo_server)
+    fill(page, "name", "Jan Modaal")
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.2, 0.8, 0.3)
+    fill(page, "value", "1,-")
+    save(page, click)
+    choose(page, "person-0001 · Jan Modaal · page 1")
+
+    click("close person")
+    expect(status(page, "no person")).to_be_visible()
+    choose(page, "person-0001 · Jan Modaal · page 1")
+    # Check once the rebuilds are surely over (~350 ms after the click when measured).
+    page.wait_for_timeout(1000)
+    assert button(page, "go to person").is_enabled()
 
 
 def test_go_to_person_moves_to_their_start_page(marimo_server, data_root, page, click):
@@ -513,3 +545,83 @@ def test_go_to_person_moves_to_their_start_page(marimo_server, data_root, page, 
         status(page, "no person · page 1/3")
     ).to_be_visible()  # moves, writes nothing
     assert len(list((data_root / "book1").glob("person-*.json"))) == 1
+
+
+def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
+    open_app(page, marimo_server)
+    fill(page, "name", "Jan Modaal")
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.2, 0.8, 0.3)
+    fill(page, "value", "1,-")
+    save(page, click)
+    choose(page, "person-0001 · Jan Modaal · page 1")
+    expect(button(page, "reopen")).to_be_disabled()  # person 1 is open
+
+    click("close person")
+    click("next page")
+    expect(status(page, "no person · page 2/3")).to_be_visible()
+    choose(page, "person-0001 · Jan Modaal · page 1")
+    click("reopen")  # back on the start page, name prefilled
+    expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
+    expect(text_input(page, "name")).to_have_value("Jan Modaal")
+
+    choose(page, "A1 · 1,- ·")
+    click("edit")
+    expect(status(page, "editing A1")).to_be_visible()
+    expect(text_input(page, "value")).to_have_value("1,-")  # inputs rebuilt
+    fill(page, "value", "10,-")
+    save(page, click)
+    fill(page, "name", "Jan Modaal-Smit")
+    click("close person")
+    expect(status(page, "no person")).to_be_visible()
+
+    assert [p.name for p in (data_root / "book1").glob("person-*.json")] == [
+        "person-0001.json"
+    ]
+    meta = person_record(data_root, 1)
+    assert meta["deceased"]["full_name"] == "Jan Modaal-Smit"
+    assert [i["amount"] for i in meta["assets"]["items"]] == ["10,-"]
+
+
+def test_delete_person_needs_confirmation(marimo_server, data_root, page, click):
+    open_app(page, marimo_server)
+    fill(page, "name", "Jan Modaal")
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.2, 0.8, 0.3)
+    fill(page, "value", "1,-")
+    save(page, click)
+    choose(page, "person-0001 · Jan Modaal · page 1")
+    expect(button(page, "delete person")).to_be_disabled()  # person 1 is open
+
+    click("close person")
+    expect(status(page, "no person")).to_be_visible()
+    choose(page, "person-0001 · Jan Modaal · page 1")
+    click("delete person")
+    click("cancel")  # writes nothing
+    expect(button(page, "delete person")).to_be_enabled()
+    assert (data_root / "book1" / "person-0001.json").exists()
+
+    click("delete person")
+    click("confirm delete person-0001")
+    expect(button(page, "delete person")).to_be_disabled()  # dropdown rebuilt, empty
+    expect(page.locator("option", has_text="person-0001")).to_have_count(0)
+    assert not list((data_root / "book1").glob("person-*.json"))
+
+
+def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
+    open_app(page, marimo_server)
+    # Searchable, so not a <select>: a button opening a list of role "option".
+    page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
+        "button"
+    ).click()
+    # By aktenummer, then place: deeds.json is in neither order.
+    expect(page.get_by_role("dialog").get_by_role("option")).to_have_text(
+        [
+            "3 · Oostdorp · Jan Modaal",
+            "7 · Oostdorp · Jan de Wit",
+            "7 · Westdorp · Piet Smit",
+        ]
+    )
+    page.get_by_placeholder("Search...").fill("Westdorp")
+    page.get_by_role("dialog").get_by_role("option").click()
+    expect(page.get_by_text("Piet Smit · died 1880-05-06 in Westdorp")).to_be_visible()

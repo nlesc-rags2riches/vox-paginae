@@ -2,6 +2,7 @@
 
 # TODO: Needs more detailed human review
 
+import json
 import socket
 import subprocess
 import time
@@ -34,9 +35,31 @@ def wait_until_ready(port, timeout=60):
     raise TimeoutError(f"marimo not up on port {port}")
 
 
+def deed(deed_id, aktenummer, plaats, name, date):
+    """One `deeds.json` entry, with only the fields the labeler reads."""
+    return {
+        "deed_id": deed_id,
+        "aktenummer": aktenummer,
+        "plaats": plaats,
+        "personen": [
+            {
+                "naam_volledig": name,
+                "datum_overlijden": date,
+                "plaats_overlijden": plaats,
+                "rol": "overledene",
+            }
+        ],
+    }
+
+
+DEED_3 = deed("deed-3", "3", "Oostdorp", "Jan Modaal", "1880-01-02")
+DEED_7_OOST = deed("deed-7b", "7", "Oostdorp", "Jan de Wit", "1880-03-04")
+DEED_7_WEST = deed("deed-7g", "7", "Westdorp", "Piet Smit", "1880-05-06")
+
+
 @pytest.fixture
 def data_root(tmp_path):
-    """`<tmp>/data/book1/` with three grayscale pages, like the gold scans."""
+    """`<tmp>/data/book1/` with three grayscale pages and a `deeds.json`."""
     book = tmp_path / "data" / "book1"
     book.mkdir(parents=True)
     page = np.full((PAGE_H, PAGE_W), 230, np.uint8)
@@ -45,6 +68,10 @@ def data_root(tmp_path):
         page[y : y + 30, 200 : PAGE_W - 200] = 60
     for name in ["page_01.jpg", "page_02.jpg", "page_03.jpg"]:
         Image.fromarray(page).save(book / name)
+    # Not in page order, and aktenummer 7 repeats: as in a real book.
+    (book / "deeds.json").write_text(
+        json.dumps([DEED_7_WEST, DEED_3, DEED_7_OOST])
+    )
     return tmp_path / "data"
 
 
