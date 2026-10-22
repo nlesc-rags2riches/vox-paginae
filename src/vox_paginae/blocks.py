@@ -207,11 +207,12 @@ def load_person_records(book: Path) -> dict[int, dict]:
     }
 
 
-def person_choices(book: Path) -> dict[str, int]:
-    """``{"person-0002 · Jan Modaal · pages 22-24": start page index}`` per file.
+def person_choices(book: Path) -> dict[str, tuple[int, int]]:
+    """``{"person-0002 · Jan Modaal · pages 22-24": (2, start page index)}``.
 
-    Page numbers count from 1, as in the status line; the value is the index of the
-    person's start page (``scans[0]``) in ``list_pages(book)``.
+    One entry per file. Page numbers count from 1, as in the status line; the value is
+    the person id and the index of their start page (``scans[0]``) in
+    ``list_pages(book)``.
     """
     page_index = {p.name: i for i, p in enumerate(list_pages(book))}
     choices = {}
@@ -221,8 +222,38 @@ def person_choices(book: Path) -> dict[str, int]:
         first, last = min(numbers), max(numbers)
         pages = f"page {first}" if first == last else f"pages {first}-{last}"
         label = f"{person_path(book, person_id).stem} · {meta['deceased']['full_name']}"
-        choices[f"{label} · {pages}"] = page_index[meta["scans"][0]]
+        choices[f"{label} · {pages}"] = (person_id, page_index[meta["scans"][0]])
     return choices
+
+
+def load_deeds(book: Path) -> dict[str, dict] | None:
+    """``{deed_id: deed}`` from ``<book>/deeds.json``, ``None`` if the book has none."""
+    path = Path(book) / "deeds.json"
+    if not path.exists():
+        return None
+    return {deed["deed_id"]: deed for deed in json.loads(path.read_text())}
+
+
+def deed_choices(deeds: dict[str, dict]) -> dict[str, str]:
+    """``{"93 · Westdorp · Jan Modaal": deed_id}``, by aktenummer, then place.
+
+    ``aktenummer`` repeats within a book (e.g. 93 in two places), hence the
+    place; ``deeds.json`` itself is not in page order.
+    """
+    ordered = sorted(
+        deeds.values(),
+        key=lambda d: (
+            (int(d["aktenummer"]), d["plaats"])
+            if d["aktenummer"].isdigit()
+            else (float("inf"), d["plaats"])
+        ),
+    )
+    return {
+        " · ".join(
+            [d["aktenummer"], d["plaats"], *(p["naam_volledig"] for p in d["personen"])]
+        ): d["deed_id"]
+        for d in ordered
+    }
 
 
 def last_person_id(book: Path) -> int:

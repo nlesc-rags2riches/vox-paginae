@@ -8,7 +8,10 @@ changes only on purpose, and never describes internals.
 - You pick a root folder. Every folder under it that directly contains `*.jpg` is a
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
-- Nothing else is read: no JSON, no PageXML, no state file. Other files in the tree are
+- A book's `deeds.json` is read, if it has one: its deeds are listed to pick from and
+  shown. Nothing from it is written to the output yet.
+- Nothing else is read except the tool's own output (see Out): no other JSON
+  (`metadata.json` included), no PageXML, no state file. Other files in the tree are
   ignored.
 
 ## Out
@@ -42,10 +45,15 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the person was closed, who labeled it, or
   when.
-- The file is written on save, on delete, on close person, and on next page from the
-  last page of a book.
-- Resume reads only these files, and so does the page view, which draws every other
-  person's saved boxes faded.
+- Each write replaces the whole file, and an interrupted write leaves the previous
+  version. An added, changed or deleted item is in the file at once; a changed name or
+  date of death arrives with the next write.
+- A person's file can be rewritten after the person was closed. It keeps its name
+  (`person-NNNN.json`) and its `deed_id`.
+- A person's file can be removed. Its number then stays unused, unless it was the
+  highest: the next new person reuses it.
+- These files are read back as they are on disk; no other state is kept between
+  runs.
 
 ## Example
 
