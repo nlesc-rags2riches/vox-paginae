@@ -85,7 +85,7 @@ def test_draw_save_close_writes_person(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
 
     drag_box(page, 0.2, 0.3, 0.6, 0.5)
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
     fill(page, "value", "900,-")
     fill(page, "description", "Een huis")
     page.get_by_role("radio", name="assets").check()
@@ -98,7 +98,7 @@ def test_draw_save_close_writes_person(marimo_server, data_root, page, click):
     expect(page.get_by_role("radio", name="assets")).not_to_be_checked()
 
     meta = person_record(data_root, 1)
-    assert meta["deceased"]["full_name"] == "Antonia Spiering"
+    assert meta["deceased"]["full_name"] == "Jan Modaal"
     assert meta["scans"] == ["page_01.jpg"]
     (item,) = meta["assets"]["items"]
     assert (item["amount"], item["description"]) == ("900,-", "Een huis")
@@ -109,7 +109,7 @@ def test_draw_save_close_writes_person(marimo_server, data_root, page, click):
 
 def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
 
     drag_box(page, 0.1, 0.7, 0.9, 0.9)
     click("continue")
@@ -138,7 +138,7 @@ def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
 def test_restart_resumes_on_last_page_with_no_person(data_root, page, click):
     with serve(data_root) as url:
         open_app(page, url)
-        fill(page, "name", "Antonia Spiering")
+        fill(page, "name", "Jan Modaal")
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
@@ -181,7 +181,7 @@ def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, cl
     expect(button(page, "save")).to_be_disabled()  # no type, no name
     page.get_by_role("radio", name="assets").check()
     expect(button(page, "save")).to_be_disabled()  # no name
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
     expect(button(page, "save")).to_be_disabled()  # no value, no description
     fill(page, "value", "  ")
     expect(button(page, "save")).to_be_disabled()  # blank counts as empty
@@ -189,7 +189,7 @@ def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, cl
     expect(button(page, "save")).to_be_enabled()
     fill(page, "name", "  ")
     expect(button(page, "save")).to_be_disabled()  # blank counts as empty
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
     fill(page, "value", "")
     # Description alone is enough too, and enables save while typing (no blur).
     text_input(page, "description").press_sequentially("Een huis", delay=50)
@@ -227,7 +227,7 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         click("next page")
         expect(status(page, "page 3/3")).to_be_visible()
 
-        fill(page, "name", "Antonia Spiering")
+        fill(page, "name", "Jan Modaal")
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         click("continue")
@@ -251,7 +251,7 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
 
 def test_delete_writes_and_drops_page(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")  # save needs value or description
@@ -320,10 +320,10 @@ def test_save_enables_while_typing_the_name(marimo_server, page):
     page.get_by_role("radio", name="assets").check()
     fill(page, "value", "1,-")
     name = text_input(page, "name")
-    name.press_sequentially("Antonia Spiering", delay=50)  # no blur, no Enter
+    name.press_sequentially("Jan Modaal", delay=50)  # no blur, no Enter
     expect(button(page, "save")).to_be_enabled()
     expect(name).to_be_focused()  # the re-render must not steal focus mid-typing
-    expect(name).to_have_value("Antonia Spiering")
+    expect(name).to_have_value("Jan Modaal")
 
 
 def coloured_near(page, fx, fy, timeout=10):
@@ -348,7 +348,7 @@ def test_saved_boxes_stay_visible_after_close_and_restart(data_root, page, click
     with serve(data_root) as url:
         open_app(page, url)
         assert not coloured_near(page, 0.4, 0.3, timeout=1)  # sanity: blank page
-        fill(page, "name", "Antonia Spiering")
+        fill(page, "name", "Jan Modaal")
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.3, 0.6, 0.5)
         fill(page, "value", "1,-")  # save needs value or description
@@ -383,7 +383,7 @@ def test_jump_is_view_only_while_a_person_is_open(data_root, page, click):
 
     with serve(data_root) as url:
         open_app(page, url)
-        fill(page, "name", "Antonia Spiering")
+        fill(page, "name", "Jan Modaal")
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
@@ -435,7 +435,7 @@ def test_jump_is_view_only_while_a_person_is_open(data_root, page, click):
 
 def test_edit_replaces_block_in_place(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
     page.get_by_role("radio", name="assets").check()
     for value in ["1,-", "2,-"]:
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
@@ -474,7 +474,7 @@ def test_debug_panel_shows_the_file(data_root, page, click):
         open_app(page, url)
         expect(page.get_by_text("DEBUG PANE")).to_be_visible()
         expect(page.get_by_text("no file yet")).to_be_visible()
-        fill(page, "name", "Antonia Spiering")
+        fill(page, "name", "Jan Modaal")
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "12,-")
@@ -495,19 +495,19 @@ def test_no_debug_panel_by_default(marimo_server, page):
 
 def test_go_to_person_moves_to_their_start_page(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Antonia Spiering")
+    fill(page, "name", "Jan Modaal")
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")  # save needs value or description
     save(page, click)
-    choose(page, "person-0001 · Antonia Spiering · page 1")
+    choose(page, "person-0001 · Jan Modaal · page 1")
     expect(button(page, "go to person")).to_be_disabled()  # person 1 is open
 
     click("close person")
     for n in [2, 3]:
         click("next page")
         expect(status(page, f"page {n}/3")).to_be_visible()
-    choose(page, "person-0001 · Antonia Spiering · page 1")
+    choose(page, "person-0001 · Jan Modaal · page 1")
     click("go to person")
     expect(
         status(page, "no person · page 1/3")

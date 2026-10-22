@@ -1,7 +1,4 @@
-"""Fixtures for Playwright tests: a `marimo run` server on synthetic pages.
-
-Recipe and selector gotchas: ~/brain/cookbook/marimo-playwright.md.
-"""
+"""Fixtures for Playwright tests: a `marimo run` server on synthetic pages."""
 
 # TODO: Needs more detailed human review
 
