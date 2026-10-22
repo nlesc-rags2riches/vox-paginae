@@ -75,8 +75,7 @@ changes only on purpose, and never describes internals.
 
 ## Field notes
 
-- `amount`: a string; whether it becomes a number is open (see
-  [open questions](../explanation/design-decisions.md#open-questions)).
+- `amount`: a string; whether it becomes a number is still open.
 - `bbox`: in the same pixel space as PageXML.
 - `pagexml_link`, `pagexml_baseline_ids`: `null` means "not computed"; `[]` would mean
   "computed, no match".

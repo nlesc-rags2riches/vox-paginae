@@ -14,5 +14,4 @@ uv sync
 uv run marimo run notebooks/item_block_labeler.py -- --data-root /path/to/scans
 ```
 
-Documentation (Diátaxis: tutorials, how-to guides, reference, explanation) is in
-[`docs/`](docs/index.md). Preview it with `uv run --group docs zensical serve`.
+Documentation is in [`docs/`](docs/index.md). Preview it with `uv run --group docs zensical serve`.

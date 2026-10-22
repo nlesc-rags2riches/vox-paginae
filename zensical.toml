@@ -6,19 +6,12 @@ repo_url = "https://github.com/nlesc-rags2riches/vox-paginae"
 edit_uri = "edit/main/docs/"
 nav = [
   { "Home" = "index.md" },
-  { "Tutorials" = ["tutorials/label-your-first-person.md"] },
   { "How-to guides" = [
     "how-to/install-and-run.md",
-    "how-to/fix-a-saved-block.md",
-    "how-to/report-a-problem.md",
-    "how-to/develop.md",
   ] },
   { "Reference" = [
     "reference/input-and-output.md",
-    "reference/labeling-screen.md",
-    "reference/known-issues.md",
   ] },
-  { "Explanation" = ["explanation/design-decisions.md"] },
 ]
 
 [project.theme]
