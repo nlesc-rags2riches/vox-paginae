@@ -208,7 +208,7 @@ def load_person_records(book: Path) -> dict[int, dict]:
 
 
 def person_choices(book: Path) -> dict[str, int]:
-    """``{"person-0002 · Antonia Spiering · pages 22-24": start page index}`` per file.
+    """``{"person-0002 · Jan Modaal · pages 22-24": start page index}`` per file.
 
     Page numbers count from 1, as in the status line; the value is the index of the
     person's start page (``scans[0]``) in ``list_pages(book)``.
