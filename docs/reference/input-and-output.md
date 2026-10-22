@@ -56,16 +56,16 @@ changes only on purpose, and never describes internals.
     "aktenummer": null,
     "tax_office": null,
     "total": null,
-    "deceased": {"full_name": "Antonia Spiering", "date_of_death": null,
+    "deceased": {"full_name": "Jan Modaal", "date_of_death": null,
                  "place_of_residence": null, "place_of_death": null},
-    "scans": ["Werkendam_004_0022_R_43.jpg", "Werkendam_004_0023_L_44.jpg"],
+    "scans": ["page_01.jpg", "page_02.jpg"],
     "assets": {"total": null, "items": [
       {"category": "property", "amount": "900,-",
-       "description": "Een huis, erf en boomgaard te Giessen, kadastraal be,, kend ...",
+       "description": "Een huis met erf ...",
        "layout": [
-         {"scan": "Werkendam_004_0022_R_43.jpg", "bbox": [412, 1880, 2310, 2240],
+         {"scan": "page_01.jpg", "bbox": [412, 1880, 2310, 2240],
           "pagexml_link": null, "pagexml_baseline_ids": null},
-         {"scan": "Werkendam_004_0023_L_44.jpg", "bbox": [380, 210, 2290, 420],
+         {"scan": "page_02.jpg", "bbox": [380, 210, 2290, 420],
           "pagexml_link": null, "pagexml_baseline_ids": null}]}
     ]},
     "liabilities": {"total": null, "items": []}
