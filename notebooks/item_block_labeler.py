@@ -427,7 +427,7 @@ def block_buttons(
     _names = [p.name for p in pages]
 
     def _before_header(scan):
-        # Nothing is saved or closed there: it would be outside scans.
+        # Nothing is continued, saved or closed there: it would be outside scans.
         return _names.index(scan) < _names.index(get_deed_record()["scans"][0])
 
     # Text shows amount and description start, so the list doubles as a typo check.
@@ -486,7 +486,8 @@ def block_buttons(
 
     continue_btn = mo.ui.button(
         label="continue",
-        disabled=drawn_box is None,
+        disabled=drawn_box is None
+        or (get_deed_record() is not None and _before_header(page.name)),
         on_click=lambda _: set_pending_boxes(
             lambda p: p + [(page.name, drawn_box)]
         ),
