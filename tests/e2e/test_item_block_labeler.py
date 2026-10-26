@@ -284,9 +284,13 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         click("next page")
         expect(status(page, "page 2/3")).to_be_visible()
         open_deed(page, click)
-        click("prev page")  # before the header page: nowhere to close
+        click("prev page")  # before the header page: nowhere to close or save
         expect(status(page, "page 1/3")).to_be_visible()
         expect(button(page, "close deed/person")).to_be_disabled()
+        page.get_by_role("radio", name="assets").check()
+        drag_box(page, 0.2, 0.2, 0.8, 0.3)
+        fill(page, "value", "1,-")
+        expect(button(page, "save")).to_be_disabled()  # its box would be outside scans
         click("next page")
         expect(button(page, "close deed/person")).to_be_enabled()
         click("next page")
