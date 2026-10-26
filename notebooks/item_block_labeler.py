@@ -20,7 +20,6 @@ def imports():
         crop,
         deed_choices,
         deed_path,
-        deed_record_choices,
         delete_block,
         find_books,
         list_pages,
@@ -46,7 +45,6 @@ def imports():
         crop,
         deed_choices,
         deed_path,
-        deed_record_choices,
         delete_block,
         find_books,
         list_pages,
@@ -573,106 +571,25 @@ def book_dropdown(
 
 
 @app.cell(hide_code=True)
-def person_dropdown(book, deed_record_choices, get_deed_record, mo):
-    get_deed_record()  # re-created after every save, delete or close: files may change
-    # The current book's saved deed/persons; the value is (deed_id, header page index).
-    person_dd = mo.ui.dropdown(options=deed_record_choices(book))
+def deed_picker(book, deed_choices, deeds, get_deed_record, mo):
+    # The deed to open, or to go to, reopen or delete if it has a file; shown only while no
+    # deed/person is open (`deed_row`). Re-created (cleared) on every open, write and close:
+    # after a close nothing is picked, and the deeds with a file are up to date.
+    get_deed_record()
+    deed_dd = mo.ui.dropdown(
+        options=deed_choices(deeds, book), searchable=True, label="deed"
+    )
     # deed_id of the deed/person whose delete awaits confirmation; re-created (reset) with the
     # dropdown. Self loops: the button cell both reads and sets it.
     get_delete_person, set_delete_person = mo.state(
         None, allow_self_loops=True
     )
-    return get_delete_person, person_dd, set_delete_person
-
-
-@app.cell(hide_code=True)
-def person_go(
-    book,
-    deed_path,
-    get_deed_record,
-    get_delete_person,
-    get_pending_boxes,
-    load_deed_records,
-    mo,
-    person_dd,
-    set_book_page,
-    set_deed_id,
-    set_deed_record,
-    set_delete_person,
-    set_type,
-):
-    # Like the jump's go: a person never crosses books, a pending block belongs to this page.
-    _disabled = (
-        person_dd.value is None
-        or get_deed_record() is not None
-        or bool(get_pending_boxes())
-    )
-    person_go_btn = mo.ui.button(
-        label="go to deed/person",
-        disabled=_disabled,
-        on_click=lambda _: set_book_page(
-            lambda book_page: (book_page[0], person_dd.value[1])
-        ),
-    )
-
-    def _reopen(_):
-        # The picked deed/person is open again, as if never closed: save, delete and
-        # close then rewrite its file.
-        _deed_id, _header = person_dd.value
-        set_deed_id(_deed_id)
-        set_deed_record(load_deed_records(book)[_deed_id])
-        set_type(None)
-        set_book_page(lambda book_page: (book_page[0], _header))
-
-    # Disabled like go; an edit needs an open person, so that is covered too.
-    person_reopen_btn = mo.ui.button(
-        label="reopen", disabled=_disabled, on_click=_reopen
-    )
-
-    def _delete_person(_):
-        _path = deed_path(book, person_dd.value[0])
-        _path.unlink()
-        mo.status.toast(f"deleted {_path.name}")
-        # Still None: this rebuilds the dropdown, the faded boxes and the debug pane.
-        set_deed_record(None)
-
-    # Two steps: delete deed/person, then confirm or cancel. Picking another person shows
-    # delete deed/person again.
-    if not _disabled and get_delete_person() == person_dd.value[0]:
-        person_delete = mo.hstack(
-            [
-                mo.ui.button(
-                    label=f"confirm delete {deed_path(book, person_dd.value[0]).stem}",
-                    on_click=_delete_person,
-                ),
-                mo.ui.button(
-                    label="cancel", on_click=lambda _: set_delete_person(None)
-                ),
-            ],
-            justify="start",
-        )
-    else:
-        person_delete = mo.ui.button(
-            label="delete deed/person",
-            disabled=_disabled,
-            on_click=lambda _: set_delete_person(person_dd.value[0]),
-        )
-    return person_delete, person_go_btn, person_reopen_btn
-
-
-@app.cell(hide_code=True)
-def deed_picker(deed_choices, deeds, get_deed_record, mo):
-    # The deed to open; shown only while no deed/person is open (`deed_row`). Re-created
-    # (cleared) on every open, write and close: after a close nothing is picked.
-    get_deed_record()
-    deed_dd = mo.ui.dropdown(
-        options=deed_choices(deeds), searchable=True, label="deed"
-    )
-    return (deed_dd,)
+    return deed_dd, get_delete_person, set_delete_person
 
 
 @app.cell(hide_code=True)
 def deed_info(
+    book,
     deed_choices,
     deed_dd,
     deeds,
@@ -691,7 +608,7 @@ def deed_info(
         if _open is None
         else mo.md(
             "deed: "
-            + {v: k for k, v in deed_choices(deeds).items()}.get(
+            + {v: k for k, v in deed_choices(deeds, book).items()}.get(
                 _deed_id, _deed_id
             )
         )
@@ -745,6 +662,92 @@ def deed_open(
         on_click=_open,
     )
     return (open_btn,)
+
+
+@app.cell(hide_code=True)
+def person_go(
+    book,
+    deed_dd,
+    deed_path,
+    get_deed_record,
+    get_delete_person,
+    get_pending_boxes,
+    load_deed_records,
+    mo,
+    pages,
+    set_book_page,
+    set_deed_id,
+    set_deed_record,
+    set_delete_person,
+    set_type,
+):
+    # Like the jump's go: a person never crosses books, a pending block belongs to this page.
+    # Only for a deed with a file; one without is opened instead.
+    _disabled = (
+        deed_dd.value is None
+        or not deed_path(book, deed_dd.value).exists()
+        or get_deed_record() is not None
+        or bool(get_pending_boxes())
+    )
+
+    def _header():
+        # Read at click: another tab (its own session) may have rewritten the file.
+        _deed_record = load_deed_records(book)[deed_dd.value]
+        return _deed_record, [p.name for p in pages].index(
+            _deed_record["scans"][0]
+        )
+
+    person_go_btn = mo.ui.button(
+        label="go to deed/person",
+        disabled=_disabled,
+        on_click=lambda _: set_book_page(
+            lambda book_page: (book_page[0], _header()[1])
+        ),
+    )
+
+    def _reopen(_):
+        # The picked deed/person is open again, as if never closed: save, delete and
+        # close then rewrite its file.
+        _deed_record, _header_i = _header()
+        set_deed_id(deed_dd.value)
+        set_deed_record(_deed_record)
+        set_type(None)
+        set_book_page(lambda book_page: (book_page[0], _header_i))
+
+    # Disabled like go; an edit needs an open person, so that is covered too.
+    person_reopen_btn = mo.ui.button(
+        label="reopen", disabled=_disabled, on_click=_reopen
+    )
+
+    def _delete_person(_):
+        _path = deed_path(book, deed_dd.value)
+        _path.unlink()
+        mo.status.toast(f"deleted {_path.name}")
+        # Still None: this rebuilds the dropdown, the faded boxes and the debug pane.
+        set_deed_record(None)
+
+    # Two steps: delete deed/person, then confirm or cancel. Picking another deed shows
+    # delete deed/person again.
+    if not _disabled and get_delete_person() == deed_dd.value:
+        person_delete = mo.hstack(
+            [
+                mo.ui.button(
+                    label=f"confirm delete {deed_path(book, deed_dd.value).stem}",
+                    on_click=_delete_person,
+                ),
+                mo.ui.button(
+                    label="cancel", on_click=lambda _: set_delete_person(None)
+                ),
+            ],
+            justify="start",
+        )
+    else:
+        person_delete = mo.ui.button(
+            label="delete deed/person",
+            disabled=_disabled,
+            on_click=lambda _: set_delete_person(deed_dd.value),
+        )
+    return person_delete, person_go_btn, person_reopen_btn
 
 
 @app.cell(hide_code=True)
@@ -809,7 +812,6 @@ def layout(
     next_page_btn,
     open_btn,
     page_view,
-    person_dd,
     person_delete,
     person_go_btn,
     person_reopen_btn,
@@ -825,7 +827,7 @@ def layout(
         [page_view, mo.hstack([quality_slider, fig_h_slider], justify="start")]
     )
     # Top to bottom, from the widest scope to the narrowest, split by rules: book and
-    # person, page, block.
+    # deed/person, page, block.
     _form = mo.vstack(
         [
             mo.hstack(
@@ -833,20 +835,17 @@ def layout(
             )
             if debug_switch is not None
             else status_line,
+            book_dd,
             mo.hstack(
                 [
-                    book_dd,
-                    mo.md("/"),
-                    person_dd,
+                    deed_row,
+                    deed_details,
+                    open_btn,
                     person_go_btn,
                     person_reopen_btn,
                     person_delete,
+                    close_person_btn,
                 ],
-                justify="start",
-                align="center",
-            ),
-            mo.hstack(
-                [deed_row, deed_details, open_btn, close_person_btn],
                 justify="start",
                 align="center",
             ),

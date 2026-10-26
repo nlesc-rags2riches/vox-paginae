@@ -208,24 +208,6 @@ def load_deed_records(book: Path) -> dict[str, dict]:
     }
 
 
-def deed_record_choices(book: Path) -> dict[str, tuple[str, int]]:
-    """``{"93 · Westdorp · Jan Modaal · pages 22-24": (deed_id, header page index)}``.
-
-    One entry per file, labelled like the deed. Page numbers count from 1, as in the
-    status line; the header page is ``scans[0]``, an index into ``list_pages(book)``.
-    """
-    page_index = {p.name: i for i, p in enumerate(list_pages(book))}
-    choices = {}
-    for deed_id, deed_record in load_deed_records(book).items():
-        numbers = [page_index[scan] + 1 for scan in deed_record["scans"]]
-        first, last = min(numbers), max(numbers)
-        pages = f"page {first}" if first == last else f"pages {first}-{last}"
-        data = deed_record["copied_deed_person_data"]
-        label = " · ".join([data["aktenummer"], data["plaats"], data["naam_volledig"]])
-        choices[f"{label} · {pages}"] = (deed_id, page_index[deed_record["scans"][0]])
-    return choices
-
-
 def load_deeds(book: Path) -> dict[str, dict] | None:
     """``{deed_id: deed}`` from ``<book>/deeds.json``, ``None`` if the book has none."""
     path = Path(book) / "deeds.json"
@@ -234,26 +216,41 @@ def load_deeds(book: Path) -> dict[str, dict] | None:
     return {deed["deed_id"]: deed for deed in json.loads(path.read_text())}
 
 
-def deed_choices(deeds: dict[str, dict]) -> dict[str, str]:
+def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
     """``{"93 · Westdorp · Jan Modaal": deed_id}``, by aktenummer, then place.
 
-    ``aktenummer`` repeats within a book (e.g. 93 in two places), hence the
-    place; ``deeds.json`` itself is not in page order.
+    Deeds with a file in ``book`` go last, labelled with their pages, e.g.
+    ``"93 · Westdorp · Jan Modaal · pages 22-24"`` (counted from 1, as in the status line).
+    ``aktenummer`` repeats within a book (e.g. 93 in two places), hence the place;
+    ``deeds.json`` itself is not in page order.
     """
+    deed_records = load_deed_records(book)
+    page_number = {p.name: i + 1 for i, p in enumerate(list_pages(book))}
+
+    def label(d):
+        names = [
+            d["aktenummer"],
+            d["plaats"],
+            *(p["naam_volledig"] for p in d["personen"]),
+        ]
+        if d["deed_id"] in deed_records:
+            numbers = [page_number[s] for s in deed_records[d["deed_id"]]["scans"]]
+            first, last = min(numbers), max(numbers)
+            names.append(f"page {first}" if first == last else f"pages {first}-{last}")
+        return " · ".join(names)
+
     ordered = sorted(
         deeds.values(),
         key=lambda d: (
-            (int(d["aktenummer"]), d["plaats"])
-            if d["aktenummer"].isdigit()
-            else (float("inf"), d["plaats"])
+            d["deed_id"] in deed_records,
+            *(
+                (int(d["aktenummer"]), d["plaats"])
+                if d["aktenummer"].isdigit()
+                else (float("inf"), d["plaats"])
+            ),
         ),
     )
-    return {
-        " · ".join(
-            [d["aktenummer"], d["plaats"], *(p["naam_volledig"] for p in d["personen"])]
-        ): d["deed_id"]
-        for d in ordered
-    }
+    return {label(d): d["deed_id"] for d in ordered}
 
 
 def single_overledene(deed: dict) -> dict:
