@@ -3,7 +3,6 @@ import json
 import pytest
 
 # TODO: Together with the `src` correspondent, split and human-review
-
 from vox_paginae.blocks import (
     add_block,
     block_labels,

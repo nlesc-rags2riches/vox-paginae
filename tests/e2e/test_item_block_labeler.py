@@ -1,6 +1,6 @@
 import json
-import time
 import shutil
+import time
 
 # TODO: Needs more detailed human review
 import pytest
