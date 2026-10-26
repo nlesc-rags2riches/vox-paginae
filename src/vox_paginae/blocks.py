@@ -256,6 +256,26 @@ def deed_choices(deeds: dict[str, dict]) -> dict[str, str]:
     }
 
 
+def overledene(deed: dict) -> dict:
+    """The deed's one person, who must have ``rol: overledene``.
+
+    The labeler assumes exactly that; any other deed raises ``ValueError`` with a message
+    for the annotator.
+    """
+    persons = deed["personen"]
+    if len(persons) != 1:
+        raise ValueError(
+            f"This deed has {len(persons)} persons: it needs exactly one, "
+            "with `rol: overledene`. It cannot be used."
+        )
+    if persons[0].get("rol") != "overledene":
+        raise ValueError(
+            f"This deed's person has `rol: {persons[0].get('rol')}`: it needs "
+            "`rol: overledene`. It cannot be used."
+        )
+    return persons[0]
+
+
 def last_person_id(book: Path) -> int:
     """The highest ``person-NNNN.json`` id in ``book``, 0 if none: the next save is +1."""
     return max(load_person_records(book), default=0)

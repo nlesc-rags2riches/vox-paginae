@@ -28,6 +28,7 @@ def imports():
         load_person_records,
         new_person_record,
         next_page,
+        overledene,
         person_choices,
         person_path,
         replace_block,
@@ -55,6 +56,7 @@ def imports():
         new_person_record,
         next_page,
         np,
+        overledene,
         person_choices,
         person_path,
         plt,
@@ -690,17 +692,19 @@ def deed_picker(deed_choices, deeds, mo):
 
 
 @app.cell(hide_code=True)
-def deed_info(deed_dd, deeds, mo):
-    # The picked deed's persons as in deeds.json, read only: nothing is copied into the file.
-    _deed = deeds.get(getattr(deed_dd, "value", None))
-    deed_details = mo.md(
-        "<br>".join(
-            f"**{_p['naam_volledig']}** · died {_p['datum_overlijden']} in {_p['plaats_overlijden']}"
-            for _p in _deed["personen"]
-        )
-        if _deed
-        else ""
-    )
+def deed_info(deed_dd, deeds, mo, overledene):
+    # The picked deed's overledene as in deeds.json, read only: nothing is copied into the file.
+    # Checked on pick, so only a deed that breaks the rule fails, not the whole book.
+    _deed = deeds.get(deed_dd.value)
+    deed_details = mo.md("")
+    if _deed:
+        try:
+            _p = overledene(_deed)
+            deed_details = mo.md(
+                f"**{_p['naam_volledig']}** · died {_p['datum_overlijden']} in {_p['plaats_overlijden']}"
+            )
+        except ValueError as _e:
+            deed_details = mo.callout(mo.md(str(_e)), kind="danger")
     return (deed_details,)
 
 

@@ -615,6 +615,15 @@ def test_delete_person_needs_confirmation(marimo_server, data_root, page, click)
     assert not list((data_root / "book1").glob("person-*.json"))
 
 
+def pick_deed(page, search):
+    """Pick the one deed matching ``search`` in the searchable deed dropdown."""
+    page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
+        "button"
+    ).click()
+    page.get_by_placeholder("Search...").fill(search)
+    page.get_by_role("dialog").get_by_role("option").click()
+
+
 def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
     open_app(page, marimo_server)
     # Searchable, so not a <select>: a button opening a list of role "option".
@@ -627,6 +636,7 @@ def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
             "3 · Oostdorp · Jan Modaal",
             "7 · Oostdorp · Jan de Wit",
             "7 · Westdorp · Piet Smit",
+            "12 · Oostdorp · Kees Bakker · Klaas Bakker",
         ]
     )
     page.get_by_placeholder("Search...").fill("Westdorp")
@@ -648,3 +658,13 @@ def test_book_without_deeds_json_stops_the_labeler(data_root, page):
             expect(button(page, label)).to_have_count(0)
         expect(text_input(page, "name")).to_have_count(0)
     assert not list((data_root / "book1").glob("person-*.json"))
+
+
+def test_deed_without_exactly_one_overledene_shows_an_error(marimo_server, page):
+    open_app(page, marimo_server)
+    pick_deed(page, "Bakker")
+    expect(page.get_by_text("This deed has 2 persons")).to_be_visible()
+    # Only that deed fails: another one in the same book still shows its person.
+    pick_deed(page, "Jan Modaal")
+    expect(page.get_by_text("This deed has 2 persons")).to_have_count(0)
+    expect(page.get_by_text("Jan Modaal · died 1880-01-02 in Oostdorp")).to_be_visible()

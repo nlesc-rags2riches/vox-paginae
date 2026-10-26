@@ -15,6 +15,7 @@ from vox_paginae.blocks import (
     load_person_records,
     new_person_record,
     next_page,
+    overledene,
     person_choices,
     replace_block,
     resume,
@@ -248,3 +249,21 @@ def test_deed_choices_sort_by_aktenummer_then_place(tmp_path):
         "93 · Westdorp · B": "d1",
         "105 · Alphen · C": "d2",
     }
+
+
+@pytest.mark.parametrize(
+    "personen, error",
+    [
+        ([], "has 0 persons"),
+        ([{"rol": "overledene"}, {"rol": "erfgenaam"}], "has 2 persons"),
+        ([{"rol": "erfgenaam"}], "`rol: erfgenaam`"),
+    ],
+)
+def test_overledene_rejects_a_deed_without_exactly_one(personen, error):
+    with pytest.raises(ValueError, match=error):
+        overledene({"personen": personen})
+
+
+def test_overledene_returns_the_one_person():
+    person = {"naam_volledig": "Jan Modaal", "rol": "overledene"}
+    assert overledene({"personen": [person]}) is person
