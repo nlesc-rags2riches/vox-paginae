@@ -37,7 +37,7 @@ def button(page, label):
 
 
 def choose(page, label):
-    """Pick ``label`` in whichever dropdown offers it (block or person)."""
+    """Pick ``label`` in whichever dropdown offers it (block or deed/person)."""
     page.locator("select", has=page.locator("option", has_text=label)).select_option(
         label=label
     )
@@ -62,6 +62,22 @@ def open_app(page, url):
     expect(status(page, "no deed/person")).to_be_visible(timeout=60_000)
 
 
+def pick_deed(page, search):
+    """Pick the one deed matching ``search`` in the searchable deed dropdown."""
+    page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
+        "button"
+    ).click()
+    page.get_by_placeholder("Search...").fill(search)
+    page.get_by_role("dialog").get_by_role("option").click()
+
+
+def open_deed(page, click, search="Jan Modaal"):
+    """Pick the deed matching ``search`` and open it on the current page."""
+    pick_deed(page, search)
+    click("open")
+    expect(status(page, "editing labeled-deed-")).to_be_visible()
+
+
 def drag_box(page, x0, y0, x1, y1):
     """Drag a box on the page image; coordinates are fractions of the image."""
     b = page.locator("canvas").first.bounding_box()
@@ -71,9 +87,9 @@ def drag_box(page, x0, y0, x1, y1):
     page.mouse.up()
 
 
-def person_record(data_root, n):
-    path = data_root / "book1" / f"person-{n:04d}.json"
-    return json.loads(path.read_text())["metadata"]
+def deed_record(data_root, deed_id="deed-3", book="book1"):
+    path = data_root / book / f"labeled-deed-{deed_id}.json"
+    return json.loads(path.read_text())
 
 
 def fractions(bbox):
@@ -81,35 +97,59 @@ def fractions(bbox):
     return [x0 / PAGE_W, y0 / PAGE_H, x1 / PAGE_W, y1 / PAGE_H]
 
 
-def test_draw_save_close_writes_person(marimo_server, data_root, page, click):
+def test_open_writes_the_file_at_once_then_items_go_into_it(
+    marimo_server, data_root, page, click
+):
     open_app(page, marimo_server)
+    click("next page")
+    expect(status(page, "page 2/3")).to_be_visible()
+    open_deed(page, click)
+    expect(status(page, "editing labeled-deed-deed-3 · page 2/3")).to_be_visible()
+    # Written at once, before any item: the current page is the header page.
+    assert deed_record(data_root) == {
+        "deed_id": "deed-3",
+        "copied_deed_person_data": {
+            "aktenummer": "3",
+            "plaats": "Oostdorp",
+            "naam_volledig": "Jan Modaal",
+            "datum_overlijden": "1880-01-02",
+            "plaats_overlijden": "Oostdorp",
+        },
+        "scans": ["page_02.jpg"],
+        "annotation": {"assets": [], "liabilities": []},
+    }
+    # While open, the deed row is text: no dropdown to pick another deed from.
+    expect(page.get_by_test_id("marimo-plugin-searchable-dropdown")).to_have_count(0)
+    expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
+    expect(button(page, "open")).to_be_disabled()
 
     drag_box(page, 0.2, 0.3, 0.6, 0.5)
-    fill(page, "name", "Jan Modaal")
     fill(page, "value", "900,-")
     fill(page, "description", "Een huis")
     page.get_by_role("radio", name="assets").check()
-    expect(button(page, "save")).to_be_enabled()
     save(page, click)
-    expect(status(page, "editing person-0001")).to_be_visible()
-
     click("close deed/person")
-    expect(text_input(page, "name")).to_have_value("")
+    expect(status(page, "no deed/person")).to_be_visible()
     expect(page.get_by_role("radio", name="assets")).not_to_be_checked()
 
-    meta = person_record(data_root, 1)
-    assert meta["deceased"]["full_name"] == "Jan Modaal"
-    assert meta["scans"] == ["page_01.jpg"]
-    (item,) = meta["assets"]["items"]
+    record = deed_record(data_root)
+    assert record["scans"] == ["page_02.jpg"]
+    (item,) = record["annotation"]["assets"]
+    assert list(item) == ["layout", "category", "amount", "description"]
     assert (item["amount"], item["description"]) == ("900,-", "Een huis")
     assert fractions(item["layout"][0]["bbox"]) == pytest.approx(
         [0.2, 0.3, 0.6, 0.5], abs=0.01
     )
+    # One file per deed: a deed that has one is not opened anew.
+    pick_deed(page, "Jan Modaal")
+    expect(button(page, "open")).to_be_disabled()
+    pick_deed(page, "Westdorp")
+    expect(button(page, "open")).to_be_enabled()
 
 
 def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
+    open_deed(page, click)
 
     drag_box(page, 0.1, 0.7, 0.9, 0.9)
     click("continue")
@@ -121,14 +161,15 @@ def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
     page.get_by_role("radio", name="liabilities").check()
     fill(page, "value", "1,-")  # save needs value or description
     save(page, click)
-    expect(status(page, "editing person-0001 · page 2/3 · pending 0")).to_be_visible()
+    expect(
+        status(page, "editing labeled-deed-deed-3 · page 2/3 · pending 0")
+    ).to_be_visible()
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
 
-    meta = person_record(data_root, 1)
-    assert meta["scans"] == ["page_01.jpg", "page_02.jpg"]
-    assert meta["assets"]["items"] == []
-    (item,) = meta["liabilities"]["items"]
+    record = deed_record(data_root)
+    assert record["annotation"]["assets"] == []
+    (item,) = record["annotation"]["liabilities"]
     layout = item["layout"]
     assert [box["scan"] for box in layout] == ["page_01.jpg", "page_02.jpg"]
     assert fractions(layout[0]["bbox"]) == pytest.approx([0.1, 0.7, 0.9, 0.9], abs=0.01)
@@ -138,83 +179,87 @@ def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
 def test_restart_resumes_on_last_page_with_no_person(data_root, page, click):
     with serve(data_root) as url:
         open_app(page, url)
-        fill(page, "name", "Jan Modaal")
+        click("next page")
+        expect(status(page, "page 2/3")).to_be_visible()
+        open_deed(page, click)
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
         click("next page")
-        expect(status(page, "page 2/3")).to_be_visible()
+        expect(status(page, "page 3/3")).to_be_visible()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
         expect(
-            status(page, "editing person-0001 · page 2/3 · pending 0")
+            status(page, "editing labeled-deed-deed-3 · page 3/3 · pending 0")
         ).to_be_visible()
-        # No close: a restart mid-deed must still land here, without reopening person 1.
+        # No close: a restart mid-deed must not reopen it.
 
     with serve(data_root) as url:
         open_app(page, url)  # waits for "no deed/person"
+        # The header page: for now, scans holds only that.
         expect(status(page, "no deed/person · page 2/3 · pending 0")).to_be_visible()
-        expect(text_input(page, "name")).to_have_value("")
 
-        fill(page, "name", "Someone Else")
+        open_deed(page, click, "Westdorp")
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.5, 0.8, 0.6)
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
-        expect(status(page, "editing person-0002 · page 2/3")).to_be_visible()
+        expect(status(page, "editing labeled-deed-deed-7g · page 2/3")).to_be_visible()
 
-    assert person_record(data_root, 1)["scans"] == ["page_01.jpg", "page_02.jpg"]
-    second = person_record(data_root, 2)
-    assert second["deceased"]["full_name"] == "Someone Else"
+    assert len(deed_record(data_root)["annotation"]["assets"]) == 2
+    second = deed_record(data_root, "deed-7g")
+    assert second["copied_deed_person_data"]["naam_volledig"] == "Piet Smit"
     assert second["scans"] == ["page_02.jpg"]
+
+
+def test_old_person_files_are_ignored(data_root, page):
+    # Old format, on page 2: neither resumed from, listed nor drawn.
+    (data_root / "book1" / "person-0001.json").write_text(
+        json.dumps({"metadata": {"scans": ["page_02.jpg"]}})
+    )
+    with serve(data_root) as url:
+        open_app(page, url)
+        expect(status(page, "no deed/person · page 1/3")).to_be_visible()
+        expect(page.locator("option", has_text="person-0001")).to_have_count(0)
 
 
 def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, click):
     open_app(page, marimo_server)
     # prev page: page 1 is the floor, never into a previous book.
-    for label in ["continue", "save", "close deed/person", "prev page"]:
+    for label in ["continue", "save", "open", "close deed/person", "prev page"]:
         expect(button(page, label)).to_be_disabled()
 
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     expect(button(page, "continue")).to_be_enabled()
-    expect(button(page, "save")).to_be_disabled()  # no type, no name
     page.get_by_role("radio", name="assets").check()
-    expect(button(page, "save")).to_be_disabled()  # no name
-    fill(page, "name", "Jan Modaal")
+    fill(page, "value", "900,-")
+    expect(button(page, "save")).to_be_disabled()  # no deed/person open
+    # Opening redraws the page and drops a drawn box: continue keeps it, as pending.
+    click("continue")
+    expect(status(page, "pending 1")).to_be_visible()
+    expect(button(page, "continue")).to_be_disabled()
+
+    pick_deed(page, "Bakker")
+    expect(button(page, "open")).to_be_disabled()  # two persons: cannot be used
+    open_deed(page, click)
+    # The block inputs are re-created on open.
     expect(button(page, "save")).to_be_disabled()  # no value, no description
     fill(page, "value", "  ")
     expect(button(page, "save")).to_be_disabled()  # blank counts as empty
     fill(page, "value", "900,-")
     expect(button(page, "save")).to_be_enabled()
-    fill(page, "name", "  ")
-    expect(button(page, "save")).to_be_disabled()  # blank counts as empty
-    fill(page, "name", "Jan Modaal")
     fill(page, "value", "")
     # Description alone is enough too, and enables save while typing (no blur).
     text_input(page, "description").press_sequentially("Een huis", delay=50)
     expect(button(page, "save")).to_be_enabled()
-
-    click("continue")  # a pending box alone is enough to save
-    expect(status(page, "pending 1")).to_be_visible()
-    expect(button(page, "continue")).to_be_disabled()
-    expect(button(page, "save")).to_be_enabled()
-    save(page, click)
-    expect(status(page, "editing person-0001 · page 1/3 · pending 0")).to_be_visible()
-    expect(button(page, "close deed/person")).to_be_enabled()
-
-    drag_box(page, 0.2, 0.5, 0.8, 0.6)
-    click("continue")
-    expect(status(page, "pending 1")).to_be_visible()
     expect(button(page, "close deed/person")).to_be_disabled()  # block pending
-    fill(page, "value", "1,-")
     save(page, click)
-    expect(status(page, "pending 0")).to_be_visible()
+    expect(
+        status(page, "editing labeled-deed-deed-3 · page 1/3 · pending 0")
+    ).to_be_visible()
     expect(button(page, "close deed/person")).to_be_enabled()
-    fill(page, "name", "")
-    expect(button(page, "close deed/person")).to_be_disabled()
 
 
 def add_book(data_root, *pages):
@@ -238,7 +283,7 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         click("next page")
         expect(status(page, "page 3/3")).to_be_visible()
 
-        fill(page, "name", "Jan Modaal")
+        open_deed(page, click)
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         click("continue")
@@ -247,39 +292,38 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         fill(page, "value", "1,-")  # save needs value or description
         save(page, click)
         expect(
-            status(page, "editing person-0001 · page 3/3 · pending 0")
+            status(page, "editing labeled-deed-deed-3 · page 3/3 · pending 0")
         ).to_be_visible()
         expect(button(page, "next page")).to_be_enabled()
 
-        click("next page")  # last page of book1: writes and closes person 1
+        click("next page")  # last page of book1: writes and closes the deed/person
         expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
         expect(status(page, "no deed/person · page 1/1")).to_be_visible()
-        expect(text_input(page, "name")).to_have_value("")
-        assert person_record(data_root, 1)["scans"] == ["page_03.jpg"]
+        assert deed_record(data_root)["scans"] == ["page_03.jpg"]
 
         click("next page")
         expect(page.get_by_text("all books done")).to_be_visible()
         choose(page, "book1")  # the book dropdown stays: no slider needed to go back
         expect(page.get_by_text("book1/page_01.jpg", exact=True)).to_be_visible()
-    assert not list(book2.glob("person-*.json"))
+    assert not list(book2.glob("labeled-deed-*.json"))
 
 
-def test_delete_writes_and_drops_page(marimo_server, data_root, page, click):
+def test_delete_writes_at_once(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
+    open_deed(page, click)
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")  # save needs value or description
     save(page, click)
-    expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
     click("next page")
     expect(status(page, "page 2/3")).to_be_visible()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "12,-")
     fill(page, "description", "Een stoel")
     save(page, click)
-    expect(status(page, "editing person-0001 · page 2/3 · pending 0")).to_be_visible()
-    assert person_record(data_root, 1)["scans"] == ["page_01.jpg", "page_02.jpg"]
+    expect(
+        status(page, "editing labeled-deed-deed-3 · page 2/3 · pending 0")
+    ).to_be_visible()
 
     options = page.locator("select option")
     # The dropdown text shows amount and description start, not just the label.
@@ -287,21 +331,16 @@ def test_delete_writes_and_drops_page(marimo_server, data_root, page, click):
     choose(page, "A2 · 12,- · Een stoel")
     click("delete")
     expect(options.filter(has_text="A2")).to_have_count(0)
-    meta = person_record(data_root, 1)  # written at once, no close needed
-    assert meta["scans"] == ["page_01.jpg"]
-    assert [box["scan"] for box in meta["assets"]["items"][0]["layout"]] == [
-        "page_01.jpg"
-    ]
+    (item,) = deed_record(data_root)["annotation"]["assets"]  # written at once
+    assert item["amount"] == "1,-"
 
-    # The last block too: the file stays, with only the start page.
+    # The last block too: the file stays, with its header page.
     choose(page, "A1 · 1,- ·")
     click("delete")
     expect(options.filter(has_text="A1")).to_have_count(0)
-    meta = person_record(data_root, 1)
-    assert meta["assets"]["items"] == [] and meta["scans"] == ["page_01.jpg"]
-
-    fill(page, "name", "")
-    expect(button(page, "delete")).to_be_disabled()  # it writes, so needs a name
+    record = deed_record(data_root)
+    assert record["annotation"]["assets"] == [] and record["scans"] == ["page_01.jpg"]
+    expect(button(page, "delete")).to_be_disabled()  # nothing left to delete
 
 
 def test_quality_changes_pixels_not_on_screen_size(marimo_server, page):
@@ -324,21 +363,10 @@ def test_clear_pending_discards_the_pending_block(marimo_server, page, click):
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     click("continue")
     expect(status(page, "pending 1")).to_be_visible()
-    click("clear pending")  # needs no name or type: a stray continue never traps you
+    # Needs no deed/person or type: a stray continue never traps you.
+    click("clear pending")
     expect(status(page, "pending 0")).to_be_visible()
     expect(button(page, "clear pending")).to_be_disabled()
-
-
-def test_save_enables_while_typing_the_name(marimo_server, page):
-    open_app(page, marimo_server)
-    drag_box(page, 0.2, 0.2, 0.8, 0.3)
-    page.get_by_role("radio", name="assets").check()
-    fill(page, "value", "1,-")
-    name = text_input(page, "name")
-    name.press_sequentially("Jan Modaal", delay=50)  # no blur, no Enter
-    expect(button(page, "save")).to_be_enabled()
-    expect(name).to_be_focused()  # the re-render must not steal focus mid-typing
-    expect(name).to_have_value("Jan Modaal")
 
 
 def coloured_near(page, fx, fy, timeout=10):
@@ -363,7 +391,7 @@ def test_saved_boxes_stay_visible_after_close_and_restart(data_root, page, click
     with serve(data_root) as url:
         open_app(page, url)
         assert not coloured_near(page, 0.4, 0.3, timeout=1)  # sanity: blank page
-        fill(page, "name", "Jan Modaal")
+        open_deed(page, click)
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.3, 0.6, 0.5)
         fill(page, "value", "1,-")  # save needs value or description
@@ -374,7 +402,7 @@ def test_saved_boxes_stay_visible_after_close_and_restart(data_root, page, click
         expect(status(page, "no deed/person · page 2/3")).to_be_visible()
         click("prev page")
         expect(status(page, "no deed/person · page 1/3")).to_be_visible()
-        assert coloured_near(page, 0.4, 0.3)  # closed person's box, faded
+        assert coloured_near(page, 0.4, 0.3)  # closed deed/person's box, faded
 
     with serve(data_root) as url:
         open_app(page, url)
@@ -396,59 +424,31 @@ def test_jump_is_view_only_while_a_person_is_open(data_root, page, click):
 
     with serve(data_root) as url:
         open_app(page, url)
-        fill(page, "name", "Jan Modaal")
-        page.get_by_role("radio", name="assets").check()
-        drag_box(page, 0.2, 0.2, 0.8, 0.3)
-        fill(page, "value", "1,-")  # save needs value or description
-        save(page, click)
-        expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
+        open_deed(page, click)
         jump_to(page, 4)
         expect(page.get_by_text("4 book2")).to_be_visible()  # the strip follows
         expect(
             page.get_by_text("/ 4 · book2/only.jpg")
         ).to_be_visible()  # total, target
         expect(page.locator('[title="book2: 1 pages"]')).to_be_visible()  # folder bar
-        expect(button(page, "go")).to_be_disabled()  # view only: person 1 is open
+        expect(button(page, "go")).to_be_disabled()  # view only: a deed/person is open
 
         click("close deed/person")
         expect(button(page, "go")).to_be_enabled()
         click("go")
         expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
-        fill(page, "name", "Bart")
-        page.get_by_role("radio", name="assets").check()
-        drag_box(page, 0.2, 0.2, 0.8, 0.3)
-        fill(page, "value", "1,-")  # save needs value or description
-        save(page, click)
-        click("close deed/person")
-        expect(status(page, "no deed/person")).to_be_visible()
+        # Each book has its own files: deed-3 has one in book1 only.
+        open_deed(page, click)
+        expect(status(page, "editing labeled-deed-deed-3 · page 1/1")).to_be_visible()
 
-        # Back to book1, then next page into book2, which already has person-0001:
-        # the next save must add person-0002, not overwrite it.
-        jump_to(page, 1)
-        click("go")
-        expect(page.get_by_text("book1/page_01.jpg", exact=True)).to_be_visible()
-        for n in [2, 3]:
-            click("next page")
-            expect(status(page, f"page {n}/3")).to_be_visible()
-        click("next page")
-        expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
-        fill(page, "name", "Cor")
-        page.get_by_role("radio", name="assets").check()
-        drag_box(page, 0.2, 0.5, 0.8, 0.6)
-        fill(page, "value", "1,-")  # save needs value or description
-        save(page, click)
-        expect(status(page, "editing person-0002 · page 1/1")).to_be_visible()
-
-    names = {
-        p.name: json.loads(p.read_text())["metadata"]["deceased"]["full_name"]
-        for p in book2.glob("person-*.json")
-    }
-    assert names == {"person-0001.json": "Bart", "person-0002.json": "Cor"}
+    assert [p.name for p in book2.glob("labeled-deed-*.json")] == [
+        "labeled-deed-deed-3.json"
+    ]
 
 
 def test_edit_replaces_block_in_place(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
+    open_deed(page, click)
     page.get_by_role("radio", name="assets").check()
     for value in ["1,-", "2,-"]:
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
@@ -468,7 +468,7 @@ def test_edit_replaces_block_in_place(marimo_server, data_root, page, click):
     fill(page, "description", "Een huis")
     save(page, click)
     expect(status(page, "pending 0")).to_be_visible()
-    items = person_record(data_root, 1)["assets"]["items"]
+    items = deed_record(data_root)["annotation"]["assets"]
     assert [i["amount"] for i in items] == ["10,-", "2,-"]  # A1 stays A1
     assert items[0]["description"] == "Een huis"
 
@@ -479,7 +479,7 @@ def test_edit_replaces_block_in_place(marimo_server, data_root, page, click):
     click("cancel edit")
     expect(status(page, "pending 0")).to_be_visible()
     expect(text_input(page, "value")).to_have_value("")
-    assert person_record(data_root, 1)["assets"]["items"] == items
+    assert deed_record(data_root)["annotation"]["assets"] == items
 
 
 def test_debug_panel_shows_the_file(data_root, page, click):
@@ -487,12 +487,13 @@ def test_debug_panel_shows_the_file(data_root, page, click):
         open_app(page, url)
         expect(page.get_by_text("DEBUG PANE")).to_be_visible()
         expect(page.get_by_text("no file yet")).to_be_visible()
-        fill(page, "name", "Jan Modaal")
+        open_deed(page, click)
+        # Written at once, so shown before any item.
+        expect(page.get_by_text("labeled-deed-deed-3.json", exact=True)).to_be_visible()
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "value", "12,-")
         save(page, click)
-        expect(page.get_by_text("person-0001.json", exact=True)).to_be_visible()
         expect(page.get_by_text('"12,-"')).to_be_visible()
 
         choose(page, "A1 · 12,- ·")
@@ -509,9 +510,12 @@ def test_debug_panel_shows_the_file(data_root, page, click):
 
 def test_no_debug_panel_by_default(marimo_server, page):
     open_app(page, marimo_server)
-    expect(text_input(page, "name")).to_be_visible()
+    expect(button(page, "open")).to_be_visible()
     expect(page.get_by_text("DEBUG PANE")).to_have_count(0)
     expect(page.get_by_role("switch")).to_have_count(0)
+
+
+SAVED = "3 · Oostdorp · Jan Modaal · page 1"  # the person dropdown entry of deed-3
 
 
 def test_pick_right_after_close_person_is_kept(marimo_server, page, click):
@@ -519,16 +523,12 @@ def test_pick_right_after_close_person_is_kept(marimo_server, page, click):
     # "no deed/person" while the old dropdown still showed person 1 picked: picking it again
     # sent nothing, and the rebuilt dropdown then came in empty.
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
-    page.get_by_role("radio", name="assets").check()
-    drag_box(page, 0.2, 0.2, 0.8, 0.3)
-    fill(page, "value", "1,-")
-    save(page, click)
-    choose(page, "person-0001 · Jan Modaal · page 1")
+    open_deed(page, click)
+    choose(page, SAVED)
 
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
-    choose(page, "person-0001 · Jan Modaal · page 1")
+    choose(page, SAVED)
     # Check once the rebuilds are surely over (~350 ms after the click when measured).
     page.wait_for_timeout(1000)
     assert button(page, "go to deed/person").is_enabled()
@@ -536,43 +536,40 @@ def test_pick_right_after_close_person_is_kept(marimo_server, page, click):
 
 def test_go_to_person_moves_to_their_start_page(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
-    page.get_by_role("radio", name="assets").check()
-    drag_box(page, 0.2, 0.2, 0.8, 0.3)
-    fill(page, "value", "1,-")  # save needs value or description
-    save(page, click)
-    choose(page, "person-0001 · Jan Modaal · page 1")
-    expect(button(page, "go to deed/person")).to_be_disabled()  # person 1 is open
+    open_deed(page, click)
+    choose(page, SAVED)
+    expect(button(page, "go to deed/person")).to_be_disabled()  # deed-3 is open
 
     click("close deed/person")
     for n in [2, 3]:
         click("next page")
         expect(status(page, f"page {n}/3")).to_be_visible()
-    choose(page, "person-0001 · Jan Modaal · page 1")
+    choose(page, SAVED)
     click("go to deed/person")
     expect(
         status(page, "no deed/person · page 1/3")
     ).to_be_visible()  # moves, writes nothing
-    assert len(list((data_root / "book1").glob("person-*.json"))) == 1
+    assert len(list((data_root / "book1").glob("labeled-deed-*.json"))) == 1
 
 
 def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
+    open_deed(page, click)
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")
     save(page, click)
-    choose(page, "person-0001 · Jan Modaal · page 1")
-    expect(button(page, "reopen")).to_be_disabled()  # person 1 is open
+    choose(page, SAVED)
+    expect(button(page, "reopen")).to_be_disabled()  # deed-3 is open
 
     click("close deed/person")
     click("next page")
     expect(status(page, "no deed/person · page 2/3")).to_be_visible()
-    choose(page, "person-0001 · Jan Modaal · page 1")
-    click("reopen")  # back on the start page, name prefilled
-    expect(status(page, "editing person-0001 · page 1/3")).to_be_visible()
-    expect(text_input(page, "name")).to_have_value("Jan Modaal")
+    pick_deed(page, "Westdorp")  # a stale pick: the reopened deed is shown instead
+    choose(page, SAVED)
+    click("reopen")  # back on the header page
+    expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+    expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
 
     choose(page, "A1 · 1,- ·")
     click("edit")
@@ -580,52 +577,40 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
     expect(text_input(page, "value")).to_have_value("1,-")  # inputs rebuilt
     fill(page, "value", "10,-")
     save(page, click)
-    fill(page, "name", "Jan Modaal-Smit")
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
 
-    assert [p.name for p in (data_root / "book1").glob("person-*.json")] == [
-        "person-0001.json"
+    assert [p.name for p in (data_root / "book1").glob("labeled-deed-*.json")] == [
+        "labeled-deed-deed-3.json"
     ]
-    meta = person_record(data_root, 1)
-    assert meta["deceased"]["full_name"] == "Jan Modaal-Smit"
-    assert [i["amount"] for i in meta["assets"]["items"]] == ["10,-"]
+    record = deed_record(data_root)
+    assert [i["amount"] for i in record["annotation"]["assets"]] == ["10,-"]
 
 
 def test_delete_person_needs_confirmation(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
-    fill(page, "name", "Jan Modaal")
-    page.get_by_role("radio", name="assets").check()
-    drag_box(page, 0.2, 0.2, 0.8, 0.3)
-    fill(page, "value", "1,-")
-    save(page, click)
-    choose(page, "person-0001 · Jan Modaal · page 1")
-    expect(button(page, "delete deed/person")).to_be_disabled()  # person 1 is open
+    open_deed(page, click)
+    choose(page, SAVED)
+    expect(button(page, "delete deed/person")).to_be_disabled()  # deed-3 is open
 
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
-    choose(page, "person-0001 · Jan Modaal · page 1")
+    choose(page, SAVED)
     click("delete deed/person")
     click("cancel")  # writes nothing
     expect(button(page, "delete deed/person")).to_be_enabled()
-    assert (data_root / "book1" / "person-0001.json").exists()
+    path = data_root / "book1" / "labeled-deed-deed-3.json"
+    assert path.exists()
 
     click("delete deed/person")
-    click("confirm delete person-0001")
+    click("confirm delete labeled-deed-deed-3")
     expect(
         button(page, "delete deed/person")
     ).to_be_disabled()  # dropdown rebuilt, empty
-    expect(page.locator("option", has_text="person-0001")).to_have_count(0)
-    assert not list((data_root / "book1").glob("person-*.json"))
-
-
-def pick_deed(page, search):
-    """Pick the one deed matching ``search`` in the searchable deed dropdown."""
-    page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
-        "button"
-    ).click()
-    page.get_by_placeholder("Search...").fill(search)
-    page.get_by_role("dialog").get_by_role("option").click()
+    expect(page.locator("option", has_text=SAVED)).to_have_count(0)
+    assert not path.exists()
+    pick_deed(page, "Jan Modaal")
+    expect(button(page, "open")).to_be_enabled()  # the deed can be opened anew
 
 
 def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
@@ -659,18 +644,18 @@ def test_book_without_deeds_json_stops_the_labeler(data_root, page):
         )
         # No scan, no form: nothing to draw on, open or save.
         expect(page.locator("canvas")).to_have_count(0)
-        for label in ["save", "next page", "close deed/person", "reopen"]:
+        for label in ["save", "next page", "open", "close deed/person", "reopen"]:
             expect(button(page, label)).to_have_count(0)
-        expect(text_input(page, "name")).to_have_count(0)
         choose(page, "book2")  # the book dropdown stays: no slider needed to leave
         expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
-    assert not list((data_root / "book1").glob("person-*.json"))
+    assert not list((data_root / "book1").glob("labeled-deed-*.json"))
 
 
 def test_deed_without_exactly_one_overledene_shows_an_error(marimo_server, page):
     open_app(page, marimo_server)
     pick_deed(page, "Bakker")
     expect(page.get_by_text("This deed has 2 persons")).to_be_visible()
+    expect(button(page, "open")).to_be_disabled()
     # Only that deed fails: another one in the same book still shows its person.
     pick_deed(page, "Jan Modaal")
     expect(page.get_by_text("This deed has 2 persons")).to_have_count(0)
@@ -696,16 +681,11 @@ def test_book_dropdown_moves_to_the_first_page(data_root, page, click):
         expect(book_dd).to_be_disabled()  # a pending block belongs to this page
         click("clear pending")
 
-        fill(page, "name", "Jan Modaal")
-        page.get_by_role("radio", name="assets").check()
-        drag_box(page, 0.2, 0.2, 0.8, 0.3)
-        fill(page, "value", "1,-")
-        save(page, click)
-        expect(status(page, "editing person-0001")).to_be_visible()
-        expect(book_dd).to_be_disabled()  # a person never crosses books
+        open_deed(page, click)
+        expect(book_dd).to_be_disabled()  # a deed/person never crosses books
 
         click("close deed/person")
         expect(book_dd).to_be_enabled()
         choose(page, "book2")
         expect(status(page, "no deed/person · page 1/2")).to_be_visible()
-    assert not list(book2.glob("person-*.json"))
+    assert not list(book2.glob("labeled-deed-*.json"))

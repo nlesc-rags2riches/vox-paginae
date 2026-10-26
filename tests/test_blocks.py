@@ -7,17 +7,16 @@ from vox_paginae.blocks import (
     add_block,
     block_labels,
     deed_choices,
+    deed_record_choices,
     delete_block,
     find_books,
-    last_person_id,
+    load_deed_records,
     load_deeds,
-    load_person_records,
-    new_person_record,
+    new_deed_record,
     next_page,
-    person_choices,
     replace_block,
     resume,
-    save_person_record,
+    save_deed_record,
     saved_boxes,
     single_overledene,
 )
@@ -31,8 +30,40 @@ def test_next_page_crosses_books_and_stops_when_done():
     assert next_page((2, 0), counts) == (2, 0)
 
 
-def test_blocks_labels_and_scans():
-    p = new_person_record("p2.jpg")
+DEED = {
+    "deed_id": "d1",
+    "aktenummer": "93",
+    "plaats": "Westdorp",
+    "personen": [
+        {
+            "person_id": "p1",
+            "naam_volledig": "Jan Modaal",
+            "datum_overlijden": "1880-01-02",
+            "plaats_overlijden": "Oostdorp",
+            "rol": "overledene",
+        }
+    ],
+}
+
+
+def test_new_deed_record_copies_the_deed_and_starts_on_the_header_page():
+    assert new_deed_record(DEED, "p2.jpg") == {
+        "deed_id": "d1",
+        "copied_deed_person_data": {
+            "aktenummer": "93",
+            "plaats": "Westdorp",
+            "person_id": "p1",
+            "naam_volledig": "Jan Modaal",
+            "datum_overlijden": "1880-01-02",
+            "plaats_overlijden": "Oostdorp",
+        },
+        "scans": ["p2.jpg"],
+        "annotation": {"assets": [], "liabilities": []},
+    }
+
+
+def test_blocks_go_into_the_annotation_and_leave_scans_alone():
+    p = new_deed_record(DEED, "p2.jpg")
     p = add_block(p, "assets", "", "900,-", "huis", [("p2.jpg", [1, 2, 3, 4])])
     p = add_block(
         p,
@@ -40,49 +71,48 @@ def test_blocks_labels_and_scans():
         "cash",
         "1,-",
         "",
-        [("p3.jpg", [0, 0, 5, 5]), ("p4.jpg", [0, 0, 5, 5])],
+        [("p1.jpg", [0, 0, 5, 5]), ("p4.jpg", [0, 0, 5, 5])],
     )
     p = add_block(p, "liabilities", "", "10", "schuld", [("p3.jpg", [0, 0, 9, 9])])
-    meta = p["metadata"]
     assert [label for label, _ in block_labels(p)] == ["A1", "A2", "L1"]
-    assert meta["assets"]["items"][0]["category"] is None
-    assert meta["scans"] == ["p2.jpg", "p3.jpg", "p4.jpg"]
+    assert block_labels(None) == []  # no current deed/person
+    assert p["annotation"]["liabilities"] == [
+        {
+            "layout": [
+                {
+                    "scan": "p3.jpg",
+                    "bbox": [0, 0, 9, 9],
+                    "pagexml_link": None,
+                    "pagexml_baseline_ids": None,
+                }
+            ],
+            "category": None,
+            "amount": "10",
+            "description": "schuld",
+        }
+    ]
+    assert p["annotation"]["assets"][1]["category"] == "cash"
+    # The header page is fixed at open: a box on an earlier page does not move it.
+    assert p["scans"] == ["p2.jpg"]
 
-    p = delete_block(p, "A2")
-    assert [label for label, _ in block_labels(p)] == ["A1", "L1"]
-    assert block_labels(None) == []  # no current person
-    assert p["metadata"]["scans"] == ["p2.jpg", "p3.jpg"]  # p4 had only A2
-
-    p = delete_block(delete_block(p, "A1"), "L1")
-    assert p["metadata"]["scans"] == ["p2.jpg"]  # start page always stays
-    assert meta["scans"] == ["p2.jpg", "p3.jpg", "p4.jpg"]  # originals untouched
-
-
-def test_first_block_sets_start_to_its_earliest_page():
-    # Continued block drawn on p1 and p2, saved on p2: the person starts on p1.
-    p = new_person_record("p2.jpg")
-    boxes = [("p1.jpg", [0, 0, 5, 5]), ("p2.jpg", [0, 0, 5, 5])]
-    p = add_block(p, "assets", "", "1,-", "", boxes)
-    assert p["metadata"]["scans"] == ["p1.jpg", "p2.jpg"]
-    # Later blocks never move the start page.
-    p = add_block(p, "assets", "", "1,-", "", [("p0.jpg", [0, 0, 5, 5])])
-    assert p["metadata"]["scans"] == ["p1.jpg", "p0.jpg", "p2.jpg"]
-    # Deleting every block is a fresh start: the next block sets the start page again.
-    p = delete_block(delete_block(p, "A2"), "A1")
-    p = add_block(p, "assets", "", "1,-", "", [("p3.jpg", [0, 0, 5, 5])])
-    assert p["metadata"]["scans"] == ["p3.jpg"]
+    q = delete_block(p, "A2")
+    assert [label for label, _ in block_labels(q)] == ["A1", "L1"]
+    q = delete_block(delete_block(q, "A1"), "L1")
+    assert q["annotation"] == {"assets": [], "liabilities": []}
+    assert q["scans"] == ["p2.jpg"]
+    assert len(p["annotation"]["assets"]) == 2  # originals untouched
 
 
 def test_replace_block_keeps_position_unless_type_changes():
     box = [("p1.jpg", [0, 0, 5, 5])]
-    p = new_person_record("p1.jpg")
+    p = new_deed_record(DEED, "p1.jpg")
     for amount in ["1", "2", "3"]:
         p = add_block(p, "assets", "", amount, "", box)
     p = replace_block(p, "A2", "assets", "cash", "20", "", [("p2.jpg", [1, 1, 9, 9])])
-    items = p["metadata"]["assets"]["items"]
+    items = p["annotation"]["assets"]
     assert [i["amount"] for i in items] == ["1", "20", "3"]  # A2 stays A2
     assert items[1]["category"] == "cash"
-    assert p["metadata"]["scans"] == ["p1.jpg", "p2.jpg"]
+    assert p["scans"] == ["p1.jpg"]
     # A type change moves it to the end of the other type.
     p = replace_block(p, "A1", "liabilities", "", "1", "", box)
     assert [label for label, _ in block_labels(p)] == ["A1", "A2", "L1"]
@@ -90,15 +120,8 @@ def test_replace_block_keeps_position_unless_type_changes():
         replace_block(p, "A1", "assets", "", "", "", box)
 
 
-def test_replace_only_block_resets_start_page():
-    p = new_person_record("p1.jpg")
-    p = add_block(p, "assets", "", "1", "", [("p1.jpg", [0, 0, 5, 5])])
-    p = replace_block(p, "A1", "assets", "", "1", "", [("p2.jpg", [0, 0, 5, 5])])
-    assert p["metadata"]["scans"] == ["p2.jpg"]
-
-
 def test_add_block_rejects_missing_type_boxes_or_text():
-    p = new_person_record("p1.jpg")
+    p = new_deed_record(DEED, "p1.jpg")
     box = [("p1.jpg", [0, 0, 5, 5])]
     with pytest.raises(ValueError):
         add_block(p, None, "", "1,-", "", box)
@@ -108,118 +131,6 @@ def test_add_block_rejects_missing_type_boxes_or_text():
         add_block(p, "assets", "", " ", "  ", box)  # needs amount or description
     add_block(p, "assets", "", "1,-", "", box)
     add_block(p, "assets", "", "", "Een huis", box)
-
-
-def test_save_load_resume_round_trip(tmp_path):
-    a, b = tmp_path / "a", tmp_path / "b"
-    for book, names in ((a, ["a1", "a2"]), (b, ["b1", "b2", "b3"])):
-        book.mkdir()
-        for n in names:
-            (book / f"{n}.jpg").touch()
-    books = find_books(tmp_path)
-    # Nothing written yet: page 0, newest person 0 (the first save starts person 1).
-    assert resume(books) == ((0, 0), 0)
-
-    # Book a: one person whose last item is not on a's last page. Book a is still done:
-    # b, the last book with files, is where labeling stopped.
-    p = add_block(
-        new_person_record("a1.jpg"), "assets", "", "1", "x", [("a1.jpg", [0, 0, 5, 5])]
-    )
-    save_person_record(a, 1, p, "Anna", "")
-    # Book b: person 1 ends on b1, person 2 starts on b1 and has an item on b2.
-    save_person_record(b, 1, new_person_record("b1.jpg"), "Bert", "1881")
-    p2 = add_block(
-        new_person_record("b1.jpg"),
-        "liabilities",
-        "",
-        "1,-",
-        "",
-        [("b2.jpg", [1, 2, 3, 4])],
-    )
-    save_person_record(b, 2, p2, "  Cor  ", "")
-
-    assert list(load_person_records(b)) == [1, 2]
-    assert resume(books) == ((1, 1), 2)  # book b, page b2, after person 2 (closed)
-    person_record = load_person_records(b)[2]
-    assert person_record["metadata"]["deceased"]["full_name"] == "Cor"
-    assert person_record["metadata"]["deceased"]["date_of_death"] is None
-    assert (
-        person_record["metadata"]["liabilities"]["items"]
-        == p2["metadata"]["liabilities"]["items"]
-    )
-
-    with pytest.raises(ValueError):
-        save_person_record(b, 3, new_person_record("b2.jpg"), " ", "")
-    assert list(load_person_records(b)) == [1, 2]
-
-    save_person_record(
-        b,
-        3,
-        add_block(
-            new_person_record("b2.jpg"),
-            "assets",
-            "",
-            "1,-",
-            "",
-            [("b3.jpg", [0, 0, 5, 5])],
-        ),
-        "Dirk",
-        "",
-    )
-    assert resume(books) == ((1, 2), 3)  # last page of the last book, after Dirk
-
-
-def test_saved_boxes_reads_every_person_file_on_a_scan(tmp_path):
-    p1 = add_block(
-        new_person_record("a.jpg"),
-        "liabilities",
-        "",
-        "1,-",
-        "",
-        [("a.jpg", [1, 2, 3, 4]), ("b.jpg", [5, 6, 7, 8])],
-    )
-    p2 = add_block(
-        new_person_record("b.jpg"), "assets", "", "1,-", "", [("b.jpg", [0, 0, 9, 9])]
-    )
-    save_person_record(tmp_path, 1, p1, "Anna", "")
-    save_person_record(tmp_path, 2, p2, "Bert", "")
-    assert saved_boxes(tmp_path, "b.jpg") == [
-        ("L1", [5, 6, 7, 8]),
-        ("A1", [0, 0, 9, 9]),
-    ]
-    assert saved_boxes(tmp_path, "a.jpg") == [("L1", [1, 2, 3, 4])]
-    # The person being edited is drawn from memory, not from their (stale) file.
-    assert saved_boxes(tmp_path, "b.jpg", skip_person_id=2) == [("L1", [5, 6, 7, 8])]
-
-
-def test_last_person_id_counts_files_per_book(tmp_path):
-    assert last_person_id(tmp_path) == 0
-    p = add_block(
-        new_person_record("a.jpg"), "assets", "", "1,-", "", [("a.jpg", [0, 0, 5, 5])]
-    )
-    save_person_record(tmp_path, 3, p, "X", "")
-    assert last_person_id(tmp_path) == 3
-
-
-def test_person_choices_go_to_each_start_page(tmp_path):
-    for name in ["a.jpg", "b.jpg", "c.jpg"]:
-        (tmp_path / name).touch()
-    assert person_choices(tmp_path) == {}
-    p1 = add_block(
-        new_person_record("a.jpg"),
-        "assets",
-        "",
-        "1,-",
-        "",
-        [("a.jpg", [0, 0, 5, 5]), ("b.jpg", [0, 0, 5, 5])],
-    )
-    p2 = new_person_record("c.jpg")  # every block deleted: only the start page left
-    save_person_record(tmp_path, 1, p1, "Anna", "")
-    save_person_record(tmp_path, 2, p2, "Bert", "")
-    assert person_choices(tmp_path) == {
-        "person-0001 · Anna · pages 1-2": (1, 0),
-        "person-0002 · Bert · page 3": (2, 2),
-    }
 
 
 def test_deed_choices_sort_by_aktenummer_then_place(tmp_path):
@@ -266,3 +177,82 @@ def test_single_overledene_rejects_a_deed_without_exactly_one(personen, error):
 def test_single_overledene_returns_the_one_person():
     person = {"naam_volledig": "Jan Modaal", "rol": "overledene"}
     assert single_overledene({"personen": [person]}) is person
+
+
+def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
+    assert load_deed_records(tmp_path) == {}
+    (tmp_path / "person-0001.json").write_text('{"metadata": {}}')  # old format
+    p = add_block(
+        new_deed_record(DEED, "a.jpg"), "assets", "", "1,-", "", [("a.jpg", [0] * 4)]
+    )
+    path = save_deed_record(tmp_path, p)
+    assert path == tmp_path / "labeled-deed-d1.json"
+    assert load_deed_records(tmp_path) == {"d1": p}
+    # Saving again rewrites the same file: one file per deed.
+    save_deed_record(tmp_path, delete_block(p, "A1"))
+    assert load_deed_records(tmp_path)["d1"]["annotation"]["assets"] == []
+    assert sorted(f.name for f in tmp_path.iterdir()) == [
+        "labeled-deed-d1.json",
+        "person-0001.json",
+    ]
+
+
+def test_resume_lands_on_the_latest_page_of_the_last_book_with_files(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    for book, names in ((a, ["a1", "a2"]), (b, ["b1", "b2", "b3"])):
+        book.mkdir()
+        for n in names:
+            (book / f"{n}.jpg").touch()
+    books = find_books(tmp_path)
+    assert resume(books) == (0, 0)  # nothing written yet
+
+    save_deed_record(a, new_deed_record(DEED, "a2.jpg"))
+    assert resume(books) == (0, 1)
+    # Book b has files, so labeling stopped there: on its latest page, whichever deed.
+    save_deed_record(b, new_deed_record(DEED, "b2.jpg"))
+    save_deed_record(b, new_deed_record({**DEED, "deed_id": "d0"}, "b1.jpg"))
+    assert resume(books) == (1, 1)
+
+
+def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
+    p1 = add_block(
+        new_deed_record(DEED, "a.jpg"),
+        "liabilities",
+        "",
+        "1,-",
+        "",
+        [("a.jpg", [1, 2, 3, 4]), ("b.jpg", [5, 6, 7, 8])],
+    )
+    p2 = add_block(
+        new_deed_record({**DEED, "deed_id": "d2"}, "b.jpg"),
+        "assets",
+        "",
+        "1,-",
+        "",
+        [("b.jpg", [0, 0, 9, 9])],
+    )
+    save_deed_record(tmp_path, p1)
+    save_deed_record(tmp_path, p2)
+    assert saved_boxes(tmp_path, "b.jpg") == [
+        ("L1", [5, 6, 7, 8]),
+        ("A1", [0, 0, 9, 9]),
+    ]
+    assert saved_boxes(tmp_path, "a.jpg") == [("L1", [1, 2, 3, 4])]
+    # The open deed/person is drawn from memory, not from its (stale) file.
+    assert saved_boxes(tmp_path, "b.jpg", skip_deed_id="d2") == [("L1", [5, 6, 7, 8])]
+
+
+def test_deed_record_choices_go_to_each_header_page(tmp_path):
+    for name in ["a.jpg", "b.jpg", "c.jpg"]:
+        (tmp_path / name).touch()
+    assert deed_record_choices(tmp_path) == {}
+    save_deed_record(tmp_path, new_deed_record(DEED, "b.jpg"))
+    p2 = {
+        **new_deed_record({**DEED, "deed_id": "d2"}, "a.jpg"),
+        "scans": ["a.jpg", "c.jpg"],
+    }
+    save_deed_record(tmp_path, p2)
+    assert deed_record_choices(tmp_path) == {
+        "93 · Westdorp · Jan Modaal · page 2": ("d1", 1),
+        "93 · Westdorp · Jan Modaal · pages 1-3": ("d2", 0),
+    }
