@@ -164,10 +164,13 @@ def test_continued_block_spans_two_pages(marimo_server, data_root, page, click):
     expect(
         status(page, "editing labeled-deed-deed-3 · page 2/3 · pending 0")
     ).to_be_visible()
+    click("next page")  # page 3 has no items: closing there still includes it
+    expect(status(page, "page 3/3")).to_be_visible()
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
 
     record = deed_record(data_root)
+    assert record["scans"] == ["page_01.jpg", "page_02.jpg", "page_03.jpg"]
     assert record["annotation"]["assets"] == []
     (item,) = record["annotation"]["liabilities"]
     layout = item["layout"]
@@ -280,10 +283,15 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         open_app(page, url)
         click("next page")
         expect(status(page, "page 2/3")).to_be_visible()
+        open_deed(page, click)
+        click("prev page")  # before the header page: nowhere to close
+        expect(status(page, "page 1/3")).to_be_visible()
+        expect(button(page, "close deed/person")).to_be_disabled()
+        click("next page")
+        expect(button(page, "close deed/person")).to_be_enabled()
         click("next page")
         expect(status(page, "page 3/3")).to_be_visible()
 
-        open_deed(page, click)
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         click("continue")
@@ -299,7 +307,7 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
         click("next page")  # last page of book1: writes and closes the deed/person
         expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
         expect(status(page, "no deed/person · page 1/1")).to_be_visible()
-        assert deed_record(data_root)["scans"] == ["page_03.jpg"]
+        assert deed_record(data_root)["scans"] == ["page_02.jpg", "page_03.jpg"]
 
         click("next page")
         expect(page.get_by_text("all books done")).to_be_visible()

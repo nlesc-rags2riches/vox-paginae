@@ -153,6 +153,21 @@ def replace_block(
     return deed_record
 
 
+def close_deed_record(deed_record: dict, pages: list[str], close_scan: str) -> dict:
+    """Return a copy of ``deed_record`` closed on ``close_scan``.
+
+    ``scans`` becomes every page in ``pages`` (the book's, in order) from the header page
+    (``scans[0]``) to ``close_scan``, both included, with or without items. Closing
+    before the header page raises ``ValueError``.
+    """
+    start, end = pages.index(deed_record["scans"][0]), pages.index(close_scan)
+    if end < start:
+        raise ValueError("a deed/person cannot close before its header page")
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["scans"] = pages[start : end + 1]
+    return deed_record
+
+
 def deed_path(book: Path, deed_id: str) -> Path:
     """``<book>/labeled-deed-<deed_id>.json``: one file per deed."""
     return Path(book) / f"labeled-deed-{deed_id}.json"
