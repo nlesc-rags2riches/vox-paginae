@@ -425,6 +425,11 @@ def block_buttons(
     value_in,
 ):
     _names = [p.name for p in pages]
+
+    def _before_header(scan):
+        # Nothing is saved or closed there: it would be outside scans.
+        return _names.index(scan) < _names.index(get_deed_record()["scans"][0])
+
     # Text shows amount and description start, so the list doubles as a typo check.
     _labels = {
         f"{label} · {item['amount']} · {item['description'][:30]}": label
@@ -497,7 +502,8 @@ def block_buttons(
         disabled=get_deed_record() is None
         or not layout_boxes
         or type_radio.value is None
-        or not (value_in.value.strip() or desc_in.value.strip()),
+        or not (value_in.value.strip() or desc_in.value.strip())
+        or any(_before_header(_scan) for _scan, _ in layout_boxes),
         on_click=_save,
     )
     block_dd = mo.ui.dropdown(options=_labels)
@@ -525,9 +531,7 @@ def block_buttons(
         disabled=get_deed_record() is None
         or bool(get_pending_boxes())
         or get_editing() is not None
-        # Before the header page: scans would have no range.
-        or _names.index(page.name)
-        < _names.index(get_deed_record()["scans"][0]),
+        or _before_header(page.name),
         on_click=_close_person,
     )
     return (
