@@ -6,6 +6,7 @@ import pytest
 from vox_paginae.blocks import (
     add_block,
     block_labels,
+    close_deed_record,
     deed_choices,
     deed_record_choices,
     delete_block,
@@ -118,6 +119,25 @@ def test_replace_block_keeps_position_unless_type_changes():
     assert [label for label, _ in block_labels(p)] == ["A1", "A2", "L1"]
     with pytest.raises(ValueError):  # same checks as add_block
         replace_block(p, "A1", "assets", "", "", "", box)
+
+
+def test_close_fills_scans_from_the_header_page_to_the_close_page():
+    pages = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg", "p5.jpg"]
+    p = new_deed_record(DEED, "p2.jpg")
+    p = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
+    # p3 has no items: still in the range.
+    assert close_deed_record(p, pages, "p4.jpg")["scans"] == [
+        "p2.jpg",
+        "p3.jpg",
+        "p4.jpg",
+    ]
+    assert close_deed_record(p, pages, "p2.jpg")["scans"] == ["p2.jpg"]
+    assert p["scans"] == ["p2.jpg"]  # original untouched
+    # Reopened and closed again: the range starts from the header page, not the old end.
+    q = close_deed_record(close_deed_record(p, pages, "p5.jpg"), pages, "p3.jpg")
+    assert q["scans"] == ["p2.jpg", "p3.jpg"]
+    with pytest.raises(ValueError):  # before the header page
+        close_deed_record(p, pages, "p1.jpg")
 
 
 def test_add_block_rejects_missing_type_boxes_or_text():

@@ -16,6 +16,7 @@ def imports():
     from vox_paginae.blocks import (
         add_block,
         block_labels,
+        close_deed_record,
         crop,
         deed_choices,
         deed_path,
@@ -41,6 +42,7 @@ def imports():
         Path,
         add_block,
         block_labels,
+        close_deed_record,
         crop,
         deed_choices,
         deed_path,
@@ -130,11 +132,13 @@ def session_state(find_books, list_pages, mo, resume, root):
 def page_buttons(
     book,
     book_pages,
+    close_deed_record,
     get_deed_record,
     get_editing,
     get_pending_boxes,
     mo,
     next_page,
+    page,
     page_i,
     pages,
     save_deed_record,
@@ -149,7 +153,12 @@ def page_buttons(
             _last_page
         ):  # a deed/person never crosses books: close the open one, if any
             if get_deed_record() is not None:
-                _path = save_deed_record(book, get_deed_record())
+                _path = save_deed_record(
+                    book,
+                    close_deed_record(
+                        get_deed_record(), [p.name for p in pages], page.name
+                    ),
+                )
                 mo.status.toast(f"saved {_path.name}, deed/person closed")
             set_deed_record(None)
             set_type(None)
@@ -394,6 +403,7 @@ def block_buttons(
     block_labels,
     book,
     category_in,
+    close_deed_record,
     delete_block,
     desc_in,
     drawn_box,
@@ -403,6 +413,7 @@ def block_buttons(
     layout_boxes,
     mo,
     page,
+    pages,
     replace_block,
     save_deed_record,
     set_deed_record,
@@ -413,6 +424,7 @@ def block_buttons(
     type_radio,
     value_in,
 ):
+    _names = [p.name for p in pages]
     # Text shows amount and description start, so the list doubles as a typo check.
     _labels = {
         f"{label} · {item['amount']} · {item['description'][:30]}": label
@@ -460,7 +472,10 @@ def block_buttons(
             mo.status.toast(f"saved {_path.name}")
 
     def _close_person(_):
-        _path = save_deed_record(book, get_deed_record())
+        # scans: every page from the header page to this one.
+        _path = save_deed_record(
+            book, close_deed_record(get_deed_record(), _names, page.name)
+        )
         set_deed_record(None)  # no deed/person open until the next open
         set_type(None)
         mo.status.toast(f"saved {_path.name}, deed/person closed")
@@ -510,7 +525,10 @@ def block_buttons(
         label="close deed/person",
         disabled=get_deed_record() is None
         or bool(get_pending_boxes())
-        or get_editing() is not None,
+        or get_editing() is not None
+        # Before the header page: scans would have no range.
+        or _names.index(page.name)
+        < _names.index(get_deed_record()["scans"][0]),
         on_click=_close_person,
     )
     return (
