@@ -8,8 +8,9 @@ changes only on purpose, and never describes internals.
 - You pick a root folder. Every folder under it that directly contains `*.jpg` is a
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
-- A book's `deeds.json` is read, if it has one: its deeds are listed to pick from and
-  shown. Nothing from it is written to the output yet.
+- Every book must have a `deeds.json`; a book without one shows an error naming the
+  book, and nothing can be labeled or saved in it. Its deeds are listed to pick from and
+  shown. Nothing from `deeds.json` is written to the output yet.
 - Nothing else is read except the tool's own output (see Out): no other JSON
   (`metadata.json` included), no PageXML, no state file. Other files in the tree are
   ignored.
