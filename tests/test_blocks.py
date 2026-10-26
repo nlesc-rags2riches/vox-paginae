@@ -122,22 +122,24 @@ def test_replace_block_keeps_position_unless_type_changes():
 
 
 def test_close_fills_scans_from_the_header_page_to_the_close_page():
-    pages = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg", "p5.jpg"]
+    page_names = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg", "p5.jpg"]
     p = new_deed_record(DEED, "p2.jpg")
     p = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
     # p3 has no items: still in the range.
-    assert close_deed_record(p, pages, "p4.jpg")["scans"] == [
+    assert close_deed_record(p, page_names, "p4.jpg")["scans"] == [
         "p2.jpg",
         "p3.jpg",
         "p4.jpg",
     ]
-    assert close_deed_record(p, pages, "p2.jpg")["scans"] == ["p2.jpg"]
+    assert close_deed_record(p, page_names, "p2.jpg")["scans"] == ["p2.jpg"]
     assert p["scans"] == ["p2.jpg"]  # original untouched
     # Reopened and closed again: the range starts from the header page, not the old end.
-    q = close_deed_record(close_deed_record(p, pages, "p5.jpg"), pages, "p3.jpg")
+    q = close_deed_record(
+        close_deed_record(p, page_names, "p5.jpg"), page_names, "p3.jpg"
+    )
     assert q["scans"] == ["p2.jpg", "p3.jpg"]
     with pytest.raises(ValueError):  # before the header page
-        close_deed_record(p, pages, "p1.jpg")
+        close_deed_record(p, page_names, "p1.jpg")
 
 
 def test_add_block_rejects_missing_type_boxes_or_text():
