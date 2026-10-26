@@ -217,10 +217,19 @@ def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, cl
     expect(button(page, "close person")).to_be_disabled()
 
 
-def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
+def add_book(data_root, *pages):
+    """A ``book2`` after book1: ``pages`` are copies of book1's first page, and it gets
+    book1's ``deeds.json``, as every book needs one."""
     book2 = data_root / "book2"
     book2.mkdir()
-    shutil.copy(data_root / "book1" / "page_01.jpg", book2 / "only.jpg")
+    for name in pages:
+        shutil.copy(data_root / "book1" / "page_01.jpg", book2 / name)
+    shutil.copy(data_root / "book1" / "deeds.json", book2 / "deeds.json")
+    return book2
+
+
+def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
+    book2 = add_book(data_root, "only.jpg")
 
     with serve(data_root) as url:
         open_app(page, url)
@@ -381,9 +390,7 @@ def jump_to(page, n):
 
 
 def test_jump_is_view_only_while_a_person_is_open(data_root, page, click):
-    book2 = data_root / "book2"
-    book2.mkdir()
-    shutil.copy(data_root / "book1" / "page_01.jpg", book2 / "only.jpg")
+    book2 = add_book(data_root, "only.jpg")
 
     with serve(data_root) as url:
         open_app(page, url)
@@ -625,3 +632,19 @@ def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
     page.get_by_placeholder("Search...").fill("Westdorp")
     page.get_by_role("dialog").get_by_role("option").click()
     expect(page.get_by_text("Piet Smit · died 1880-05-06 in Westdorp")).to_be_visible()
+
+
+def test_book_without_deeds_json_stops_the_labeler(data_root, page):
+    (data_root / "book1" / "deeds.json").unlink()
+    with serve(data_root) as url:
+        page.set_viewport_size({"width": 1600, "height": 1200})
+        page.goto(url)
+        expect(page.get_by_text("no deeds.json in book book1")).to_be_visible(
+            timeout=60_000
+        )
+        # No scan, no form: nothing to draw on, open or save.
+        expect(page.locator("canvas")).to_have_count(0)
+        for label in ["save", "next page", "close person", "reopen"]:
+            expect(button(page, label)).to_have_count(0)
+        expect(text_input(page, "name")).to_have_count(0)
+    assert not list((data_root / "book1").glob("person-*.json"))

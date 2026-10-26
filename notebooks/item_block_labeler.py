@@ -241,13 +241,16 @@ def _(block_labels, get_editing, get_person_record, mo):
 
 
 @app.cell(hide_code=True)
-def _(book_pages, books, get_book_page, mo):
+def _(book_pages, books, get_book_page, load_deeds, mo, root):
     book_i, page_i = get_book_page()
     mo.stop(book_i >= len(books), mo.md("**all books done**"))
     book = books[book_i]
+    # Every book has one: a missing deeds.json is a data mistake, so nothing past here runs.
+    deeds = load_deeds(book)
+    mo.stop(deeds is None, mo.md(f"**no `deeds.json` in book `{book.relative_to(root)}`**"))
     pages = book_pages[book_i]
     page = pages[page_i]
-    return book, page, page_i, pages
+    return book, deeds, page, page_i, pages
 
 
 @app.cell(hide_code=True)
@@ -678,18 +681,12 @@ def person_go(
 
 
 @app.cell(hide_code=True)
-def deed_picker(book, deed_choices, load_deeds, mo):
+def deed_picker(deed_choices, deeds, mo):
     # Read only for now: the deed is shown, nothing is stored from it yet.
-    _deeds = load_deeds(book)
-    deed_dd = (
-        mo.ui.dropdown(
-            options=deed_choices(_deeds), searchable=True, label="deed"
-        )
-        if _deeds is not None
-        else mo.md("no `deeds.json` in this book")
+    deed_dd = mo.ui.dropdown(
+        options=deed_choices(deeds), searchable=True, label="deed"
     )
-    deeds = _deeds or {}
-    return deed_dd, deeds
+    return (deed_dd,)
 
 
 @app.cell(hide_code=True)
