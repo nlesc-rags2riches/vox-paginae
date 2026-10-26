@@ -9,8 +9,11 @@ changes only on purpose, and never describes internals.
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
-  book, and nothing can be labeled or saved in it. Its deeds are listed to pick from and
-  shown. Nothing from `deeds.json` is written to the output yet.
+  book, and nothing can be labeled or saved in it. Its deeds are listed to pick from. A
+  deed must have exactly one person, with `rol: overledene`; picking it shows that
+  person's name, death place and death date. Picking a deed that doesn't satisfy this
+  rule shows an error, and that deed cannot be used. Nothing from `deeds.json` is
+  written to the output yet.
 - Nothing else is read except the tool's own output (see Out): no other JSON
   (`metadata.json` included), no PageXML, no state file. Other files in the tree are
   ignored.
