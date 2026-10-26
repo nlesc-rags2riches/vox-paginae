@@ -228,7 +228,7 @@ def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
     page_number = {p.name: i + 1 for i, p in enumerate(list_pages(book))}
 
     def label(d):
-        names = [
+        parts = [
             d["aktenummer"],
             d["plaats"],
             *(p["naam_volledig"] for p in d["personen"]),
@@ -236,20 +236,16 @@ def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
         if d["deed_id"] in deed_records:
             numbers = [page_number[s] for s in deed_records[d["deed_id"]]["scans"]]
             first, last = min(numbers), max(numbers)
-            names.append(f"page {first}" if first == last else f"pages {first}-{last}")
-        return " · ".join(names)
+            parts.append(f"page {first}" if first == last else f"pages {first}-{last}")
+        return " · ".join(parts)
 
-    ordered = sorted(
-        deeds.values(),
-        key=lambda d: (
-            d["deed_id"] in deed_records,
-            *(
-                (int(d["aktenummer"]), d["plaats"])
-                if d["aktenummer"].isdigit()
-                else (float("inf"), d["plaats"])
-            ),
-        ),
-    )
+    def order(d):
+        has_file = d["deed_id"] in deed_records
+        # A non-numeric aktenummer goes after the numbered ones.
+        number = int(d["aktenummer"]) if d["aktenummer"].isdigit() else float("inf")
+        return has_file, number, d["plaats"]
+
+    ordered = sorted(deeds.values(), key=order)
     return {label(d): d["deed_id"] for d in ordered}
 
 
