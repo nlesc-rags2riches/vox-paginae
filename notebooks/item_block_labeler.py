@@ -243,13 +243,19 @@ def _(block_labels, get_editing, get_person_record, mo):
 
 
 @app.cell(hide_code=True)
-def _(book_pages, books, get_book_page, load_deeds, mo, root):
+def _(book_dd, book_pages, books, get_book_page, load_deeds, mo, root):
     book_i, page_i = get_book_page()
-    mo.stop(book_i >= len(books), mo.md("**all books done**"))
+    # Each stop keeps the book dropdown: leaving a book never needs the jump slider.
+    mo.stop(book_i >= len(books), mo.vstack([book_dd, mo.md("**all books done**")]))
     book = books[book_i]
     # Every book has one: a missing deeds.json is a data mistake, so nothing past here runs.
     deeds = load_deeds(book)
-    mo.stop(deeds is None, mo.md(f"**no `deeds.json` in book `{book.relative_to(root)}`**"))
+    mo.stop(
+        deeds is None,
+        mo.vstack(
+            [book_dd, mo.md(f"**no `deeds.json` in book `{book.relative_to(root)}`**")]
+        ),
+    )
     pages = book_pages[book_i]
     page = pages[page_i]
     return book, deeds, page, page_i, pages
@@ -589,6 +595,23 @@ def block_buttons(
 
 
 @app.cell(hide_code=True)
+def book_dropdown(
+    books, get_book_page, get_pending_boxes, get_person_record, mo, root, set_book_page
+):
+    # Picking a book moves to its first page. A person never crosses books, a pending block
+    # belongs to this page. From the book index, not `book`: it stays when the book cell
+    # stops. The path from the root tells apart same-named folders.
+    _book_i = get_book_page()[0]
+    book_dd = mo.ui.dropdown(
+        options={str(b.relative_to(root)): i for i, b in enumerate(books)},
+        value=str(books[_book_i].relative_to(root)) if _book_i < len(books) else None,
+        disabled=get_person_record() is not None or bool(get_pending_boxes()),
+        on_change=lambda i: set_book_page((i, 0)),
+    )
+    return (book_dd,)
+
+
+@app.cell(hide_code=True)
 def person_dropdown(book, get_person_record, mo, person_choices):
     get_person_record()  # re-created after every save, delete or close: files may change
     # The current book's saved persons; the value is (person id, start page index).
@@ -746,6 +769,7 @@ def status_line(
 def layout(
     block_dd,
     book,
+    book_dd,
     cancel_edit_btn,
     category_in,
     clear_pending_btn,
@@ -780,8 +804,8 @@ def layout(
     _page_column = mo.vstack(
         [page_view, mo.hstack([quality_slider, fig_h_slider], justify="start")]
     )
-    # Top to bottom, from the widest scope to the narrowest, split by rules: person, page,
-    # block. The book will get its own section once it has a dropdown.
+    # Top to bottom, from the widest scope to the narrowest, split by rules: book and
+    # person, page, block.
     _form = mo.vstack(
         [
             mo.hstack(
@@ -789,10 +813,10 @@ def layout(
             )
             if debug_switch is not None
             else status_line,
-            # The book is plain text for now: a book dropdown will take its place.
             mo.hstack(
                 [
-                    mo.md(f"`{book.name}` /"),
+                    book_dd,
+                    mo.md("/"),
                     person_dd,
                     person_go_btn,
                     person_reopen_btn,

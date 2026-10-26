@@ -259,6 +259,8 @@ def test_end_of_book_closes_person_then_all_books_done(data_root, page, click):
 
         click("next page")
         expect(page.get_by_text("all books done")).to_be_visible()
+        choose(page, "book1")  # the book dropdown stays: no slider needed to go back
+        expect(page.get_by_text("book1/page_01.jpg", exact=True)).to_be_visible()
     assert not list(book2.glob("person-*.json"))
 
 
@@ -645,6 +647,7 @@ def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
 
 
 def test_book_without_deeds_json_stops_the_labeler(data_root, page):
+    add_book(data_root, "only.jpg")  # copies book1's deeds.json: before removing it
     (data_root / "book1" / "deeds.json").unlink()
     with serve(data_root) as url:
         page.set_viewport_size({"width": 1600, "height": 1200})
@@ -657,6 +660,8 @@ def test_book_without_deeds_json_stops_the_labeler(data_root, page):
         for label in ["save", "next page", "close person", "reopen"]:
             expect(button(page, label)).to_have_count(0)
         expect(text_input(page, "name")).to_have_count(0)
+        choose(page, "book2")  # the book dropdown stays: no slider needed to leave
+        expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
     assert not list((data_root / "book1").glob("person-*.json"))
 
 
@@ -668,3 +673,37 @@ def test_deed_without_exactly_one_overledene_shows_an_error(marimo_server, page)
     pick_deed(page, "Jan Modaal")
     expect(page.get_by_text("This deed has 2 persons")).to_have_count(0)
     expect(page.get_by_text("Jan Modaal · died 1880-01-02 in Oostdorp")).to_be_visible()
+
+
+def test_book_dropdown_moves_to_the_first_page(data_root, page, click):
+    book2 = add_book(data_root, "a.jpg", "b.jpg")
+    book_dd = page.locator("select", has=page.locator("option", has_text="book2"))
+
+    with serve(data_root) as url:
+        open_app(page, url)
+        choose(page, "book2")
+        expect(page.get_by_text("book2/a.jpg", exact=True)).to_be_visible()
+        click("next page")
+        expect(page.get_by_text("book2/b.jpg", exact=True)).to_be_visible()
+        choose(page, "book1")
+        expect(page.get_by_text("book1/page_01.jpg", exact=True)).to_be_visible()
+
+        drag_box(page, 0.2, 0.2, 0.8, 0.3)
+        click("continue")
+        expect(status(page, "pending 1")).to_be_visible()
+        expect(book_dd).to_be_disabled()  # a pending block belongs to this page
+        click("clear pending")
+
+        fill(page, "name", "Jan Modaal")
+        page.get_by_role("radio", name="assets").check()
+        drag_box(page, 0.2, 0.2, 0.8, 0.3)
+        fill(page, "value", "1,-")
+        save(page, click)
+        expect(status(page, "editing person-0001")).to_be_visible()
+        expect(book_dd).to_be_disabled()  # a person never crosses books
+
+        click("close person")
+        expect(book_dd).to_be_enabled()
+        choose(page, "book2")
+        expect(status(page, "no person · page 1/2")).to_be_visible()
+    assert not list(book2.glob("person-*.json"))
