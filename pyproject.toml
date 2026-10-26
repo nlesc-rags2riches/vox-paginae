@@ -32,6 +32,17 @@ addopts = "-m 'not e2e'"
 # item-block labeler's layout counts its ~5 MB page PNG double, an emoji 4x. The PNG
 # itself is capped in the notebook; this only stops the overcount.
 output_max_bytes = 25_000_000
+# Cells importing a changed module (e.g. src/vox_paginae/blocks.py) are marked stale, so
+# a library edit never leaves the live kernel silently running old code.
+auto_reload = "lazy"
+
+[tool.ruff.lint.per-file-ignores]
+# marimo writes the bare `return` that ends a cell with no outputs.
+"notebooks/*.py" = ["PLR1711"]
+
+[tool.ruff.format]
+# marimo formats the notebook itself, at its own width, on every save.
+exclude = ["notebooks/*.py"]
 
 [dependency-groups]
 dev = [

@@ -383,17 +383,18 @@ def _(get_pending_boxes, page, page_sel):
 
     _v = page_sel.value
     drawn_box = None
-    if _v and hasattr(_v, "x_min"):
-        if (
-            _v.x_max - _v.x_min >= MIN_BOX_PX
-            and _v.y_max - _v.y_min >= MIN_BOX_PX
-        ):
-            drawn_box = [
-                round(_v.x_min),
-                round(_v.y_min),
-                round(_v.x_max),
-                round(_v.y_max),
-            ]
+    if (
+        _v
+        and hasattr(_v, "x_min")
+        and _v.x_max - _v.x_min >= MIN_BOX_PX
+        and _v.y_max - _v.y_min >= MIN_BOX_PX
+    ):
+        drawn_box = [
+            round(_v.x_min),
+            round(_v.y_min),
+            round(_v.x_max),
+            round(_v.y_max),
+        ]
 
     # The unsaved block, in draw order: pending boxes, then the one drawn now.
     layout_boxes = get_pending_boxes() + (
