@@ -37,7 +37,7 @@ def button(page, label):
 
 
 def choose(page, label):
-    """Pick ``label`` in whichever dropdown offers it (block or deed/person)."""
+    """Pick ``label`` in whichever dropdown offers it (block or book)."""
     page.locator("select", has=page.locator("option", has_text=label)).select_option(
         label=label
     )
@@ -62,13 +62,18 @@ def open_app(page, url):
     expect(status(page, "no deed/person")).to_be_visible(timeout=60_000)
 
 
-def pick_deed(page, search):
-    """Pick the one deed matching ``search`` in the searchable deed dropdown."""
+def deed_options(page, search=""):
+    """The searchable deed dropdown's entries matching ``search``; leaves it open."""
     page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
         "button"
     ).click()
     page.get_by_placeholder("Search...").fill(search)
-    page.get_by_role("dialog").get_by_role("option").click()
+    return page.get_by_role("dialog").get_by_role("option")
+
+
+def pick_deed(page, search):
+    """Pick the one deed matching ``search`` in the searchable deed dropdown."""
+    deed_options(page, search).click()
 
 
 def open_deed(page, click, search="Jan Modaal"):
@@ -528,36 +533,33 @@ def test_no_debug_panel_by_default(marimo_server, page):
     expect(page.get_by_role("switch")).to_have_count(0)
 
 
-SAVED = "3 · Oostdorp · Jan Modaal · page 1"  # the person dropdown entry of deed-3
-
-
 def test_pick_right_after_close_person_is_kept(marimo_server, page, click):
     # The status line changes only together with the rebuilt dropdown. Before, it said
-    # "no deed/person" while the old dropdown still showed person 1 picked: picking it again
-    # sent nothing, and the rebuilt dropdown then came in empty.
+    # "no deed/person" while the old dropdown was still showing: a pick then sent
+    # nothing, and the rebuilt dropdown came in empty.
     open_app(page, marimo_server)
     open_deed(page, click)
-    choose(page, SAVED)
 
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
-    choose(page, SAVED)
+    pick_deed(page, "Jan Modaal")
     # Check once the rebuilds are surely over (~350 ms after the click when measured).
     page.wait_for_timeout(1000)
     assert button(page, "go to deed/person").is_enabled()
 
 
-def test_go_to_person_moves_to_their_start_page(marimo_server, data_root, page, click):
+def test_go_to_person_moves_to_their_header_page(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
     open_deed(page, click)
-    choose(page, SAVED)
     expect(button(page, "go to deed/person")).to_be_disabled()  # deed-3 is open
 
     click("close deed/person")
+    pick_deed(page, "Westdorp")
+    expect(button(page, "go to deed/person")).to_be_disabled()  # no file: open it
     for n in [2, 3]:
         click("next page")
         expect(status(page, f"page {n}/3")).to_be_visible()
-    choose(page, SAVED)
+    pick_deed(page, "Jan Modaal")
     click("go to deed/person")
     expect(
         status(page, "no deed/person · page 1/3")
@@ -572,7 +574,6 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")
     save(page, click)
-    choose(page, SAVED)
     expect(button(page, "reopen")).to_be_disabled()  # deed-3 is open
     click("next page")
     expect(status(page, "page 2/3")).to_be_visible()
@@ -582,8 +583,10 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
 
     click("close deed/person")
     expect(status(page, "no deed/person · page 2/3")).to_be_visible()
-    pick_deed(page, "Westdorp")  # a stale pick: the reopened deed is shown instead
-    choose(page, "3 · Oostdorp · Jan Modaal · pages 1-2")
+    pick_deed(page, "Westdorp")
+    expect(button(page, "reopen")).to_be_disabled()  # no file: open it
+    pick_deed(page, "Jan Modaal")
+    expect(button(page, "open")).to_be_disabled()  # has a file: reopen it
     click("reopen")  # back on the header page
     expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
     expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
@@ -609,12 +612,11 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
 def test_delete_person_needs_confirmation(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
     open_deed(page, click)
-    choose(page, SAVED)
     expect(button(page, "delete deed/person")).to_be_disabled()  # deed-3 is open
 
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
-    choose(page, SAVED)
+    pick_deed(page, "Jan Modaal")
     click("delete deed/person")
     click("cancel")  # writes nothing
     expect(button(page, "delete deed/person")).to_be_enabled()
@@ -625,21 +627,23 @@ def test_delete_person_needs_confirmation(marimo_server, data_root, page, click)
     click("confirm delete labeled-deed-deed-3")
     expect(
         button(page, "delete deed/person")
-    ).to_be_disabled()  # dropdown rebuilt, empty
-    expect(page.locator("option", has_text=SAVED)).to_have_count(0)
+    ).to_be_disabled()  # dropdown rebuilt, nothing picked
     assert not path.exists()
-    pick_deed(page, "Jan Modaal")
-    expect(button(page, "open")).to_be_enabled()  # the deed can be opened anew
+    # Back among the deeds without a file, and it can be opened anew.
+    expect(deed_options(page, "Jan Modaal")).to_have_text(["3 · Oostdorp · Jan Modaal"])
+    deed_options(page, "Jan Modaal").click()
+    expect(button(page, "open")).to_be_enabled()
+    expect(button(page, "delete deed/person")).to_be_disabled()
+    click("open")
+    expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+    assert path.exists()
 
 
-def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
+def test_deed_dropdown_shows_the_picked_deed(marimo_server, page, click):
     open_app(page, marimo_server)
     # Searchable, so not a <select>: a button opening a list of role "option".
-    page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
-        "button"
-    ).click()
     # By aktenummer, then place: deeds.json is in neither order.
-    expect(page.get_by_role("dialog").get_by_role("option")).to_have_text(
+    expect(deed_options(page)).to_have_text(
         [
             "3 · Oostdorp · Jan Modaal",
             "7 · Oostdorp · Jan de Wit",
@@ -650,6 +654,21 @@ def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
     page.get_by_placeholder("Search...").fill("Westdorp")
     page.get_by_role("dialog").get_by_role("option").click()
     expect(page.get_by_text("Piet Smit · died 1880-05-06 in Westdorp")).to_be_visible()
+
+    # A deed with a file goes last, with its pages.
+    click("next page")
+    expect(status(page, "page 2/3")).to_be_visible()
+    open_deed(page, click)
+    click("close deed/person")
+    expect(status(page, "no deed/person")).to_be_visible()
+    expect(deed_options(page)).to_have_text(
+        [
+            "7 · Oostdorp · Jan de Wit",
+            "7 · Westdorp · Piet Smit",
+            "12 · Oostdorp · Kees Bakker · Klaas Bakker",
+            "3 · Oostdorp · Jan Modaal · page 2",
+        ]
+    )
 
 
 def test_book_without_deeds_json_stops_the_labeler(data_root, page):

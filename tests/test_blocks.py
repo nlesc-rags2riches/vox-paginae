@@ -8,7 +8,6 @@ from vox_paginae.blocks import (
     block_labels,
     close_deed_record,
     deed_choices,
-    deed_record_choices,
     delete_block,
     find_books,
     load_deed_records,
@@ -164,13 +163,13 @@ def test_add_block_rejects_missing_type_boxes_or_text():
     add_block(p, "assets", "", "", "Een huis", box)
 
 
-def test_deed_choices_sort_by_aktenummer_then_place(tmp_path):
+def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
     def deed(deed_id, aktenummer, plaats, name):
         return {
             "deed_id": deed_id,
             "aktenummer": aktenummer,
             "plaats": plaats,
-            "personen": [{"naam_volledig": name}],
+            "personen": [{"naam_volledig": name, "rol": "overledene"}],
         }
 
     assert load_deeds(tmp_path) is None
@@ -185,11 +184,24 @@ def test_deed_choices_sort_by_aktenummer_then_place(tmp_path):
     )
     deeds = load_deeds(tmp_path)
     assert list(deeds) == ["d1", "d2", "d3"]
-    assert deed_choices(deeds) == {
+    assert deed_choices(deeds, tmp_path) == {
         "93 · Oostdorp · A": "d3",
         "93 · Westdorp · B": "d1",
         "105 · Alphen · C": "d2",
     }
+    # Deeds with a file go last, with their pages (from 1, as in the status line).
+    for name in ["a.jpg", "b.jpg", "c.jpg"]:
+        (tmp_path / name).touch()
+    save_deed_record(tmp_path, new_deed_record(deeds["d3"], "b.jpg"))
+    save_deed_record(
+        tmp_path,
+        {**new_deed_record(deeds["d2"], "a.jpg"), "scans": ["a.jpg", "b.jpg", "c.jpg"]},
+    )
+    assert list(deed_choices(deeds, tmp_path).items()) == [
+        ("93 · Westdorp · B", "d1"),
+        ("93 · Oostdorp · A · page 2", "d3"),
+        ("105 · Alphen · C · pages 1-3", "d2"),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -271,19 +283,3 @@ def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
     assert saved_boxes(tmp_path, "a.jpg") == [("L1", [1, 2, 3, 4])]
     # The open deed/person is drawn from memory, not from its (stale) file.
     assert saved_boxes(tmp_path, "b.jpg", skip_deed_id="d2") == [("L1", [5, 6, 7, 8])]
-
-
-def test_deed_record_choices_go_to_each_header_page(tmp_path):
-    for name in ["a.jpg", "b.jpg", "c.jpg"]:
-        (tmp_path / name).touch()
-    assert deed_record_choices(tmp_path) == {}
-    save_deed_record(tmp_path, new_deed_record(DEED, "b.jpg"))
-    p2 = {
-        **new_deed_record({**DEED, "deed_id": "d2"}, "a.jpg"),
-        "scans": ["a.jpg", "c.jpg"],
-    }
-    save_deed_record(tmp_path, p2)
-    assert deed_record_choices(tmp_path) == {
-        "93 · Westdorp · Jan Modaal · page 2": ("d1", 1),
-        "93 · Westdorp · Jan Modaal · pages 1-3": ("d2", 0),
-    }
