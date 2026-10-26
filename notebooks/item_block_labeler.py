@@ -18,19 +18,18 @@ def imports():
         block_labels,
         crop,
         deed_choices,
+        deed_path,
+        deed_record_choices,
         delete_block,
         find_books,
-        last_person_id,
         list_pages,
+        load_deed_records,
         load_deeds,
-        load_person_records,
-        new_person_record,
+        new_deed_record,
         next_page,
-        person_choices,
-        person_path,
         replace_block,
         resume,
-        save_person_record,
+        save_deed_record,
         saved_boxes,
         single_overledene,
         split_label,
@@ -44,22 +43,21 @@ def imports():
         block_labels,
         crop,
         deed_choices,
+        deed_path,
+        deed_record_choices,
         delete_block,
         find_books,
-        last_person_id,
         list_pages,
+        load_deed_records,
         load_deeds,
-        load_person_records,
         mo,
-        new_person_record,
+        new_deed_record,
         next_page,
         np,
-        person_choices,
-        person_path,
         plt,
         replace_block,
         resume,
-        save_person_record,
+        save_deed_record,
         saved_boxes,
         single_overledene,
         split_label,
@@ -94,17 +92,14 @@ def session_state(find_books, list_pages, mo, resume, root):
     books = find_books(root)
     book_pages = [list_pages(b) for b in books]
     # Everything below resets when the root changes.
-    _book_page, _person_id = resume(books)
     get_book_page, set_book_page = mo.state(
-        _book_page
+        resume(books)
     )  # (book index, page index)
-    # None = no current person: the next save starts person get_person_id() + 1.
-    # Resume never reopens a person, so this always starts as None.
-    get_person_record, set_person_record = mo.state(None)
-    get_person_id, set_person_id = mo.state(_person_id)
-    # (full_name, date_of_death) to prefill the inputs with. Set only on close, so starting
-    # a person or saving a block does not rebuild (clear) the inputs.
-    get_deceased, set_deceased = mo.state(("", ""))
+    # None = no deed/person open: one is opened from the deed row. Resume never reopens
+    # one, so this always starts as None.
+    get_deed_record, set_deed_record = mo.state(None)
+    # deed_id of the open (or last closed) deed/person: the debug pane shows its file.
+    get_deed_id, set_deed_id = mo.state(None)
     get_pending_boxes, set_pending_boxes = mo.state(
         []
     )  # (scan, bbox) boxes of the block being drawn
@@ -117,18 +112,16 @@ def session_state(find_books, list_pages, mo, resume, root):
         book_pages,
         books,
         get_book_page,
-        get_deceased,
+        get_deed_id,
+        get_deed_record,
         get_editing,
         get_pending_boxes,
-        get_person_id,
-        get_person_record,
         get_type,
         set_book_page,
-        set_deceased,
+        set_deed_id,
+        set_deed_record,
         set_editing,
         set_pending_boxes,
-        set_person_id,
-        set_person_record,
         set_type,
     )
 
@@ -137,20 +130,16 @@ def session_state(find_books, list_pages, mo, resume, root):
 def page_buttons(
     book,
     book_pages,
-    death_in,
+    get_deed_record,
     get_editing,
     get_pending_boxes,
-    get_person_id,
-    get_person_record,
     mo,
-    name_in,
     next_page,
     page_i,
     pages,
-    save_person_record,
+    save_deed_record,
     set_book_page,
-    set_deceased,
-    set_person_record,
+    set_deed_record,
     set_type,
 ):
     _last_page = page_i == len(pages) - 1
@@ -158,18 +147,11 @@ def page_buttons(
     def _next_page(_):
         if (
             _last_page
-        ):  # a person never crosses books: close the open one, if any
-            if get_person_record() is not None:
-                _path = save_person_record(
-                    book,
-                    get_person_id(),
-                    get_person_record(),
-                    name_in.value,
-                    death_in.value,
-                )
+        ):  # a deed/person never crosses books: close the open one, if any
+            if get_deed_record() is not None:
+                _path = save_deed_record(book, get_deed_record())
                 mo.status.toast(f"saved {_path.name}, deed/person closed")
-            set_person_record(None)
-            set_deceased(("", ""))
+            set_deed_record(None)
             set_type(None)
         set_book_page(
             lambda book_page: next_page(
@@ -179,16 +161,12 @@ def page_buttons(
 
     next_page_btn = mo.ui.button(
         label="next page",
-        # On the last page it closes the open person: same rules as close deed/person.
+        # On the last page it closes the open deed/person: same rules as close deed/person.
         disabled=_last_page
-        and (
-            bool(get_pending_boxes())
-            or get_editing() is not None
-            or (get_person_record() is not None and not name_in.value.strip())
-        ),
+        and (bool(get_pending_boxes()) or get_editing() is not None),
         on_click=_next_page,
     )
-    # Stays inside the current book: a person never crosses books.
+    # Stays inside the current book: a deed/person never crosses books.
     prev_page_btn = mo.ui.button(
         label="prev page",
         disabled=page_i == 0,
@@ -200,19 +178,7 @@ def page_buttons(
 
 
 @app.cell(hide_code=True)
-def person_inputs(get_deceased, mo):
-    _full_name, _date_of_death = (
-        get_deceased()
-    )  # rebuilt, prefilled, per person
-    # Sent while typing (not on blur), so save enables without leaving the field.
-    name_in = mo.ui.text(label="name", value=_full_name, debounce=300)
-    death_in = mo.ui.text(label="death", value=_date_of_death)
-    return death_in, name_in
-
-
-@app.cell(hide_code=True)
-def type_input(get_deceased, get_type, mo):
-    get_deceased()  # cleared on close, with the person inputs
+def type_input(get_type, mo):
     type_radio = mo.ui.radio(
         options=["assets", "liabilities"], value=get_type(), inline=True
     )
@@ -220,10 +186,10 @@ def type_input(get_deceased, get_type, mo):
 
 
 @app.cell(hide_code=True)
-def _(block_labels, get_editing, get_person_record, mo):
-    get_person_record()  # re-created (cleared) after every save or delete
+def _(block_labels, get_deed_record, get_editing, mo):
+    get_deed_record()  # re-created (cleared) after every open, write and close
     # Prefilled from the block being edited, if any.
-    _item = dict(block_labels(get_person_record())).get(get_editing(), {})
+    _item = dict(block_labels(get_deed_record())).get(get_editing(), {})
     category_in = mo.ui.text(
         label="category", value=_item.get("category") or ""
     )
@@ -298,9 +264,9 @@ def _(
     block_labels,
     book,
     fig_h_slider,
+    get_deed_id,
+    get_deed_record,
     get_pending_boxes,
-    get_person_id,
-    get_person_record,
     mo,
     page,
     page_img,
@@ -355,10 +321,10 @@ def _(
             )
 
     # Saved boxes of other persons (and of a closed one), faded: shared pages, restarts.
-    _editing = get_person_id() if get_person_record() is not None else None
+    _editing = get_deed_id() if get_deed_record() is not None else None
     for _label, _bbox in saved_boxes(book, page.name, _editing):
         _draw(_bbox, TYPE_COLOURS[_label[0]], alpha=0.4)
-    for _label, _item in block_labels(get_person_record()):
+    for _label, _item in block_labels(get_deed_record()):
         for _box in _item["layout"]:
             if _box["scan"] == page.name:
                 _draw(_box["bbox"], TYPE_COLOURS[_label[0]], _label)
@@ -428,27 +394,20 @@ def block_buttons(
     block_labels,
     book,
     category_in,
-    death_in,
     delete_block,
     desc_in,
     drawn_box,
+    get_deed_record,
     get_editing,
     get_pending_boxes,
-    get_person_id,
-    get_person_record,
-    last_person_id,
     layout_boxes,
     mo,
-    name_in,
-    new_person_record,
     page,
     replace_block,
-    save_person_record,
-    set_deceased,
+    save_deed_record,
+    set_deed_record,
     set_editing,
     set_pending_boxes,
-    set_person_id,
-    set_person_record,
     set_type,
     split_label,
     type_radio,
@@ -457,20 +416,10 @@ def block_buttons(
     # Text shows amount and description start, so the list doubles as a typo check.
     _labels = {
         f"{label} · {item['amount']} · {item['description'][:30]}": label
-        for label, item in block_labels(get_person_record())
+        for label, item in block_labels(get_deed_record())
     }
 
     def _save(_):
-        _person_id, _person_record = get_person_id(), get_person_record()
-        if (
-            _person_record is None
-        ):  # no current person: this save starts the next one here
-            _person_id, _person_record = (
-                last_person_id(book)
-                + 1,  # from the files: safe after any jump
-                new_person_record(page.name),
-            )
-            set_person_id(_person_id)
         _fields = (
             type_radio.value,
             category_in.value,
@@ -479,22 +428,20 @@ def block_buttons(
             layout_boxes,
         )
         if get_editing() is None:
-            _person_record = add_block(_person_record, *_fields)
+            _deed_record = add_block(get_deed_record(), *_fields)
         else:
-            _person_record = replace_block(
-                _person_record, get_editing(), *_fields
+            _deed_record = replace_block(
+                get_deed_record(), get_editing(), *_fields
             )
-        _path = save_person_record(
-            book, _person_id, _person_record, name_in.value, death_in.value
-        )
-        set_person_record(_person_record)
+        _path = save_deed_record(book, _deed_record)
+        set_deed_record(_deed_record)
         set_pending_boxes([])
         set_editing(None)
         mo.status.toast(f"saved {_path.name}")
 
     def _edit(_):
         if block_dd.value:
-            _item = dict(block_labels(get_person_record()))[block_dd.value]
+            _item = dict(block_labels(get_deed_record()))[block_dd.value]
             set_pending_boxes(
                 [(_box["scan"], _box["bbox"]) for _box in _item["layout"]]
             )
@@ -507,27 +454,14 @@ def block_buttons(
 
     def _delete(_):
         if block_dd.value:
-            _person_record = delete_block(get_person_record(), block_dd.value)
-            _path = save_person_record(
-                book,
-                get_person_id(),
-                _person_record,
-                name_in.value,
-                death_in.value,
-            )
-            set_person_record(_person_record)
+            _deed_record = delete_block(get_deed_record(), block_dd.value)
+            _path = save_deed_record(book, _deed_record)
+            set_deed_record(_deed_record)
             mo.status.toast(f"saved {_path.name}")
 
     def _close_person(_):
-        _path = save_person_record(
-            book,
-            get_person_id(),
-            get_person_record(),
-            name_in.value,
-            death_in.value,
-        )
-        set_person_record(None)  # no current person until the next save
-        set_deceased(("", ""))
+        _path = save_deed_record(book, get_deed_record())
+        set_deed_record(None)  # no deed/person open until the next open
         set_type(None)
         mo.status.toast(f"saved {_path.name}, deed/person closed")
 
@@ -538,7 +472,7 @@ def block_buttons(
             lambda p: p + [(page.name, drawn_box)]
         ),
     )
-    # Discards a stray continue: needs no name or type, unlike save.
+    # Discards a stray continue: needs no deed/person or type, unlike save.
     clear_pending_btn = mo.ui.button(
         label="clear pending",
         disabled=not get_pending_boxes(),
@@ -546,9 +480,9 @@ def block_buttons(
     )
     save_btn = mo.ui.button(
         label="save",
-        disabled=not layout_boxes
+        disabled=get_deed_record() is None
+        or not layout_boxes
         or type_radio.value is None
-        or not name_in.value.strip()
         or not (value_in.value.strip() or desc_in.value.strip()),
         on_click=_save,
     )
@@ -569,16 +503,14 @@ def block_buttons(
     delete_btn = mo.ui.button(
         label="delete",
         disabled=not _labels
-        or get_editing() is not None  # labels would shift
-        or not name_in.value.strip(),  # it writes the file
+        or get_editing() is not None,  # labels would shift
         on_click=_delete,
     )
     close_person_btn = mo.ui.button(
         label="close deed/person",
-        disabled=get_person_record() is None
+        disabled=get_deed_record() is None
         or bool(get_pending_boxes())
-        or get_editing() is not None
-        or not name_in.value.strip(),
+        or get_editing() is not None,
         on_click=_close_person,
     )
     return (
@@ -597,8 +529,8 @@ def block_buttons(
 def book_dropdown(
     books,
     get_book_page,
+    get_deed_record,
     get_pending_boxes,
-    get_person_record,
     mo,
     root,
     set_book_page,
@@ -609,19 +541,21 @@ def book_dropdown(
     _book_i = get_book_page()[0]
     book_dd = mo.ui.dropdown(
         options={str(b.relative_to(root)): i for i, b in enumerate(books)},
-        value=str(books[_book_i].relative_to(root)) if _book_i < len(books) else None,
-        disabled=get_person_record() is not None or bool(get_pending_boxes()),
+        value=str(books[_book_i].relative_to(root))
+        if _book_i < len(books)
+        else None,
+        disabled=get_deed_record() is not None or bool(get_pending_boxes()),
         on_change=lambda i: set_book_page((i, 0)),
     )
     return (book_dd,)
 
 
 @app.cell(hide_code=True)
-def person_dropdown(book, get_person_record, mo, person_choices):
-    get_person_record()  # re-created after every save, delete or close: files may change
-    # The current book's saved persons; the value is (person id, start page index).
-    person_dd = mo.ui.dropdown(options=person_choices(book))
-    # Id of the person whose delete awaits confirmation; re-created (reset) with the
+def person_dropdown(book, deed_record_choices, get_deed_record, mo):
+    get_deed_record()  # re-created after every save, delete or close: files may change
+    # The current book's saved deed/persons; the value is (deed_id, header page index).
+    person_dd = mo.ui.dropdown(options=deed_record_choices(book))
+    # deed_id of the deed/person whose delete awaits confirmation; re-created (reset) with the
     # dropdown. Self loops: the button cell both reads and sets it.
     get_delete_person, set_delete_person = mo.state(
         None, allow_self_loops=True
@@ -632,24 +566,23 @@ def person_dropdown(book, get_person_record, mo, person_choices):
 @app.cell(hide_code=True)
 def person_go(
     book,
+    deed_path,
+    get_deed_record,
     get_delete_person,
     get_pending_boxes,
-    get_person_record,
-    load_person_records,
+    load_deed_records,
     mo,
     person_dd,
-    person_path,
     set_book_page,
-    set_deceased,
+    set_deed_id,
+    set_deed_record,
     set_delete_person,
-    set_person_id,
-    set_person_record,
     set_type,
 ):
     # Like the jump's go: a person never crosses books, a pending block belongs to this page.
     _disabled = (
         person_dd.value is None
-        or get_person_record() is not None
+        or get_deed_record() is not None
         or bool(get_pending_boxes())
     )
     person_go_btn = mo.ui.button(
@@ -661,18 +594,13 @@ def person_go(
     )
 
     def _reopen(_):
-        # The picked person becomes the current one, as if never closed: save, delete and
-        # close then rewrite their file.
-        _person_id, _start = person_dd.value
-        _person_record = load_person_records(book)[_person_id]
-        _deceased = _person_record["metadata"]["deceased"]
-        set_person_id(_person_id)
-        set_person_record(_person_record)
-        set_deceased(
-            (_deceased["full_name"], _deceased["date_of_death"] or "")
-        )
+        # The picked deed/person is open again, as if never closed: save, delete and
+        # close then rewrite its file.
+        _deed_id, _header = person_dd.value
+        set_deed_id(_deed_id)
+        set_deed_record(load_deed_records(book)[_deed_id])
         set_type(None)
-        set_book_page(lambda book_page: (book_page[0], _start))
+        set_book_page(lambda book_page: (book_page[0], _header))
 
     # Disabled like go; an edit needs an open person, so that is covered too.
     person_reopen_btn = mo.ui.button(
@@ -680,11 +608,11 @@ def person_go(
     )
 
     def _delete_person(_):
-        _path = person_path(book, person_dd.value[0])
+        _path = deed_path(book, person_dd.value[0])
         _path.unlink()
         mo.status.toast(f"deleted {_path.name}")
         # Still None: this rebuilds the dropdown, the faded boxes and the debug pane.
-        set_person_record(None)
+        set_deed_record(None)
 
     # Two steps: delete deed/person, then confirm or cancel. Picking another person shows
     # delete deed/person again.
@@ -692,7 +620,7 @@ def person_go(
         person_delete = mo.hstack(
             [
                 mo.ui.button(
-                    label=f"confirm delete {person_path(book, person_dd.value[0]).stem}",
+                    label=f"confirm delete {deed_path(book, person_dd.value[0]).stem}",
                     on_click=_delete_person,
                 ),
                 mo.ui.button(
@@ -711,8 +639,10 @@ def person_go(
 
 
 @app.cell(hide_code=True)
-def deed_picker(deed_choices, deeds, mo):
-    # Read only for now: the deed is shown, nothing is stored from it yet.
+def deed_picker(deed_choices, deeds, get_deed_record, mo):
+    # The deed to open; shown only while no deed/person is open (`deed_row`). Re-created
+    # (cleared) on every open, write and close: after a close nothing is picked.
+    get_deed_record()
     deed_dd = mo.ui.dropdown(
         options=deed_choices(deeds), searchable=True, label="deed"
     )
@@ -720,20 +650,79 @@ def deed_picker(deed_choices, deeds, mo):
 
 
 @app.cell(hide_code=True)
-def deed_info(deed_dd, deeds, mo, single_overledene):
-    # The picked deed's overledene as in deeds.json, read only: nothing is copied into the file.
+def deed_info(
+    deed_choices,
+    deed_dd,
+    deeds,
+    get_deed_record,
+    mo,
+    single_overledene,
+):
+    # The picked deed's overledene as in deeds.json, read only; while a deed/person is open,
+    # its deed, as text: the dropdown pick is stale after a reopen.
     # Checked on pick, so only a deed that breaks the rule fails, not the whole book.
-    _deed = deeds.get(deed_dd.value)
+    _open = get_deed_record()
+    _deed_id = deed_dd.value if _open is None else _open["deed_id"]
+    _deed = deeds.get(_deed_id)
+    deed_row = (
+        deed_dd
+        if _open is None
+        else mo.md(
+            "deed: "
+            + {v: k for k, v in deed_choices(deeds).items()}.get(
+                _deed_id, _deed_id
+            )
+        )
+    )
     deed_details = mo.md("")
+    openable_deed = None  # the picked deed, if open may write a file for it
     if _deed:
         try:
             _p = single_overledene(_deed)
             deed_details = mo.md(
                 f"**{_p['naam_volledig']}** · died {_p['datum_overlijden']} in {_p['plaats_overlijden']}"
             )
+            openable_deed = _deed if _open is None else None
         except ValueError as _e:
             deed_details = mo.callout(mo.md(str(_e)), kind="danger")
-    return (deed_details,)
+    return deed_details, deed_row, openable_deed
+
+
+@app.cell(hide_code=True)
+def deed_open(
+    book,
+    deed_path,
+    mo,
+    new_deed_record,
+    openable_deed,
+    page,
+    save_deed_record,
+    set_deed_id,
+    set_deed_record,
+):
+    # Its own cell, after the deed row: the click sets the deed/person, and a cell does not
+    # rerun on state it sets itself. This one reruns through `openable_deed`.
+    def _open(_):
+        # Checked again here: another tab (its own session) may have opened it meanwhile.
+        if deed_path(book, openable_deed["deed_id"]).exists():
+            mo.status.toast("this deed already has a file: reopen it instead")
+            return
+        _deed_record = new_deed_record(openable_deed, page.name)
+        _path = save_deed_record(
+            book, _deed_record
+        )  # at once: one file per deed
+        set_deed_id(_deed_record["deed_id"])
+        set_deed_record(_deed_record)
+        mo.status.toast(f"saved {_path.name}, deed/person open")
+
+    open_btn = mo.ui.button(
+        label="open",
+        # A deed with a file is reopened, not opened anew.
+        disabled=openable_deed is None
+        or deed_path(book, openable_deed["deed_id"]).exists(),
+        on_click=_open,
+    )
+    return (open_btn,)
 
 
 @app.cell(hide_code=True)
@@ -750,21 +739,26 @@ def debug_toggle(mo):
 @app.cell(hide_code=True)
 def status_line(
     book,
+    deed_path,
+    get_deed_record,
     get_editing,
     get_pending_boxes,
-    get_person_id,
-    get_person_record,
     mo,
     page,
     page_i,
     pages,
-    person_path,
 ):
     # Its own cell, not in `layout`: a click reruns `layout` at once (it shows the buttons), with
     # the new state but the old elements. This cell reruns only with the rebuilt elements, so
     # the status line never says "no deed/person" while the old person dropdown is still showing.
+    _open = get_deed_record()
+    _deed = (
+        f"editing {deed_path(book, _open['deed_id']).stem}"
+        if _open
+        else "no deed/person"
+    )
     status_line = mo.md(
-        f"`{book.name}/{page.name}` · {f'editing {person_path(book, get_person_id()).stem}' if get_person_record() else 'no deed/person'} · page {page_i + 1}/{len(pages)} · pending {len(get_pending_boxes())}"
+        f"`{book.name}/{page.name}` · {_deed} · page {page_i + 1}/{len(pages)} · pending {len(get_pending_boxes())}"
         + (f" · editing {get_editing()}" if get_editing() else "")
     )
     return (status_line,)
@@ -780,23 +774,22 @@ def layout(
     clear_pending_btn,
     close_person_btn,
     continue_btn,
-    death_in,
     debug_switch,
-    deed_dd,
     deed_details,
+    deed_path,
+    deed_row,
     delete_btn,
     desc_in,
     edit_btn,
     fig_h_slider,
-    get_person_id,
+    get_deed_id,
     mo,
-    name_in,
     next_page_btn,
+    open_btn,
     page_view,
     person_dd,
     person_delete,
     person_go_btn,
-    person_path,
     person_reopen_btn,
     prev_page_btn,
     quality_slider,
@@ -831,9 +824,10 @@ def layout(
                 align="center",
             ),
             mo.hstack(
-                [deed_dd, deed_details], justify="start", align="center"
+                [deed_row, deed_details, open_btn, close_person_btn],
+                justify="start",
+                align="center",
             ),
-            mo.hstack([name_in, death_in, close_person_btn], justify="start"),
             mo.md("---"),
             mo.hstack([prev_page_btn, next_page_btn], justify="start"),
             mo.md("---"),
@@ -848,18 +842,21 @@ def layout(
             ),
         ]
     )
-    # `-- --debug`, switch on: the open (or last closed) person's file right of the form.
+    # `-- --debug`, switch on: the open (or last closed) deed/person's file right of the form.
     # Built here, not in its own cell: an extra cell re-renders the layout twice per write.
     if debug_switch is not None and debug_switch.value:
-        _path = person_path(book, get_person_id())
+        _path = deed_path(book, get_deed_id()) if get_deed_id() else None
         _form = mo.hstack(
             [
                 _form,
                 mo.vstack(
                     [
-                        mo.md(f"**DEBUG PANE** · `{_path.name}`"),
+                        mo.md(
+                            "**DEBUG PANE**"
+                            + (f" · `{_path.name}`" if _path else "")
+                        ),
                         mo.md(f"```json\n{_path.read_text()}\n```")
-                        if _path.exists()
+                        if _path and _path.exists()
                         else mo.md("no file yet"),
                     ]
                 ).style(
@@ -912,8 +909,8 @@ def jump_strip(
     book_pages,
     books,
     get_book_page,
+    get_deed_record,
     get_pending_boxes,
-    get_person_record,
     jump_slider,
     mo,
     set_book_page,
@@ -927,7 +924,7 @@ def jump_strip(
     # is open the slider and strip are view only.
     jump_btn = mo.ui.button(
         label="go",
-        disabled=get_person_record() is not None
+        disabled=get_deed_record() is not None
         or bool(get_pending_boxes())
         or _target == _here,
         on_click=lambda _: set_book_page(_target),
