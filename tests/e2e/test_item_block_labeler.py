@@ -569,12 +569,16 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
     save(page, click)
     choose(page, SAVED)
     expect(button(page, "reopen")).to_be_disabled()  # deed-3 is open
+    click("next page")
+    expect(status(page, "page 2/3")).to_be_visible()
+    drag_box(page, 0.2, 0.2, 0.8, 0.3)
+    fill(page, "value", "2,-")
+    save(page, click)
 
     click("close deed/person")
-    click("next page")
     expect(status(page, "no deed/person · page 2/3")).to_be_visible()
     pick_deed(page, "Westdorp")  # a stale pick: the reopened deed is shown instead
-    choose(page, SAVED)
+    choose(page, "3 · Oostdorp · Jan Modaal · pages 1-2")
     click("reopen")  # back on the header page
     expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
     expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
@@ -592,7 +596,9 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
         "labeled-deed-deed-3.json"
     ]
     record = deed_record(data_root)
-    assert [i["amount"] for i in record["annotation"]["assets"]] == ["10,-"]
+    assert [i["amount"] for i in record["annotation"]["assets"]] == ["10,-", "2,-"]
+    # Closed on the header page, but A2 is on page 2: scans still reaches it.
+    assert record["scans"] == ["page_01.jpg", "page_02.jpg"]
 
 
 def test_delete_person_needs_confirmation(marimo_server, data_root, page, click):

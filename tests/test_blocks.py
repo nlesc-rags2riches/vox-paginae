@@ -140,6 +140,15 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
     assert q["scans"] == ["p2.jpg", "p3.jpg"]
     with pytest.raises(ValueError):  # before the header page
         close_deed_record(p, page_names, "p1.jpg")
+    # Closed before an item's last page (e.g. right after reopen): the range reaches it.
+    p = add_block(
+        p, "assets", "", "2,-", "", [("p3.jpg", [0] * 4), ("p4.jpg", [0] * 4)]
+    )
+    assert close_deed_record(p, page_names, "p2.jpg")["scans"] == [
+        "p2.jpg",
+        "p3.jpg",
+        "p4.jpg",
+    ]
 
 
 def test_add_block_rejects_missing_type_boxes_or_text():
