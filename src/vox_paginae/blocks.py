@@ -159,13 +159,22 @@ def close_deed_record(
     """Return a copy of ``deed_record`` closed on ``close_scan``.
 
     ``scans`` becomes every page in ``page_names`` (the book's, in order) from the
-    header page (``scans[0]``) to ``close_scan``, both included, with or without items.
-    Closing before the header page raises ``ValueError``.
+    header page (``scans[0]``) to ``close_scan`` or the last page an item reaches,
+    whichever is later, both included, with or without items. Closing before the header
+    page raises ``ValueError``.
     """
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
     if end < start:
         raise ValueError("a deed/person cannot close before its header page")
+    end = max(
+        [end]
+        + [
+            page_names.index(box["scan"])
+            for _, item in block_labels(deed_record)
+            for box in item["layout"]
+        ]
+    )
     deed_record = copy.deepcopy(deed_record)
     deed_record["scans"] = page_names[start : end + 1]
     return deed_record

@@ -472,7 +472,6 @@ def block_buttons(
             mo.status.toast(f"saved {_path.name}")
 
     def _close_person(_):
-        # scans: every page from the header page to this one.
         _path = save_deed_record(
             book, close_deed_record(get_deed_record(), _names, page.name)
         )
