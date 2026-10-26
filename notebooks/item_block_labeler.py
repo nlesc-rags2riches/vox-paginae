@@ -169,7 +169,7 @@ def page_buttons(
                     name_in.value,
                     death_in.value,
                 )
-                mo.status.toast(f"saved {_path.name}, person closed")
+                mo.status.toast(f"saved {_path.name}, deed/person closed")
             set_person_record(None)
             set_deceased(("", ""))
             set_type(None)
@@ -181,7 +181,7 @@ def page_buttons(
 
     next_page_btn = mo.ui.button(
         label="next page",
-        # On the last page it closes the open person: same rules as close person.
+        # On the last page it closes the open person: same rules as close deed/person.
         disabled=_last_page
         and (
             bool(get_pending_boxes())
@@ -530,7 +530,7 @@ def block_buttons(
         set_person_record(None)  # no current person until the next save
         set_deceased(("", ""))
         set_type(None)
-        mo.status.toast(f"saved {_path.name}, person closed")
+        mo.status.toast(f"saved {_path.name}, deed/person closed")
 
     continue_btn = mo.ui.button(
         label="continue",
@@ -575,7 +575,7 @@ def block_buttons(
         on_click=_delete,
     )
     close_person_btn = mo.ui.button(
-        label="close person",
+        label="close deed/person",
         disabled=get_person_record() is None
         or bool(get_pending_boxes())
         or get_editing() is not None
@@ -648,7 +648,7 @@ def person_go(
         or bool(get_pending_boxes())
     )
     person_go_btn = mo.ui.button(
-        label="go to person",
+        label="go to deed/person",
         disabled=_disabled,
         on_click=lambda _: set_book_page(
             lambda book_page: (book_page[0], person_dd.value[1])
@@ -681,8 +681,8 @@ def person_go(
         # Still None: this rebuilds the dropdown, the faded boxes and the debug pane.
         set_person_record(None)
 
-    # Two steps: delete person, then confirm or cancel. Picking another person shows
-    # delete person again.
+    # Two steps: delete deed/person, then confirm or cancel. Picking another person shows
+    # delete deed/person again.
     if not _disabled and get_delete_person() == person_dd.value[0]:
         person_delete = mo.hstack(
             [
@@ -698,7 +698,7 @@ def person_go(
         )
     else:
         person_delete = mo.ui.button(
-            label="delete person",
+            label="delete deed/person",
             disabled=_disabled,
             on_click=lambda _: set_delete_person(person_dd.value[0]),
         )
@@ -757,9 +757,9 @@ def status_line(
 ):
     # Its own cell, not in `layout`: a click reruns `layout` at once (it shows the buttons), with
     # the new state but the old elements. This cell reruns only with the rebuilt elements, so
-    # the status line never says "no person" while the old person dropdown is still showing.
+    # the status line never says "no deed/person" while the old person dropdown is still showing.
     status_line = mo.md(
-        f"`{book.name}/{page.name}` · {f'editing {person_path(book, get_person_id()).stem}' if get_person_record() else 'no person'} · page {page_i + 1}/{len(pages)} · pending {len(get_pending_boxes())}"
+        f"`{book.name}/{page.name}` · {f'editing {person_path(book, get_person_id()).stem}' if get_person_record() else 'no deed/person'} · page {page_i + 1}/{len(pages)} · pending {len(get_pending_boxes())}"
         + (f" · editing {get_editing()}" if get_editing() else "")
     )
     return (status_line,)
