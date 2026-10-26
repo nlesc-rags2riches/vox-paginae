@@ -1,7 +1,5 @@
 import marimo
 
-# TODO: Needs more detailed human review
-
 __generated_with = "0.25.1"
 app = marimo.App(width="full")
 
@@ -597,7 +595,13 @@ def block_buttons(
 
 @app.cell(hide_code=True)
 def book_dropdown(
-    books, get_book_page, get_pending_boxes, get_person_record, mo, root, set_book_page
+    books,
+    get_book_page,
+    get_pending_boxes,
+    get_person_record,
+    mo,
+    root,
+    set_book_page,
 ):
     # Picking a book moves to its first page. A person never crosses books, a pending block
     # belongs to this page. From the book index, not `book`: it stays when the book cell
