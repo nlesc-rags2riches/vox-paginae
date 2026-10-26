@@ -15,12 +15,12 @@ from vox_paginae.blocks import (
     load_person_records,
     new_person_record,
     next_page,
-    overledene,
     person_choices,
     replace_block,
     resume,
     save_person_record,
     saved_boxes,
+    single_overledene,
 )
 
 
@@ -259,11 +259,11 @@ def test_deed_choices_sort_by_aktenummer_then_place(tmp_path):
         ([{"rol": "erfgenaam"}], "`rol: erfgenaam`"),
     ],
 )
-def test_overledene_rejects_a_deed_without_exactly_one(personen, error):
+def test_single_overledene_rejects_a_deed_without_exactly_one(personen, error):
     with pytest.raises(ValueError, match=error):
-        overledene({"personen": personen})
+        single_overledene({"personen": personen})
 
 
-def test_overledene_returns_the_one_person():
+def test_single_overledene_returns_the_one_person():
     person = {"naam_volledig": "Jan Modaal", "rol": "overledene"}
-    assert overledene({"personen": [person]}) is person
+    assert single_overledene({"personen": [person]}) is person

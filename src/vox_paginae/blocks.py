@@ -256,7 +256,7 @@ def deed_choices(deeds: dict[str, dict]) -> dict[str, str]:
     }
 
 
-def overledene(deed: dict) -> dict:
+def single_overledene(deed: dict) -> dict:
     """The deed's one person, who must have ``rol: overledene``.
 
     The labeler assumes exactly that; any other deed raises ``ValueError`` with a message

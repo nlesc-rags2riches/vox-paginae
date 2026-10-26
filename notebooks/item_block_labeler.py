@@ -28,13 +28,13 @@ def imports():
         load_person_records,
         new_person_record,
         next_page,
-        overledene,
         person_choices,
         person_path,
         replace_block,
         resume,
         save_person_record,
         saved_boxes,
+        single_overledene,
         split_label,
         thumbnail,
     )
@@ -56,7 +56,6 @@ def imports():
         new_person_record,
         next_page,
         np,
-        overledene,
         person_choices,
         person_path,
         plt,
@@ -64,6 +63,7 @@ def imports():
         resume,
         save_person_record,
         saved_boxes,
+        single_overledene,
         split_label,
         thumbnail,
     )
@@ -715,14 +715,14 @@ def deed_picker(deed_choices, deeds, mo):
 
 
 @app.cell(hide_code=True)
-def deed_info(deed_dd, deeds, mo, overledene):
+def deed_info(deed_dd, deeds, mo, single_overledene):
     # The picked deed's overledene as in deeds.json, read only: nothing is copied into the file.
     # Checked on pick, so only a deed that breaks the rule fails, not the whole book.
     _deed = deeds.get(deed_dd.value)
     deed_details = mo.md("")
     if _deed:
         try:
-            _p = overledene(_deed)
+            _p = single_overledene(_deed)
             deed_details = mo.md(
                 f"**{_p['naam_volledig']}** · died {_p['datum_overlijden']} in {_p['plaats_overlijden']}"
             )
