@@ -138,7 +138,8 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
             "plaats_overlijden": "Oostdorp",
         },
         "scans": ["page_02.jpg"],
-        "annotation": {"assets": [], "liabilities": []},
+        # No balance: optional.
+        "annotation": {"balance": None, "assets": [], "liabilities": []},
     }
     # While open, the deed row is text: no dropdown to pick another deed from.
     expect(page.get_by_test_id("marimo-plugin-searchable-dropdown")).to_have_count(0)
@@ -189,6 +190,59 @@ def test_header_box_is_required_to_open(marimo_server, data_root, page, click):
     # Kept through open's redraw, in green: not an item's blue or orange.
     r, g, b = colour_near(page, 0.5, HEADER[1])
     assert g > max(r, b)
+
+
+BALANCE = (0.2, 0.6, 0.8, 0.8)
+
+
+def test_balance_box_is_saved_once_cleared_and_saved_again(
+    marimo_server, data_root, page, click
+):
+    open_app(page, marimo_server)
+    open_deed(page, click)
+    # Its section sits between the deed/person and the items.
+    y = {
+        label: button(page, label).bounding_box()["y"]
+        for label in ["close deed/person", "save box as balance", "save"]
+    }
+    assert y["close deed/person"] < y["save box as balance"] < y["save"]
+
+    drag_box(page, *BALANCE)
+    expect(button(page, "save box as balance")).to_be_disabled()  # no total yet
+    fill(page, "total assets", " 1.000,- ")
+    fill(page, "total", "f 900")
+    click("save box as balance")
+    # Read only, showing what was saved; one balance at most.
+    expect(text_input(page, "total assets")).to_be_disabled()
+    expect(text_input(page, "total assets")).to_have_value(" 1.000,- ")
+    expect(button(page, "save box as balance")).to_be_disabled()
+    drag_box(page, *BALANCE)
+    expect(button(page, "save box as balance")).to_be_disabled()
+
+    balance = deed_record(data_root)["annotation"]["balance"]
+    assert balance.pop("layout")["scan"] == "page_01.jpg"
+    assert balance == {
+        "total_assets": " 1.000,- ",
+        "total_liabilities": "",
+        "total": "f 900",
+    }
+    r, g, b = colour_near(page, 0.5, BALANCE[1])  # in purple
+    assert min(r, b) > g
+
+    # Cleared: gone from the file, and a new one goes on any page of the deed/person.
+    click("clear balance box")
+    expect(text_input(page, "total assets")).to_have_value("")
+    assert deed_record(data_root)["annotation"]["balance"] is None
+    click("next page")
+    expect(status(page, "page 2/3")).to_be_visible()
+    drag_box(page, *BALANCE)
+    fill(page, "total liabilities", "50")
+    click("save box as balance")
+    expect(text_input(page, "total liabilities")).to_be_disabled()
+    balance = deed_record(data_root)["annotation"]["balance"]
+    assert balance["layout"]["scan"] == "page_02.jpg"
+    assert fractions(balance["layout"]["bbox"]) == pytest.approx(BALANCE, abs=0.01)
+    assert balance["total_liabilities"] == "50"
 
 
 def test_annotator_name_is_locked_first_and_every_write_records_it(

@@ -16,6 +16,7 @@ def imports():
     from vox_paginae.blocks import (
         add_block,
         block_labels,
+        clear_balance,
         close_deed_record,
         crop,
         deed_boxes,
@@ -32,6 +33,7 @@ def imports():
         resume,
         save_deed_record,
         saved_boxes,
+        set_balance,
         single_overledene,
         split_label,
         thumbnail,
@@ -42,6 +44,7 @@ def imports():
         Path,
         add_block,
         block_labels,
+        clear_balance,
         close_deed_record,
         crop,
         deed_boxes,
@@ -61,6 +64,7 @@ def imports():
         resume,
         save_deed_record,
         saved_boxes,
+        set_balance,
         single_overledene,
         split_label,
         thumbnail,
@@ -347,8 +351,13 @@ def _(
 ):
     FIG_H = fig_h_slider.value  # inches, shown at 100 px each
     DPI = png_dpi  # quality, unless capped
-    # By label initial: header, asset, liability.
-    TYPE_COLOURS = {"H": "tab:green", "A": "tab:blue", "L": "tab:orange"}
+    # By label initial: header, balance, asset, liability.
+    TYPE_COLOURS = {
+        "H": "tab:green",
+        "B": "tab:purple",
+        "A": "tab:blue",
+        "L": "tab:orange",
+    }
 
     _w, _h = page_size
     # Figure matches the page aspect and axes fill it; otherwise mo.ui.matplotlib maps
@@ -829,6 +838,88 @@ def deed_file_buttons(
 
 
 @app.cell(hide_code=True)
+def balance_inputs(get_deed_record, mo):
+    # The balance's totals: its saved values, read only, while it has one (a typo check).
+    # Re-created on every open, write and close; clear balance box empties them again.
+    _open = get_deed_record()
+    _balance = (_open and _open["annotation"]["balance"]) or {}
+    # debounce: save box as balance enables while typing, as for the item value
+    total_assets_in, total_liabilities_in, total_in = (
+        mo.ui.text(
+            label=_field.replace("_", " "),
+            value=_balance.get(_field, ""),
+            disabled=bool(_balance),
+            debounce=300,
+        )
+        for _field in ["total_assets", "total_liabilities", "total"]
+    )
+    return total_assets_in, total_in, total_liabilities_in
+
+
+@app.cell(hide_code=True)
+def balance_buttons(
+    annotator_name,
+    book,
+    clear_balance,
+    drawn_box,
+    get_deed_record,
+    mo,
+    page,
+    pages,
+    save_deed_record,
+    set_balance,
+    set_deed_record,
+    total_assets_in,
+    total_in,
+    total_liabilities_in,
+):
+    def _save_balance(_):
+        _deed_record = set_balance(
+            get_deed_record(),
+            page.name,
+            drawn_box,
+            total_assets_in.value,
+            total_liabilities_in.value,
+            total_in.value,
+        )
+        _path = save_deed_record(book, _deed_record, annotator_name)
+        set_deed_record(_deed_record)
+        mo.status.toast(f"saved {_path.name}")
+
+    def _clear_balance(_):
+        _deed_record = clear_balance(get_deed_record())
+        _path = save_deed_record(book, _deed_record, annotator_name)
+        set_deed_record(_deed_record)
+        mo.status.toast(f"saved {_path.name}")
+
+    _open = get_deed_record()
+    _has_balance = (
+        _open is not None and _open["annotation"]["balance"] is not None
+    )
+    _names = [p.name for p in pages]
+    save_balance_btn = mo.ui.button(
+        label="save box as balance",
+        # At most one: clear balance box first. Not before the header page: outside scans.
+        disabled=_open is None
+        or _has_balance
+        or drawn_box is None
+        or _names.index(page.name) < _names.index(_open["scans"][0])
+        or not any(
+            _in.value.strip()
+            for _in in [total_assets_in, total_liabilities_in, total_in]
+        ),
+        on_click=_save_balance,
+    )
+    # Removes the balance, box and totals: then a new box can be saved as balance.
+    clear_balance_btn = mo.ui.button(
+        label="clear balance box",
+        disabled=not _has_balance,
+        on_click=_clear_balance,
+    )
+    return clear_balance_btn, save_balance_btn
+
+
+@app.cell(hide_code=True)
 def debug_toggle(mo):
     # `-- --debug` only: hides the debug elements (not itself), e.g. for a demo.
     debug_switch = (
@@ -875,6 +966,7 @@ def layout(
     book_dd,
     cancel_edit_btn,
     category_in,
+    clear_balance_btn,
     clear_pending_btn,
     close_person_btn,
     continue_btn,
@@ -897,8 +989,12 @@ def layout(
     prev_page_btn,
     quality_slider,
     reopen_btn,
+    save_balance_btn,
     save_btn,
     status_line,
+    total_assets_in,
+    total_in,
+    total_liabilities_in,
     type_radio,
     value_in,
     zooms,
@@ -907,7 +1003,7 @@ def layout(
         [page_view, mo.hstack([quality_slider, fig_h_slider], justify="start")]
     )
     # Top to bottom, from the widest scope to the narrowest, split by rules: annotator, book
-    # and deed/person, page, block.
+    # and deed/person, balance, page, block.
     _form = mo.vstack(
         [
             annotator_row,
@@ -931,6 +1027,12 @@ def layout(
                 ],
                 justify="start",
             ),
+            mo.md("---"),
+            mo.hstack(
+                [total_assets_in, total_liabilities_in, total_in],
+                justify="start",
+            ),
+            mo.hstack([save_balance_btn, clear_balance_btn], justify="start"),
             mo.md("---"),
             mo.hstack([prev_page_btn, next_page_btn], justify="start"),
             mo.md("---"),
