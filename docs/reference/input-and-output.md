@@ -35,6 +35,10 @@ changes only on purpose, and never describes internals.
 - While a deed/person is open, a box drawn on its header page or any later page can be
   saved as its **balance**, with three totals, at least one filled in. A deed/person
   has at most one balance, or none: clear it to save another.
+  **edit balance box** lets you change the saved balance. Its totals can be retyped.
+  A new box drawn on the page replaces its box; without one, the old box stays. Until
+  **save box as balance** or **cancel balance edit**, the header and items cannot be
+  changed.
 - The file holds:
   - `deed_id`: as in `deeds.json`
   - `copied_deed_person_data`: the deed's `aktenummer` and `plaats`, and every field
@@ -66,8 +70,8 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed/person is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, every added, changed or deleted item, saving or clearing the
-  balance, and saving the header, is in the file at once.
+  version. Opening, every added, changed or deleted item, saving, editing or clearing
+  the balance, and saving the header, is in the file at once.
   Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
 - Moving past a book's last page closes the open deed/person there.
