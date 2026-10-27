@@ -6,6 +6,7 @@ import copy
 import functools
 import io
 import json
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
@@ -154,14 +155,17 @@ def replace_block(
 
 
 def close_deed_record(
-    deed_record: dict, page_names: list[str], close_scan: str
+    deed_record: dict, page_names: list[str], close_scan: str, annotator_name: str
 ) -> dict:
-    """Return a copy of ``deed_record`` closed on ``close_scan``.
+    """Return a copy of ``deed_record`` closed on ``close_scan`` by ``annotator_name``.
 
     ``scans`` becomes every page in ``page_names`` (the book's, in order) from the
     header page (``scans[0]``) to ``close_scan`` or the last page an item reaches,
     whichever is later, both included, with or without items. Closing before the header
     page raises ``ValueError``.
+
+    ``annotation_metadata`` records ``annotator_name`` and the close time (local, with
+    its timezone); a reopen and close rewrites both.
     """
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
@@ -177,6 +181,12 @@ def close_deed_record(
     )
     deed_record = copy.deepcopy(deed_record)
     deed_record["scans"] = page_names[start : end + 1]
+    deed_record["annotation_metadata"] = {
+        "annotator_name": annotator_name,
+        "annotation_date": datetime.now().astimezone().isoformat(),
+    }
+    # `annotation` stays the last key, after the metadata, as in the target file shape.
+    deed_record["annotation"] = deed_record.pop("annotation")
     return deed_record
 
 
