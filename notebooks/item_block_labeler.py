@@ -88,6 +88,13 @@ def _(default_root, mo, root_picker):
 
 
 @app.cell(hide_code=True)
+def annotator_input(mo):
+    # A plain name for now: every close records it, with the close time.
+    annotator_in = mo.ui.text(label="annotator")
+    return (annotator_in,)
+
+
+@app.cell(hide_code=True)
 def session_state(find_books, list_pages, mo, resume, root):
     books = find_books(root)
     book_pages = [list_pages(b) for b in books]
@@ -128,6 +135,7 @@ def session_state(find_books, list_pages, mo, resume, root):
 
 @app.cell(hide_code=True)
 def page_buttons(
+    annotator_name,
     book,
     book_pages,
     close_deed_record,
@@ -154,7 +162,10 @@ def page_buttons(
                 _path = save_deed_record(
                     book,
                     close_deed_record(
-                        get_deed_record(), [p.name for p in pages], page.name
+                        get_deed_record(),
+                        [p.name for p in pages],
+                        page.name,
+                        annotator_name,
                     ),
                 )
                 mo.status.toast(f"saved {_path.name}, deed/person closed")
@@ -214,7 +225,22 @@ def _(block_labels, get_deed_record, get_editing, mo):
 
 
 @app.cell(hide_code=True)
-def _(book_dd, book_pages, books, get_book_page, load_deeds, mo, root):
+def _(
+    annotator_in,
+    book_dd,
+    book_pages,
+    books,
+    get_book_page,
+    load_deeds,
+    mo,
+    root,
+):
+    # The name comes first: nothing past here runs without it.
+    annotator_name = annotator_in.value.strip()
+    mo.stop(
+        not annotator_name,
+        mo.vstack([annotator_in, mo.md("**give your name to start**")]),
+    )
     book_i, page_i = get_book_page()
     # Each stop keeps the book dropdown: leaving a book never needs the jump slider.
     mo.stop(book_i >= len(books), mo.vstack([book_dd, mo.md("**all books done**")]))
@@ -229,7 +255,7 @@ def _(book_dd, book_pages, books, get_book_page, load_deeds, mo, root):
     )
     pages = book_pages[book_i]
     page = pages[page_i]
-    return book, deeds, page, page_i, pages
+    return annotator_name, book, deeds, page, page_i, pages
 
 
 @app.cell(hide_code=True)
@@ -398,6 +424,7 @@ def zooms(book, crop, layout_boxes, mo):
 @app.cell(hide_code=True)
 def block_buttons(
     add_block,
+    annotator_name,
     block_labels,
     book,
     category_in,
@@ -476,7 +503,10 @@ def block_buttons(
 
     def _close_person(_):
         _path = save_deed_record(
-            book, close_deed_record(get_deed_record(), _names, page.name)
+            book,
+            close_deed_record(
+                get_deed_record(), _names, page.name, annotator_name
+            ),
         )
         set_deed_record(None)  # no deed/person open until the next open
         set_type(None)
@@ -792,6 +822,7 @@ def status_line(
 
 @app.cell(hide_code=True)
 def layout(
+    annotator_in,
     block_dd,
     book,
     book_dd,
@@ -827,10 +858,11 @@ def layout(
     _page_column = mo.vstack(
         [page_view, mo.hstack([quality_slider, fig_h_slider], justify="start")]
     )
-    # Top to bottom, from the widest scope to the narrowest, split by rules: book and
-    # deed/person, page, block.
+    # Top to bottom, from the widest scope to the narrowest, split by rules: annotator, book
+    # and deed/person, page, block.
     _form = mo.vstack(
         [
+            annotator_in,
             mo.hstack(
                 [debug_switch, status_line], justify="start", align="center"
             )
@@ -902,7 +934,8 @@ def layout(
 
 
 @app.cell(hide_code=True)
-def jump_slider(book_pages, get_book_page, mo):
+def jump_slider(annotator_in, book_pages, get_book_page, mo):
+    mo.stop(not annotator_in.value.strip())  # the name comes first, as for the form
     # Every page of every book in labeling order: the slider position is overall progress.
     all_pages = [
         (b, p)

@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 
 import pytest
 
@@ -125,29 +126,43 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
     p = new_deed_record(DEED, "p2.jpg")
     p = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
     # p3 has no items: still in the range.
-    assert close_deed_record(p, page_names, "p4.jpg")["scans"] == [
+    assert close_deed_record(p, page_names, "p4.jpg", "Ann")["scans"] == [
         "p2.jpg",
         "p3.jpg",
         "p4.jpg",
     ]
-    assert close_deed_record(p, page_names, "p2.jpg")["scans"] == ["p2.jpg"]
+    assert close_deed_record(p, page_names, "p2.jpg", "Ann")["scans"] == ["p2.jpg"]
     assert p["scans"] == ["p2.jpg"]  # original untouched
     # Reopened and closed again: the range starts from the header page, not the old end.
     q = close_deed_record(
-        close_deed_record(p, page_names, "p5.jpg"), page_names, "p3.jpg"
+        close_deed_record(p, page_names, "p5.jpg", "Ann"), page_names, "p3.jpg", "Ann"
     )
     assert q["scans"] == ["p2.jpg", "p3.jpg"]
     with pytest.raises(ValueError):  # before the header page
-        close_deed_record(p, page_names, "p1.jpg")
+        close_deed_record(p, page_names, "p1.jpg", "Ann")
     # Closed before an item's last page (e.g. right after reopen): the range reaches it.
     p = add_block(
         p, "assets", "", "2,-", "", [("p3.jpg", [0] * 4), ("p4.jpg", [0] * 4)]
     )
-    assert close_deed_record(p, page_names, "p2.jpg")["scans"] == [
+    assert close_deed_record(p, page_names, "p2.jpg", "Ann")["scans"] == [
         "p2.jpg",
         "p3.jpg",
         "p4.jpg",
     ]
+
+
+def test_close_records_the_annotator_and_the_close_time():
+    before = datetime.now(UTC)
+    p = close_deed_record(new_deed_record(DEED, "p1.jpg"), ["p1.jpg"], "p1.jpg", "Ann")
+    meta = p["annotation_metadata"]
+    assert meta["annotator_name"] == "Ann"
+    date = datetime.fromisoformat(meta["annotation_date"])
+    assert date.tzinfo is not None and before <= date <= datetime.now(UTC)
+    assert list(p)[-2:] == ["annotation_metadata", "annotation"]
+    # Reopened and closed by someone else: both are rewritten.
+    q = close_deed_record(p, ["p1.jpg"], "p1.jpg", "Bob")
+    assert q["annotation_metadata"]["annotator_name"] == "Bob"
+    assert datetime.fromisoformat(q["annotation_metadata"]["annotation_date"]) >= date
 
 
 def test_add_block_rejects_missing_type_boxes_or_text():
