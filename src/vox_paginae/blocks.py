@@ -143,6 +143,20 @@ def clear_balance(deed_record: dict) -> dict:
     return deed_record
 
 
+def replace_balance(
+    deed_record: dict,
+    scan: str,
+    bbox: list[int],
+    total_assets: str,
+    total_liabilities: str,
+    total: str,
+) -> dict:
+    """``set_balance`` in place of the saved balance, with the same checks."""
+    return set_balance(
+        clear_balance(deed_record), scan, bbox, total_assets, total_liabilities, total
+    )
+
+
 def set_header(
     deed_record: dict, page_names: list[str], scan: str, bbox: list[int]
 ) -> dict:

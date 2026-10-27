@@ -18,6 +18,7 @@ from vox_paginae.blocks import (
     load_deeds,
     new_deed_record,
     next_page,
+    replace_balance,
     replace_block,
     resume,
     save_deed_record,
@@ -143,6 +144,27 @@ def test_balance_is_one_optional_box_with_three_totals_as_typed():
     # Cleared, it can be saved again.
     assert clear_balance(q) == p
     assert set_balance(clear_balance(q), "p2.jpg", [0, 0, 5, 5], "1", "", "")
+
+
+def test_replace_balance_rewrites_box_and_totals_in_place():
+    p = set_balance(
+        new_deed_record(DEED, "p2.jpg", [0] * 4), "p2.jpg", [0, 0, 5, 5], "1", "", ""
+    )
+    q = replace_balance(p, "p3.jpg", [1, 2, 3, 4], "", "2", "3")
+    assert q["annotation"]["balance"] == {
+        "layout": {
+            "scan": "p3.jpg",
+            "bbox": [1, 2, 3, 4],
+            "pagexml_link": None,
+            "pagexml_baseline_ids": None,
+        },
+        "total_assets": "",
+        "total_liabilities": "2",
+        "total": "3",
+    }
+    assert p["annotation"]["balance"]["total_assets"] == "1"  # original untouched
+    with pytest.raises(ValueError):  # at least one total, as for set_balance
+        replace_balance(p, "p2.jpg", [0, 0, 5, 5], " ", "", "")
 
 
 def test_replace_block_keeps_position_unless_type_changes():
