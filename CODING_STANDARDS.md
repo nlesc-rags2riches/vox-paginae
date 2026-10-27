@@ -2,6 +2,12 @@
 
 Judgement calls for review. Mechanical rules live in ruff (the prek hook and CI).
 
+## Notebook or library
+
+Code that belongs in the library (reused, tested, or read just to work on something
+downstream) lives in `src/vox_paginae/`, not in a notebook cell. The `marimo-library`
+skill sets the rules.
+
 ## Tests
 
 ### A disabled-button check must be able to fail
