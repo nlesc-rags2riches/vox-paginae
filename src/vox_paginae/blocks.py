@@ -38,8 +38,20 @@ def next_page(book_page: tuple[int, int], page_counts: list[int]) -> tuple[int, 
 TYPES = ("assets", "liabilities")
 
 
-def new_deed_record(deed: dict, header_scan: str) -> dict:
-    """A blank deed/person record for ``deed``, opened on ``header_scan``.
+def new_box(scan: str, bbox: list[int]) -> dict:
+    """A BOX: ``bbox`` on ``scan``, in whole pixels, with no PageXML match computed."""
+    return {
+        "scan": scan,
+        "bbox": [int(v) for v in bbox],
+        "pagexml_link": None,
+        "pagexml_baseline_ids": None,
+    }
+
+
+def new_deed_record(deed: dict, header_scan: str, header_bbox: list[int]) -> dict:
+    """A blank deed/person record for ``deed``, opened on its header box.
+
+    ``header_bbox`` on ``header_scan`` becomes ``annotation.header``; that is the header page.
 
     The deed's ``aktenummer``, ``plaats`` and its overledene's fields (all but ``rol``,
     always ``overledene``) are copied flat, as they are in ``deeds.json``.
@@ -55,7 +67,11 @@ def new_deed_record(deed: dict, header_scan: str) -> dict:
         "scans": [header_scan],
         # Filled in by every write.
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
-        "annotation": {"assets": [], "liabilities": []},
+        "annotation": {
+            "header": new_box(header_scan, header_bbox),
+            "assets": [],
+            "liabilities": [],
+        },
     }
 
 
@@ -83,15 +99,7 @@ def add_block(
     deed_record = copy.deepcopy(deed_record)
     deed_record["annotation"][type_].append(
         {
-            "layout": [
-                {
-                    "scan": scan,
-                    "bbox": [int(v) for v in bbox],
-                    "pagexml_link": None,
-                    "pagexml_baseline_ids": None,
-                }
-                for scan, bbox in layout_boxes
-            ],
+            "layout": [new_box(scan, bbox) for scan, bbox in layout_boxes],
             "category": category or None,
             "amount": amount,
             "description": description,
@@ -111,6 +119,20 @@ def block_labels(deed_record: dict | None) -> list[tuple[str, dict]]:
         (f"{t[0].upper()}{i}", item)
         for t in TYPES
         for i, item in enumerate(deed_record["annotation"][t], start=1)
+    ]
+
+
+def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
+    """``(label, BOX)`` for every box: ``("H", header)``, then each item's, by label.
+
+    ``None`` (no open deed/person) has none.
+    """
+    if deed_record is None:
+        return []
+    return [("H", deed_record["annotation"]["header"])] + [
+        (label, box)
+        for label, item in block_labels(deed_record)
+        for box in item["layout"]
     ]
 
 
@@ -286,6 +308,8 @@ def saved_boxes(
 ) -> list[tuple[str, list[int]]]:
     """``(label, bbox)`` of every box on ``scan`` in ``book``'s deed files, by deed.
 
+    Labels as in ``deed_boxes``: ``H`` for a header.
+
     ``skip_deed_id`` is the open deed/person: it is drawn from memory, labelled, not
     faded.
     """
@@ -293,8 +317,7 @@ def saved_boxes(
         (label, box["bbox"])
         for deed_id, deed_record in load_deed_records(book).items()
         if deed_id != skip_deed_id
-        for label, item in block_labels(deed_record)
-        for box in item["layout"]
+        for label, box in deed_boxes(deed_record)
         if box["scan"] == scan
     ]
 

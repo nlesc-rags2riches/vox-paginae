@@ -85,8 +85,13 @@ def pick_deed(page, search):
     deed_options(page, search).click()
 
 
+HEADER = (0.1, 0.05, 0.9, 0.15)  # clear of the item boxes the tests draw
+
+
 def open_deed(page, click, search="Jan Modaal"):
-    """Pick the deed matching ``search`` and open it on the current page."""
+    """Draw the header box, pick the deed matching ``search`` and open it on the
+    current page."""
+    drag_box(page, *HEADER)
     pick_deed(page, search)
     click("open")
     expect(status(page, "editing labeled-deed-")).to_be_visible()
@@ -122,6 +127,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     # Written at once, before any item: the current page is the header page.
     record = deed_record(data_root)
     assert record.pop("annotation_metadata")["annotator_name"] == "Ann"
+    assert record["annotation"].pop("header")["scan"] == "page_02.jpg"
     assert record == {
         "deed_id": "deed-3",
         "copied_deed_person_data": {
@@ -160,7 +166,25 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     pick_deed(page, "Jan Modaal")
     expect(button(page, "open")).to_be_disabled()
     pick_deed(page, "Westdorp")
+    drag_box(page, *HEADER)
     expect(button(page, "open")).to_be_enabled()
+
+
+def test_header_box_is_required_to_open(marimo_server, data_root, page, click):
+    open_app(page, marimo_server)
+    pick_deed(page, "Jan Modaal")
+    expect(button(page, "open")).to_be_disabled()  # no header box yet
+    drag_box(page, *HEADER)
+    expect(button(page, "open")).to_be_enabled()
+    click("open")
+    expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+
+    header = deed_record(data_root)["annotation"]["header"]
+    assert header["scan"] == "page_01.jpg"
+    assert fractions(header["bbox"]) == pytest.approx(HEADER, abs=0.01)
+    # Kept through open's redraw, in green: not an item's blue or orange.
+    r, g, b = colour_near(page, 0.5, HEADER[1])
+    assert g > max(r, b)
 
 
 def test_annotator_name_is_locked_first_and_every_write_records_it(
@@ -447,28 +471,29 @@ def test_clear_pending_discards_the_pending_block(marimo_server, page, click):
     expect(button(page, "clear pending")).to_be_disabled()
 
 
-def coloured_near(page, fx, fy, timeout=10):
-    """Whether the page canvas turns non-gray within a few pixels of fraction (fx, fy)."""
+def colour_near(page, fx, fy, timeout=10):
+    """The first non-gray ``[r, g, b]`` on the page canvas within a few pixels of
+    fraction (fx, fy), waiting up to ``timeout`` s for one; ``None`` if none."""
     js = """(c, [fx, fy]) => {
       const x = Math.round(fx * c.width), y = Math.round(fy * c.height);
       const d = c.getContext("2d").getImageData(x, y - 6, 1, 13).data;
       for (let i = 0; i < d.length; i += 4)
         if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 20)
-          return true;
-      return false;
+          return [d[i], d[i + 1], d[i + 2]];
+      return null;
     }"""
     end = time.monotonic() + timeout
     while time.monotonic() < end:
-        if page.locator("canvas").first.evaluate(js, [fx, fy]):
-            return True
+        if rgb := page.locator("canvas").first.evaluate(js, [fx, fy]):
+            return rgb
         time.sleep(0.2)
-    return False
+    return None
 
 
 def test_saved_boxes_stay_visible_after_close_and_restart(data_root, page, click):
     with serve(data_root) as url:
         open_app(page, url)
-        assert not coloured_near(page, 0.4, 0.3, timeout=1)  # sanity: blank page
+        assert not colour_near(page, 0.4, 0.3, timeout=1)  # sanity: blank page
         open_deed(page, click)
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.3, 0.6, 0.5)
@@ -480,12 +505,12 @@ def test_saved_boxes_stay_visible_after_close_and_restart(data_root, page, click
         expect(status(page, "no deed/person · page 2/3")).to_be_visible()
         click("prev page")
         expect(status(page, "no deed/person · page 1/3")).to_be_visible()
-        assert coloured_near(page, 0.4, 0.3)  # closed deed/person's box, faded
+        assert colour_near(page, 0.4, 0.3)  # closed deed/person's box, faded
 
     with serve(data_root) as url:
         open_app(page, url)
         expect(status(page, "no deed/person · page 1/3")).to_be_visible()
-        assert coloured_near(page, 0.4, 0.3)
+        assert colour_near(page, 0.4, 0.3)
 
 
 def jump_to(page, n):
@@ -692,6 +717,7 @@ def test_delete_person_needs_confirmation(marimo_server, data_root, page, click)
     # Back among the deeds without a file, and it can be opened anew.
     expect(deed_options(page, "Jan Modaal")).to_have_text(["3 · Oostdorp · Jan Modaal"])
     deed_options(page, "Jan Modaal").click()
+    drag_box(page, *HEADER)
     expect(button(page, "open")).to_be_enabled()
     expect(button(page, "delete deed/person")).to_be_disabled()
     click("open")
@@ -779,6 +805,8 @@ def test_book_dropdown_moves_to_the_first_page(data_root, page, click):
         expect(status(page, "pending 1")).to_be_visible()
         expect(book_dd).to_be_disabled()  # a pending block belongs to this page
         click("clear pending")
+        # Its redraw drops a box drawn before it lands: wait, then draw the header.
+        expect(status(page, "pending 0")).to_be_visible()
 
         open_deed(page, click)
         expect(book_dd).to_be_disabled()  # a deed/person never crosses books

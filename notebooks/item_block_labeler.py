@@ -18,6 +18,7 @@ def imports():
         block_labels,
         close_deed_record,
         crop,
+        deed_boxes,
         deed_choices,
         deed_path,
         delete_block,
@@ -43,6 +44,7 @@ def imports():
         block_labels,
         close_deed_record,
         crop,
+        deed_boxes,
         deed_choices,
         deed_path,
         delete_block,
@@ -329,8 +331,8 @@ def _(Image, fig_h_slider, np, page, quality_slider):
 
 @app.cell(hide_code=True, expand_output=True)
 def _(
-    block_labels,
     book,
+    deed_boxes,
     fig_h_slider,
     get_deed_id,
     get_deed_record,
@@ -345,7 +347,8 @@ def _(
 ):
     FIG_H = fig_h_slider.value  # inches, shown at 100 px each
     DPI = png_dpi  # quality, unless capped
-    TYPE_COLOURS = {"A": "tab:blue", "L": "tab:orange"}
+    # By label initial: header, asset, liability.
+    TYPE_COLOURS = {"H": "tab:green", "A": "tab:blue", "L": "tab:orange"}
 
     _w, _h = page_size
     # Figure matches the page aspect and axes fill it; otherwise mo.ui.matplotlib maps
@@ -392,10 +395,9 @@ def _(
     _editing = get_deed_id() if get_deed_record() is not None else None
     for _label, _bbox in saved_boxes(book, page.name, _editing):
         _draw(_bbox, TYPE_COLOURS[_label[0]], alpha=0.4)
-    for _label, _item in block_labels(get_deed_record()):
-        for _box in _item["layout"]:
-            if _box["scan"] == page.name:
-                _draw(_box["bbox"], TYPE_COLOURS[_label[0]], _label)
+    for _label, _box in deed_boxes(get_deed_record()):
+        if _box["scan"] == page.name:
+            _draw(_box["bbox"], TYPE_COLOURS[_label[0]], _label)
     for _scan, _bbox in get_pending_boxes():
         if _scan == page.name:
             _draw(_bbox, "grey", style="--")
@@ -696,6 +698,7 @@ def deed_open(
     annotator_name,
     book,
     deed_path,
+    drawn_box,
     mo,
     new_deed_record,
     openable_deed,
@@ -711,7 +714,8 @@ def deed_open(
         if deed_path(book, openable_deed["deed_id"]).exists():
             mo.status.toast("this deed already has a file: reopen it instead")
             return
-        _deed_record = new_deed_record(openable_deed, page.name)
+        # The box drawn now is the header: kept in the file, the redraw drops it.
+        _deed_record = new_deed_record(openable_deed, page.name, drawn_box)
         _path = save_deed_record(
             book, _deed_record, annotator_name
         )  # at once: one file per deed
@@ -721,8 +725,9 @@ def deed_open(
 
     open_btn = mo.ui.button(
         label="open",
-        # A deed with a file is reopened, not opened anew.
+        # A deed with a file is reopened, not opened anew. No header box, no open.
         disabled=openable_deed is None
+        or drawn_box is None
         or deed_path(book, openable_deed["deed_id"]).exists(),
         on_click=_open,
     )
