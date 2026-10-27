@@ -29,6 +29,9 @@ changes only on purpose, and never describes internals.
 - Before opening, you draw a box around the deed/person's header on its first page;
   **open** stays disabled until there is one. The file is written as soon as the
   deed/person is opened. The page of the header box is its **header page**.
+- While it is open, **edit header** redraws the header box on any page up to the first
+  page with a saved item or balance box; that page becomes the header page. Until
+  **save header** or **cancel header edit**, the balance and items cannot be changed.
 - While a deed/person is open, a box drawn on its header page or any later page can be
   saved as its **balance**, with three totals, at least one filled in. A deed/person
   has at most one balance, or none: clear it to save another.
@@ -63,9 +66,9 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed/person is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, every added, changed or deleted item, and saving or clearing the
-  balance, is in the file at once.
-  Closing rewrites `scans`. Every write rewrites `annotator_name` and
+  version. Opening, every added, changed or deleted item, saving or clearing the
+  balance, and saving the header, is in the file at once.
+  Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
 - Moving past a book's last page closes the open deed/person there.
 - A closed deed/person can be reopened: it is open again as if never closed, and the
@@ -120,7 +123,9 @@ changes only on purpose, and never describes internals.
 - `pagexml_link`, `pagexml_baseline_ids`: `null` means "not computed"; `[]` would mean
   "computed, no match".
 - `scans`: a page can appear in two deed/persons' files (one deed ends and the next
-  starts on the same page). The header page is fixed when the deed/person is opened.
+  starts on the same page). `scans` always starts on the header page, the page of
+  `annotation.header`. Opening sets it. **save header** on another page moves it, and
+  `scans` then starts on that page.
 - `copied_deed_person_data`: copied when the deed/person is opened; a later change to
   `deeds.json` does not reach an existing file.
 - Item labels (`A1`, `L2`) are computed from list positions and never stored.
