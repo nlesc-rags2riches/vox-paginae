@@ -172,12 +172,16 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
 
 def test_header_box_is_required_to_open(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
+    hint = page.get_by_text("Draw a box around the header and click open")
+    expect(hint).to_be_visible()
     pick_deed(page, "Jan Modaal")
     expect(button(page, "open")).to_be_disabled()  # no header box yet
     drag_box(page, *HEADER)
     expect(button(page, "open")).to_be_enabled()
+    expect(hint).to_have_count(0)
     click("open")
     expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+    expect(hint).to_have_count(0)  # nothing to open while one is open
 
     header = deed_record(data_root)["annotation"]["header"]
     assert header["scan"] == "page_01.jpg"

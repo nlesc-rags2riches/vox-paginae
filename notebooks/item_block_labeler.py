@@ -699,6 +699,7 @@ def deed_open(
     book,
     deed_path,
     drawn_box,
+    get_deed_record,
     mo,
     new_deed_record,
     openable_deed,
@@ -731,7 +732,13 @@ def deed_open(
         or deed_path(book, openable_deed["deed_id"]).exists(),
         on_click=_open,
     )
-    return (open_btn,)
+    # The header box is easy to miss: say so until one is drawn.
+    open_hint = mo.md(
+        "Draw a box around the header and click **open**"
+        if get_deed_record() is None and drawn_box is None
+        else ""
+    )
+    return open_btn, open_hint
 
 
 @app.cell(hide_code=True)
@@ -885,6 +892,7 @@ def layout(
     mo,
     next_page_btn,
     open_btn,
+    open_hint,
     page_view,
     prev_page_btn,
     quality_slider,
@@ -915,6 +923,7 @@ def layout(
             mo.hstack(
                 [
                     open_btn,
+                    open_hint,
                     go_to_btn,
                     reopen_btn,
                     delete_file_ui,
