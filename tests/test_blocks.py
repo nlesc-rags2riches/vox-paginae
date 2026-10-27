@@ -172,6 +172,9 @@ def test_set_header_moves_the_header_page_and_scans_with_it():
     assert q["annotation"]["header"]["bbox"] == [1, 2, 3, 4]
     assert q["scans"] == ["p1.jpg", "p2.jpg", "p3.jpg"]  # to the old last page
     assert p["annotation"]["header"]["scan"] == "p2.jpg"  # original untouched
+    # Never closed: scans stays just the header page.
+    unclosed = new_deed_record(DEED, "p2.jpg", [0] * 4)
+    assert set_header(unclosed, page_names, "p1.jpg", [0] * 4)["scans"] == ["p1.jpg"]
     # Later, but no box before it: scans is just the header page.
     assert set_header(p, page_names, "p4.jpg", [0] * 4)["scans"] == ["p4.jpg"]
     # A saved box before the new header page would be outside scans.

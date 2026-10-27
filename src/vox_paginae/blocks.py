@@ -148,9 +148,10 @@ def set_header(
 ) -> dict:
     """Return a copy of ``deed_record`` with its header: ``bbox`` on ``scan``.
 
-    ``scan`` becomes the header page: ``scans`` then runs from ``scan`` to its old last page (or is just ``scan``, if
-    later), in ``page_names`` (the book's, in order). A balance or item box before
-    ``scan`` would be outside ``scans``: that raises ``ValueError``.
+    ``scan`` becomes the header page, in ``page_names`` (the book's, in order). A
+    closed deed/person's ``scans`` then runs from ``scan`` to its old last page (or is
+    just ``scan``, if later); one never closed keeps only the header page. A balance or
+    item box before ``scan`` would be outside ``scans``: that raises ``ValueError``.
     """
     start = page_names.index(scan)
     if any(
@@ -159,7 +160,12 @@ def set_header(
         if label != "H"
     ):
         raise ValueError("the header page cannot come after a saved box")
-    end = max(start, page_names.index(deed_record["scans"][-1]))
+    # ponytail: one page also means closed on its header page; the next close redoes it.
+    end = (
+        start
+        if len(deed_record["scans"]) == 1
+        else max(start, page_names.index(deed_record["scans"][-1]))
+    )
     deed_record = copy.deepcopy(deed_record)
     deed_record["annotation"]["header"] = new_box(scan, bbox)
     deed_record["scans"] = page_names[start : end + 1]
