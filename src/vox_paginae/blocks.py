@@ -143,6 +143,29 @@ def clear_balance(deed_record: dict) -> dict:
     return deed_record
 
 
+def set_header(
+    deed_record: dict, page_names: list[str], scan: str, bbox: list[int]
+) -> dict:
+    """Return a copy of ``deed_record`` with its header: ``bbox`` on ``scan``.
+
+    ``scan`` becomes the header page: ``scans`` then runs from ``scan`` to its old last page (or is just ``scan``, if
+    later), in ``page_names`` (the book's, in order). A balance or item box before
+    ``scan`` would be outside ``scans``: that raises ``ValueError``.
+    """
+    start = page_names.index(scan)
+    if any(
+        page_names.index(box["scan"]) < start
+        for label, box in deed_boxes(deed_record)
+        if label != "H"
+    ):
+        raise ValueError("the header page cannot come after a saved box")
+    end = max(start, page_names.index(deed_record["scans"][-1]))
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation"]["header"] = new_box(scan, bbox)
+    deed_record["scans"] = page_names[start : end + 1]
+    return deed_record
+
+
 def block_labels(deed_record: dict | None) -> list[tuple[str, dict]]:
     """``(label, item)`` for every item: ``A1, A2…`` for assets, then ``L1, L2…``.
 

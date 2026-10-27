@@ -23,6 +23,7 @@ from vox_paginae.blocks import (
     save_deed_record,
     saved_boxes,
     set_balance,
+    set_header,
     single_overledene,
 )
 
@@ -159,6 +160,27 @@ def test_replace_block_keeps_position_unless_type_changes():
     assert [label for label, _ in block_labels(p)] == ["A1", "A2", "L1"]
     with pytest.raises(ValueError):  # same checks as add_block
         replace_block(p, "A1", "assets", "", "", "", box)
+
+
+def test_set_header_moves_the_header_page_and_scans_with_it():
+    page_names = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg"]
+    p = close_deed_record(
+        new_deed_record(DEED, "p2.jpg", [0] * 4), page_names, "p3.jpg"
+    )
+    q = set_header(p, page_names, "p1.jpg", [1, 2, 3, 4])
+    assert q["annotation"]["header"]["scan"] == "p1.jpg"
+    assert q["annotation"]["header"]["bbox"] == [1, 2, 3, 4]
+    assert q["scans"] == ["p1.jpg", "p2.jpg", "p3.jpg"]  # to the old last page
+    assert p["annotation"]["header"]["scan"] == "p2.jpg"  # original untouched
+    # Later, but no box before it: scans is just the header page.
+    assert set_header(p, page_names, "p4.jpg", [0] * 4)["scans"] == ["p4.jpg"]
+    # A saved box before the new header page would be outside scans.
+    with_item = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0] * 4)])
+    with_balance = set_balance(p, "p2.jpg", [0] * 4, "1,-", "", "")
+    for r in (with_item, with_balance):
+        assert set_header(r, page_names, "p2.jpg", [0] * 4)["scans"][0] == "p2.jpg"
+        with pytest.raises(ValueError):
+            set_header(r, page_names, "p3.jpg", [0] * 4)
 
 
 def test_close_fills_scans_from_the_header_page_to_the_close_page():

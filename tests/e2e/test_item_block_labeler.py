@@ -192,6 +192,54 @@ def test_header_box_is_required_to_open(marimo_server, data_root, page, click):
     assert g > max(r, b)
 
 
+NEW_HEADER = (0.1, 0.2, 0.9, 0.3)
+
+
+def test_edit_header_moves_it_to_an_earlier_page(marimo_server, data_root, page, click):
+    open_app(page, marimo_server)
+    click("next page")
+    open_deed(page, click)  # on page 2: the wrong page
+
+    # Cancelled: the old box stays, the form unlocks.
+    click("edit header")
+    expect(status(page, "· editing header")).to_be_visible()
+    click("cancel header edit")
+    expect(status(page, "· editing header")).to_have_count(0)
+    expect(button(page, "edit header")).to_be_enabled()
+
+    click("edit header")
+    hint = page.get_by_text("Draw the new header box and click save header")
+    expect(hint).to_be_visible()
+    # Locked, as if closed: on the header page, nothing else would disable these.
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.5, 0.8, 0.6)
+    fill(page, "value", "1,-")
+    fill(page, "total", "1,-")
+    for label in ["save", "continue", "save box as balance", "close deed/person"]:
+        expect(button(page, label)).to_be_disabled()
+    click("prev page")
+    expect(status(page, "page 1/3 · pending 0 · editing header")).to_be_visible()
+    drag_box(page, *NEW_HEADER)
+    click("save header")
+    expect(status(page, "· editing header")).to_have_count(0)
+    expect(hint).to_have_count(0)
+    # Re-created empty, as after open: typing before that lands in the old inputs.
+    expect(text_input(page, "value")).to_have_value("")
+
+    header = deed_record(data_root)["annotation"]["header"]
+    assert header["scan"] == "page_01.jpg"
+    assert fractions(header["bbox"]) == pytest.approx(NEW_HEADER, abs=0.01)
+    assert deed_record(data_root)["scans"] == ["page_01.jpg", "page_02.jpg"]
+    # Unlocked: an item now goes on page 1, before the old header page.
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.5, 0.8, 0.6)
+    fill(page, "value", "2,-")  # not "1,-": typing it again is not sent (marimo)
+    save(page, click)
+    (item,) = deed_record(data_root)["annotation"]["assets"]
+    assert item["amount"] == "2,-"
+    assert item["layout"][0]["scan"] == "page_01.jpg"
+
+
 BALANCE = (0.2, 0.6, 0.8, 0.8)
 
 
