@@ -346,7 +346,7 @@ def test_restart_resumes_on_last_page_with_no_person(data_root, page, click):
 
     with serve(data_root) as url:
         open_app(page, url)  # waits for "no deed/person"
-        # The header page: for now, scans holds only that.
+        # Not closed: scans holds only the header page.
         expect(status(page, "no deed/person · page 2/3 · pending 0")).to_be_visible()
 
         open_deed(page, click, "Westdorp")
@@ -360,6 +360,24 @@ def test_restart_resumes_on_last_page_with_no_person(data_root, page, click):
     second = deed_record(data_root, "deed-7g")
     assert second["copied_deed_person_data"]["naam_volledig"] == "Piet Smit"
     assert second["scans"] == ["page_02.jpg"]
+
+
+def test_restart_after_close_lands_on_the_close_page(data_root, page, click):
+    with serve(data_root) as url:
+        open_app(page, url)
+        open_deed(page, click)
+        click("next page")
+        expect(status(page, "page 2/3")).to_be_visible()
+        click("close deed/person")
+        expect(status(page, "no deed/person · page 2/3")).to_be_visible()
+
+    with serve(data_root) as url:
+        open_app(page, url)  # waits for "no deed/person"
+        expect(status(page, "no deed/person · page 2/3 · pending 0")).to_be_visible()
+        open_deed(page, click, "Westdorp")  # the close page is the next header page
+
+    assert deed_record(data_root)["scans"] == ["page_01.jpg", "page_02.jpg"]
+    assert deed_record(data_root, "deed-7g")["scans"] == ["page_02.jpg"]
 
 
 def test_old_person_files_are_ignored(data_root, page):
