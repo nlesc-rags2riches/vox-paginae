@@ -53,6 +53,8 @@ def new_deed_record(deed: dict, header_scan: str) -> dict:
             **person,
         },
         "scans": [header_scan],
+        # Filled in by every write (annotator) and every close (date).
+        "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {"assets": [], "liabilities": []},
     }
 
@@ -155,17 +157,17 @@ def replace_block(
 
 
 def close_deed_record(
-    deed_record: dict, page_names: list[str], close_scan: str, annotator_name: str
+    deed_record: dict, page_names: list[str], close_scan: str
 ) -> dict:
-    """Return a copy of ``deed_record`` closed on ``close_scan`` by ``annotator_name``.
+    """Return a copy of ``deed_record`` closed on ``close_scan``.
 
     ``scans`` becomes every page in ``page_names`` (the book's, in order) from the
     header page (``scans[0]``) to ``close_scan`` or the last page an item reaches,
     whichever is later, both included, with or without items. Closing before the header
     page raises ``ValueError``.
 
-    ``annotation_metadata`` records ``annotator_name`` and the close time (local, with
-    its timezone); a reopen and close rewrites both.
+    ``annotation_date`` becomes the close time (local, with its timezone); a reopen and
+    close rewrites it.
     """
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
@@ -181,12 +183,9 @@ def close_deed_record(
     )
     deed_record = copy.deepcopy(deed_record)
     deed_record["scans"] = page_names[start : end + 1]
-    deed_record["annotation_metadata"] = {
-        "annotator_name": annotator_name,
-        "annotation_date": datetime.now().astimezone().isoformat(),
-    }
-    # `annotation` stays the last key, after the metadata, as in the target file shape.
-    deed_record["annotation"] = deed_record.pop("annotation")
+    deed_record["annotation_metadata"]["annotation_date"] = (
+        datetime.now().astimezone().isoformat()
+    )
     return deed_record
 
 
@@ -195,8 +194,13 @@ def deed_path(book: Path, deed_id: str) -> Path:
     return Path(book) / f"labeled-deed-{deed_id}.json"
 
 
-def save_deed_record(book: Path, deed_record: dict) -> Path:
-    """Write ``deed_record`` to its ``deed_path``."""
+def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path:
+    """Write ``deed_record`` to its ``deed_path``, by ``annotator_name``.
+
+    Every write records the current annotator, so a reopened file gets the latest one.
+    """
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation_metadata"]["annotator_name"] = annotator_name
     path = deed_path(book, deed_record["deed_id"])
     tmp = path.with_suffix(".json.tmp")  # write-then-rename: a crash never truncates
     tmp.write_text(json.dumps(deed_record, indent=2, ensure_ascii=False) + "\n")

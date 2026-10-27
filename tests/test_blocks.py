@@ -59,6 +59,7 @@ def test_new_deed_record_copies_the_deed_and_starts_on_the_header_page():
             "plaats_overlijden": "Oostdorp",
         },
         "scans": ["p2.jpg"],
+        "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {"assets": [], "liabilities": []},
     }
 
@@ -126,42 +127,38 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
     p = new_deed_record(DEED, "p2.jpg")
     p = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
     # p3 has no items: still in the range.
-    assert close_deed_record(p, page_names, "p4.jpg", "Ann")["scans"] == [
+    assert close_deed_record(p, page_names, "p4.jpg")["scans"] == [
         "p2.jpg",
         "p3.jpg",
         "p4.jpg",
     ]
-    assert close_deed_record(p, page_names, "p2.jpg", "Ann")["scans"] == ["p2.jpg"]
+    assert close_deed_record(p, page_names, "p2.jpg")["scans"] == ["p2.jpg"]
     assert p["scans"] == ["p2.jpg"]  # original untouched
     # Reopened and closed again: the range starts from the header page, not the old end.
     q = close_deed_record(
-        close_deed_record(p, page_names, "p5.jpg", "Ann"), page_names, "p3.jpg", "Ann"
+        close_deed_record(p, page_names, "p5.jpg"), page_names, "p3.jpg"
     )
     assert q["scans"] == ["p2.jpg", "p3.jpg"]
     with pytest.raises(ValueError):  # before the header page
-        close_deed_record(p, page_names, "p1.jpg", "Ann")
+        close_deed_record(p, page_names, "p1.jpg")
     # Closed before an item's last page (e.g. right after reopen): the range reaches it.
     p = add_block(
         p, "assets", "", "2,-", "", [("p3.jpg", [0] * 4), ("p4.jpg", [0] * 4)]
     )
-    assert close_deed_record(p, page_names, "p2.jpg", "Ann")["scans"] == [
+    assert close_deed_record(p, page_names, "p2.jpg")["scans"] == [
         "p2.jpg",
         "p3.jpg",
         "p4.jpg",
     ]
 
 
-def test_close_records_the_annotator_and_the_close_time():
+def test_close_records_the_close_time():
     before = datetime.now(UTC)
-    p = close_deed_record(new_deed_record(DEED, "p1.jpg"), ["p1.jpg"], "p1.jpg", "Ann")
-    meta = p["annotation_metadata"]
-    assert meta["annotator_name"] == "Ann"
-    date = datetime.fromisoformat(meta["annotation_date"])
+    p = close_deed_record(new_deed_record(DEED, "p1.jpg"), ["p1.jpg"], "p1.jpg")
+    date = datetime.fromisoformat(p["annotation_metadata"]["annotation_date"])
     assert date.tzinfo is not None and before <= date <= datetime.now(UTC)
-    assert list(p)[-2:] == ["annotation_metadata", "annotation"]
-    # Reopened and closed by someone else: both are rewritten.
-    q = close_deed_record(p, ["p1.jpg"], "p1.jpg", "Bob")
-    assert q["annotation_metadata"]["annotator_name"] == "Bob"
+    # Reopened and closed again: rewritten.
+    q = close_deed_record(p, ["p1.jpg"], "p1.jpg")
     assert datetime.fromisoformat(q["annotation_metadata"]["annotation_date"]) >= date
 
 
@@ -207,10 +204,11 @@ def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
     # Deeds with a file go last, with their pages (from 1, as in the status line).
     for name in ["a.jpg", "b.jpg", "c.jpg"]:
         (tmp_path / name).touch()
-    save_deed_record(tmp_path, new_deed_record(deeds["d3"], "b.jpg"))
+    save_deed_record(tmp_path, new_deed_record(deeds["d3"], "b.jpg"), "Ann")
     save_deed_record(
         tmp_path,
         {**new_deed_record(deeds["d2"], "a.jpg"), "scans": ["a.jpg", "b.jpg", "c.jpg"]},
+        "Ann",
     )
     assert list(deed_choices(deeds, tmp_path).items()) == [
         ("93 · Westdorp · B", "d1"),
@@ -243,11 +241,14 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     p = add_block(
         new_deed_record(DEED, "a.jpg"), "assets", "", "1,-", "", [("a.jpg", [0] * 4)]
     )
-    path = save_deed_record(tmp_path, p)
+    path = save_deed_record(tmp_path, p, "Ann")
     assert path == tmp_path / "labeled-deed-d1.json"
+    # Every write records who wrote it, and leaves the record passed in alone.
+    assert p["annotation_metadata"]["annotator_name"] is None
+    p["annotation_metadata"]["annotator_name"] = "Ann"
     assert load_deed_records(tmp_path) == {"d1": p}
     # Saving again rewrites the same file: one file per deed.
-    save_deed_record(tmp_path, delete_block(p, "A1"))
+    save_deed_record(tmp_path, delete_block(p, "A1"), "Ann")
     assert load_deed_records(tmp_path)["d1"]["annotation"]["assets"] == []
     assert sorted(f.name for f in tmp_path.iterdir()) == [
         "labeled-deed-d1.json",
@@ -264,11 +265,11 @@ def test_resume_lands_on_the_latest_page_of_the_last_book_with_files(tmp_path):
     books = find_books(tmp_path)
     assert resume(books) == (0, 0)  # nothing written yet
 
-    save_deed_record(a, new_deed_record(DEED, "a2.jpg"))
+    save_deed_record(a, new_deed_record(DEED, "a2.jpg"), "Ann")
     assert resume(books) == (0, 1)
     # Book b has files, so labeling stopped there: on its latest page, whichever deed.
-    save_deed_record(b, new_deed_record(DEED, "b2.jpg"))
-    save_deed_record(b, new_deed_record({**DEED, "deed_id": "d0"}, "b1.jpg"))
+    save_deed_record(b, new_deed_record(DEED, "b2.jpg"), "Ann")
+    save_deed_record(b, new_deed_record({**DEED, "deed_id": "d0"}, "b1.jpg"), "Ann")
     assert resume(books) == (1, 1)
 
 
@@ -289,8 +290,8 @@ def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
         "",
         [("b.jpg", [0, 0, 9, 9])],
     )
-    save_deed_record(tmp_path, p1)
-    save_deed_record(tmp_path, p2)
+    save_deed_record(tmp_path, p1, "Ann")
+    save_deed_record(tmp_path, p2, "Ann")
     assert saved_boxes(tmp_path, "b.jpg") == [
         ("L1", [5, 6, 7, 8]),
         ("A1", [0, 0, 9, 9]),
