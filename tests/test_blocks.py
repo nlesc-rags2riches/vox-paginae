@@ -152,16 +152,6 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
     ]
 
 
-def test_close_records_the_close_time():
-    before = datetime.now(UTC)
-    p = close_deed_record(new_deed_record(DEED, "p1.jpg"), ["p1.jpg"], "p1.jpg")
-    date = datetime.fromisoformat(p["annotation_metadata"]["annotation_date"])
-    assert date.tzinfo is not None and before <= date <= datetime.now(UTC)
-    # Reopened and closed again: rewritten.
-    q = close_deed_record(p, ["p1.jpg"], "p1.jpg")
-    assert datetime.fromisoformat(q["annotation_metadata"]["annotation_date"]) >= date
-
-
 def test_add_block_rejects_missing_type_boxes_or_text():
     p = new_deed_record(DEED, "p1.jpg")
     box = [("p1.jpg", [0, 0, 5, 5])]
@@ -241,15 +231,25 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     p = add_block(
         new_deed_record(DEED, "a.jpg"), "assets", "", "1,-", "", [("a.jpg", [0] * 4)]
     )
+    before = datetime.now(UTC)
     path = save_deed_record(tmp_path, p, "Ann")
     assert path == tmp_path / "labeled-deed-d1.json"
-    # Every write records who wrote it, and leaves the record passed in alone.
-    assert p["annotation_metadata"]["annotator_name"] is None
-    p["annotation_metadata"]["annotator_name"] = "Ann"
-    assert load_deed_records(tmp_path) == {"d1": p}
-    # Saving again rewrites the same file: one file per deed.
-    save_deed_record(tmp_path, delete_block(p, "A1"), "Ann")
-    assert load_deed_records(tmp_path)["d1"]["annotation"]["assets"] == []
+    # Every write records who wrote it and when, and leaves the record passed in alone.
+    assert p["annotation_metadata"] == {"annotator_name": None, "annotation_date": None}
+    saved = load_deed_records(tmp_path)["d1"]
+    meta = saved.pop("annotation_metadata")
+    assert saved == {k: v for k, v in p.items() if k != "annotation_metadata"}
+    assert meta["annotator_name"] == "Ann"
+    date = datetime.fromisoformat(meta["annotation_date"])
+    assert date.tzinfo is not None and before <= date <= datetime.now(UTC)
+    # Saving again rewrites the same file: one file per deed, with the latest of both.
+    save_deed_record(tmp_path, delete_block(p, "A1"), "Bob")
+    again = load_deed_records(tmp_path)["d1"]
+    assert again["annotation"]["assets"] == []
+    assert again["annotation_metadata"]["annotator_name"] == "Bob"
+    assert (
+        datetime.fromisoformat(again["annotation_metadata"]["annotation_date"]) >= date
+    )
     assert sorted(f.name for f in tmp_path.iterdir()) == [
         "labeled-deed-d1.json",
         "person-0001.json",

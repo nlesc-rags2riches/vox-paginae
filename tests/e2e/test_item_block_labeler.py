@@ -120,7 +120,9 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     open_deed(page, click)
     expect(status(page, "editing labeled-deed-deed-3 · page 2/3")).to_be_visible()
     # Written at once, before any item: the current page is the header page.
-    assert deed_record(data_root) == {
+    record = deed_record(data_root)
+    assert record.pop("annotation_metadata")["annotator_name"] == "Ann"
+    assert record == {
         "deed_id": "deed-3",
         "copied_deed_person_data": {
             "aktenummer": "3",
@@ -130,7 +132,6 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
             "plaats_overlijden": "Oostdorp",
         },
         "scans": ["page_02.jpg"],
-        "annotation_metadata": {"annotator_name": "Ann", "annotation_date": None},
         "annotation": {"assets": [], "liabilities": []},
     }
     # While open, the deed row is text: no dropdown to pick another deed from.
@@ -183,18 +184,14 @@ def test_annotator_name_is_locked_first_and_every_write_records_it(
     expect(status(page, "no deed/person")).to_be_visible()
     expect(text_input(page, "annotator")).to_be_disabled()  # no stray edits
     open_deed(page, click)
-    # Every write records the annotator; the date is the close time.
-    assert deed_record(data_root)["annotation_metadata"] == {
-        "annotator_name": "Ann",
-        "annotation_date": None,
-    }
-    click("close deed/person")
-    expect(status(page, "no deed/person")).to_be_visible()
+    # Every write records the annotator and the time, with its timezone.
     first = deed_record(data_root)["annotation_metadata"]
     assert first["annotator_name"] == "Ann"
     assert datetime.fromisoformat(first["annotation_date"]).tzinfo is not None
+    click("close deed/person")
+    expect(status(page, "no deed/person")).to_be_visible()
 
-    # Someone else unlocks, reopens and saves: the latest annotator, the old close time.
+    # Someone else unlocks, reopens and saves: the latest annotator and time.
     click("unlock")
     expect(page.get_by_text("give your name and lock it to start")).to_be_visible()
     expect(text_input(page, "annotator")).to_have_value("Ann")  # kept to edit
@@ -206,13 +203,8 @@ def test_annotator_name_is_locked_first_and_every_write_records_it(
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "value", "1,-")
     save(page, click)
-    assert deed_record(data_root)["annotation_metadata"] == {
-        "annotator_name": "Bob",
-        "annotation_date": first["annotation_date"],
-    }
-    click("close deed/person")
-    expect(status(page, "no deed/person")).to_be_visible()
     second = deed_record(data_root)["annotation_metadata"]
+    assert second["annotator_name"] == "Bob"
     assert datetime.fromisoformat(second["annotation_date"]) > datetime.fromisoformat(
         first["annotation_date"]
     )
