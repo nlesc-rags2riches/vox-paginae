@@ -920,10 +920,10 @@ def layout(
             mo.hstack(
                 [deed_row, deed_details], justify="start", align="center"
             ),
+            open_hint,
             mo.hstack(
                 [
                     open_btn,
-                    open_hint,
                     go_to_btn,
                     reopen_btn,
                     delete_file_ui,
