@@ -26,8 +26,9 @@ changes only on purpose, and never describes internals.
   `<book>/labeled-deed-<deed_id>.json`, saved next to the jpgs. A deed that has a file
   cannot be opened anew, only reopened.
 - A deed/person belongs to exactly one book.
-- The file is written as soon as the deed/person is opened. The page it is opened on is
-  its **header page**.
+- Before opening, you draw a box around the deed/person's header on its first page;
+  **open** stays disabled until there is one. The file is written as soon as the
+  deed/person is opened. The page of the header box is its **header page**.
 - The file holds:
   - `deed_id`: as in `deeds.json`
   - `copied_deed_person_data`: the deed's `aktenummer` and `plaats`, and every field
@@ -39,7 +40,10 @@ changes only on purpose, and never describes internals.
     - `annotator_name`: the annotator of the latest write
     - `annotation_date`: the time of the latest write, with its timezone (ISO 8601,
       e.g. `2026-10-27T14:03:12.123456+01:00`)
-  - `annotation`: `assets` and `liabilities`, each a list of items
+  - `annotation`:
+    - `header`: the header box, a single box shaped like an item's `layout` entry
+      (`scan`, `bbox`, `pagexml_link`, `pagexml_baseline_ids`)
+    - then `assets` and `liabilities`, each a list of items
 - An item's **type** (asset or liability) is the list it's in. There is no separate
   field for it. Each item has:
   - `layout`: one entry per box, each with `scan` (the filename), `bbox`
@@ -82,6 +86,8 @@ changes only on purpose, and never describes internals.
     "annotation_date": "2026-10-27T14:03:12.123456+01:00"
   },
   "annotation": {
+    "header": {"scan": "page_01.jpg", "bbox": [300, 120, 2400, 520],
+               "pagexml_link": null, "pagexml_baseline_ids": null},
     "assets": [
       {"layout": [
          {"scan": "page_01.jpg", "bbox": [412, 1880, 2310, 2240],
