@@ -5,8 +5,9 @@ Standalone continuation of the item-block labeler from the Rags2Riches playgroun
 human-reviewed: keep changes small, one step at a time, with the user in the loop.
 
 - UI: `notebooks/item_block_labeler.py` (marimo). Logic: `src/vox_paginae/blocks.py`.
-  The `marimo-library` skill governs the split; live notebook edits go through
-  `marimo-pair` (the running kernel is the source of truth).
+  The `marimo-library` skill governs the split. Edit the notebook only through
+  `marimo-pair`, including when the server runs with `--watch`: the running kernel is
+  the source of truth.
 - Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
   working run the affected ones with `-k`, and the whole suite once at the end. Known flakes:
   `test_restart_resumes_on_last_page_with_no_person`, `test_edit_replaces_block_in_place` (#11).
