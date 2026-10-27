@@ -88,10 +88,38 @@ def _(default_root, mo, root_picker):
 
 
 @app.cell(hide_code=True)
-def annotator_input(mo):
-    # A plain name for now: every close records it, with the close time.
-    annotator_in = mo.ui.text(label="annotator")
-    return (annotator_in,)
+def annotator_state(mo):
+    # (name, locked). Its own cell: the cells below rebuild from it on lock and unlock.
+    get_annotator, set_annotator = mo.state(("", False))
+    return get_annotator, set_annotator
+
+
+@app.cell(hide_code=True)
+def annotator_input(get_annotator, mo):
+    _name, _locked = get_annotator()
+    # Read-only while locked: a stray keystroke cannot change who is recorded.
+    # debounce: lock enables while typing, as save does
+    annotator_in = mo.ui.text(
+        label="annotator", value=_name, disabled=_locked, debounce=300
+    )
+    # A plain name for now: every write records it. "" until locked: nothing past the
+    # book cell runs. From the state, not the input, so typing reruns nothing below.
+    annotator_name = _name if _locked else ""
+    return annotator_in, annotator_name
+
+
+@app.cell(hide_code=True)
+def annotator_lock(annotator_in, get_annotator, mo, set_annotator):
+    _name, _locked = get_annotator()
+    lock_btn = mo.ui.button(
+        label="unlock" if _locked else "lock",
+        disabled=not (_locked or annotator_in.value.strip()),
+        on_click=lambda _: set_annotator(
+            (_name, False) if _locked else (annotator_in.value.strip(), True)
+        ),
+    )
+    annotator_row = mo.hstack([annotator_in, lock_btn], justify="start", align="end")
+    return (annotator_row,)
 
 
 @app.cell(hide_code=True)
@@ -162,11 +190,9 @@ def page_buttons(
                 _path = save_deed_record(
                     book,
                     close_deed_record(
-                        get_deed_record(),
-                        [p.name for p in pages],
-                        page.name,
-                        annotator_name,
+                        get_deed_record(), [p.name for p in pages], page.name
                     ),
+                    annotator_name,
                 )
                 mo.status.toast(f"saved {_path.name}, deed/person closed")
             set_deed_record(None)
@@ -226,7 +252,8 @@ def _(block_labels, get_deed_record, get_editing, mo):
 
 @app.cell(hide_code=True)
 def _(
-    annotator_in,
+    annotator_name,
+    annotator_row,
     book_dd,
     book_pages,
     books,
@@ -235,27 +262,35 @@ def _(
     mo,
     root,
 ):
-    # The name comes first: nothing past here runs without it.
-    annotator_name = annotator_in.value.strip()
+    # The locked name comes first: nothing past here runs without it.
     mo.stop(
         not annotator_name,
-        mo.vstack([annotator_in, mo.md("**give your name to start**")]),
+        mo.vstack(
+            [annotator_row, mo.md("**give your name and lock it to start**")]
+        ),
     )
     book_i, page_i = get_book_page()
     # Each stop keeps the book dropdown: leaving a book never needs the jump slider.
-    mo.stop(book_i >= len(books), mo.vstack([book_dd, mo.md("**all books done**")]))
+    mo.stop(
+        book_i >= len(books),
+        mo.vstack([annotator_row, book_dd, mo.md("**all books done**")]),
+    )
     book = books[book_i]
     # Every book has one: a missing deeds.json is a data mistake, so nothing past here runs.
     deeds = load_deeds(book)
     mo.stop(
         deeds is None,
         mo.vstack(
-            [book_dd, mo.md(f"**no `deeds.json` in book `{book.relative_to(root)}`**")]
+            [
+                annotator_row,
+                book_dd,
+                mo.md(f"**no `deeds.json` in book `{book.relative_to(root)}`**"),
+            ]
         ),
     )
     pages = book_pages[book_i]
     page = pages[page_i]
-    return annotator_name, book, deeds, page, page_i, pages
+    return book, deeds, page, page_i, pages
 
 
 @app.cell(hide_code=True)
@@ -475,7 +510,7 @@ def block_buttons(
             _deed_record = replace_block(
                 get_deed_record(), get_editing(), *_fields
             )
-        _path = save_deed_record(book, _deed_record)
+        _path = save_deed_record(book, _deed_record, annotator_name)
         set_deed_record(_deed_record)
         set_pending_boxes([])
         set_editing(None)
@@ -497,16 +532,15 @@ def block_buttons(
     def _delete(_):
         if block_dd.value:
             _deed_record = delete_block(get_deed_record(), block_dd.value)
-            _path = save_deed_record(book, _deed_record)
+            _path = save_deed_record(book, _deed_record, annotator_name)
             set_deed_record(_deed_record)
             mo.status.toast(f"saved {_path.name}")
 
     def _close_person(_):
         _path = save_deed_record(
             book,
-            close_deed_record(
-                get_deed_record(), _names, page.name, annotator_name
-            ),
+            close_deed_record(get_deed_record(), _names, page.name),
+            annotator_name,
         )
         set_deed_record(None)  # no deed/person open until the next open
         set_type(None)
@@ -659,6 +693,7 @@ def deed_info(
 
 @app.cell(hide_code=True)
 def deed_open(
+    annotator_name,
     book,
     deed_path,
     mo,
@@ -678,7 +713,7 @@ def deed_open(
             return
         _deed_record = new_deed_record(openable_deed, page.name)
         _path = save_deed_record(
-            book, _deed_record
+            book, _deed_record, annotator_name
         )  # at once: one file per deed
         set_deed_id(_deed_record["deed_id"])
         set_deed_record(_deed_record)
@@ -822,7 +857,7 @@ def status_line(
 
 @app.cell(hide_code=True)
 def layout(
-    annotator_in,
+    annotator_row,
     block_dd,
     book,
     book_dd,
@@ -862,7 +897,7 @@ def layout(
     # and deed/person, page, block.
     _form = mo.vstack(
         [
-            annotator_in,
+            annotator_row,
             mo.hstack(
                 [debug_switch, status_line], justify="start", align="center"
             )
@@ -934,8 +969,8 @@ def layout(
 
 
 @app.cell(hide_code=True)
-def jump_slider(annotator_in, book_pages, get_book_page, mo):
-    mo.stop(not annotator_in.value.strip())  # the name comes first, as for the form
+def jump_slider(annotator_name, book_pages, get_book_page, mo):
+    mo.stop(not annotator_name)  # the locked name comes first, as for the form
     # Every page of every book in labeling order: the slider position is overall progress.
     all_pages = [
         (b, p)

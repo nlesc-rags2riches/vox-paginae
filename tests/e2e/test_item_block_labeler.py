@@ -57,12 +57,17 @@ def status(page, text):
     return page.get_by_text(text)
 
 
-def open_app(page, url, annotator="Ann"):
-    """Load the app and give the annotator name, which the form needs first."""
+def lock_annotator(page, name="Ann"):
+    """Give the annotator name and lock it: the form needs that first."""
+    expect(text_input(page, "annotator")).to_be_visible(timeout=60_000)
+    fill(page, "annotator", name)
+    button(page, "lock").click()  # not `click`: open_app has no fixture for it
+
+
+def open_app(page, url):
     page.set_viewport_size({"width": 1600, "height": 1200})
     page.goto(url)
-    expect(text_input(page, "annotator")).to_be_visible(timeout=60_000)
-    fill(page, "annotator", annotator)
+    lock_annotator(page)
     expect(status(page, "no deed/person")).to_be_visible(timeout=60_000)
 
 
@@ -125,6 +130,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
             "plaats_overlijden": "Oostdorp",
         },
         "scans": ["page_02.jpg"],
+        "annotation_metadata": {"annotator_name": "Ann", "annotation_date": None},
         "annotation": {"assets": [], "liabilities": []},
     }
     # While open, the deed row is text: no dropdown to pick another deed from.
@@ -156,39 +162,57 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     expect(button(page, "open")).to_be_enabled()
 
 
-def test_annotator_name_comes_first_and_every_close_records_it(
+def test_annotator_name_is_locked_first_and_every_write_records_it(
     marimo_server, data_root, page, click
 ):
     page.set_viewport_size({"width": 1600, "height": 1200})
     page.goto(marimo_server)
     expect(text_input(page, "annotator")).to_be_visible(timeout=60_000)
-    # No name: no page, no book, no deed, no buttons.
-    expect(page.get_by_text("give your name to start")).to_be_visible()
+    # No locked name: no page, no book, no deed, no buttons.
+    expect(page.get_by_text("give your name and lock it to start")).to_be_visible()
     expect(page.locator("canvas")).to_have_count(0)
     for label in ["open", "next page", "save", "go"]:
         expect(button(page, label)).to_have_count(0)
-    fill(page, "annotator", "  ")  # blank counts as empty
-    expect(page.get_by_text("give your name to start")).to_be_visible()
-
+    expect(button(page, "lock")).to_be_disabled()
+    fill(page, "annotator", "  ")
+    expect(button(page, "lock")).to_be_disabled()  # blank counts as empty
     fill(page, "annotator", "Ann")
+    expect(page.locator("canvas")).to_have_count(0)  # typed, not locked yet
+
+    click("lock")
     expect(status(page, "no deed/person")).to_be_visible()
+    expect(text_input(page, "annotator")).to_be_disabled()  # no stray edits
     open_deed(page, click)
-    assert "annotation_metadata" not in deed_record(data_root)  # written on close
+    # Every write records the annotator; the date is the close time.
+    assert deed_record(data_root)["annotation_metadata"] == {
+        "annotator_name": "Ann",
+        "annotation_date": None,
+    }
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
     first = deed_record(data_root)["annotation_metadata"]
     assert first["annotator_name"] == "Ann"
     assert datetime.fromisoformat(first["annotation_date"]).tzinfo is not None
 
-    # Someone else reopens and closes it: the latest annotator and close time.
-    fill(page, "annotator", "Bob")
+    # Someone else unlocks, reopens and saves: the latest annotator, the old close time.
+    click("unlock")
+    expect(page.get_by_text("give your name and lock it to start")).to_be_visible()
+    expect(text_input(page, "annotator")).to_have_value("Ann")  # kept to edit
+    lock_annotator(page, "Bob")
     pick_deed(page, "Jan Modaal")
     click("reopen")
     expect(status(page, "editing labeled-deed-deed-3")).to_be_visible()
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.2, 0.8, 0.3)
+    fill(page, "value", "1,-")
+    save(page, click)
+    assert deed_record(data_root)["annotation_metadata"] == {
+        "annotator_name": "Bob",
+        "annotation_date": first["annotation_date"],
+    }
     click("close deed/person")
     expect(status(page, "no deed/person")).to_be_visible()
     second = deed_record(data_root)["annotation_metadata"]
-    assert second["annotator_name"] == "Bob"
     assert datetime.fromisoformat(second["annotation_date"]) > datetime.fromisoformat(
         first["annotation_date"]
     )
@@ -721,7 +745,7 @@ def test_book_without_deeds_json_stops_the_labeler(data_root, page):
     with serve(data_root) as url:
         page.set_viewport_size({"width": 1600, "height": 1200})
         page.goto(url)
-        fill(page, "annotator", "Ann")
+        lock_annotator(page)
         expect(page.get_by_text("no deeds.json in book book1")).to_be_visible(
             timeout=60_000
         )
