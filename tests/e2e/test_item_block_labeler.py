@@ -229,7 +229,7 @@ def test_edit_header_moves_it_to_an_earlier_page(marimo_server, data_root, page,
     header = deed_record(data_root)["annotation"]["header"]
     assert header["scan"] == "page_01.jpg"
     assert fractions(header["bbox"]) == pytest.approx(NEW_HEADER, abs=0.01)
-    assert deed_record(data_root)["scans"] == ["page_01.jpg", "page_02.jpg"]
+    assert deed_record(data_root)["scans"] == ["page_01.jpg"]  # never closed
     # Unlocked: an item now goes on page 1, before the old header page.
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.5, 0.8, 0.6)
