@@ -362,8 +362,9 @@ def resume(books: list[Path]) -> tuple[int, int]:
     """Where to pick up, ``(book, page)``, from the output files alone.
 
     Books are labeled in order, so the last book with any ``labeled-deed-*.json`` is
-    open, on the latest page among its files' last ``scans``. No deed/person is reopened
-    (closing is not recorded). With no files at all: ``(0, 0)``.
+    open, on the latest page among its files' last ``scans``: a closed deed/person's close
+    page (or the later page a box reaches, see ``close_deed_record``), a not yet closed
+    one's header page. No deed/person is reopened. With no files at all: ``(0, 0)``.
     """
     for b in reversed(range(len(books))):
         deed_records = load_deed_records(books[b])

@@ -13,6 +13,7 @@ from vox_paginae.blocks import (
     deed_choices,
     delete_block,
     find_books,
+    list_pages,
     load_deed_records,
     load_deeds,
     new_deed_record,
@@ -322,6 +323,12 @@ def test_resume_lands_on_the_latest_page_of_the_last_book_with_files(tmp_path):
         b, new_deed_record({**DEED, "deed_id": "d0"}, "b1.jpg", [0] * 4), "Ann"
     )
     assert resume(books) == (1, 1)
+    # Closed: on its close page.
+    record = load_deed_records(b)["d1"]
+    save_deed_record(
+        b, close_deed_record(record, [p.name for p in list_pages(b)], "b3.jpg"), "Ann"
+    )
+    assert resume(books) == (1, 2)
 
 
 def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
