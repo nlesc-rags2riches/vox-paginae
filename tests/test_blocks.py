@@ -7,7 +7,9 @@ import pytest
 from vox_paginae.blocks import (
     add_block,
     block_labels,
+    clear_balance,
     close_deed_record,
+    deed_boxes,
     deed_choices,
     delete_block,
     find_books,
@@ -19,6 +21,7 @@ from vox_paginae.blocks import (
     resume,
     save_deed_record,
     saved_boxes,
+    set_balance,
     single_overledene,
 )
 
@@ -67,6 +70,7 @@ def test_new_deed_record_copies_the_deed_and_starts_on_the_header_box():
                 "pagexml_link": None,
                 "pagexml_baseline_ids": None,
             },
+            "balance": None,  # optional: none until one is saved
             "assets": [],
             "liabilities": [],
         },
@@ -114,6 +118,31 @@ def test_blocks_go_into_the_annotation_and_leave_scans_alone():
     assert len(p["annotation"]["assets"]) == 2  # originals untouched
 
 
+def test_balance_is_one_optional_box_with_three_totals_as_typed():
+    p = new_deed_record(DEED, "p2.jpg", [0] * 4)
+    q = set_balance(p, "p3.jpg", [1, 2.6, 30, 40], " 1.000,- ", "", "f 900")
+    assert q["annotation"]["balance"] == {
+        "layout": {
+            "scan": "p3.jpg",
+            "bbox": [1, 2, 30, 40],
+            "pagexml_link": None,
+            "pagexml_baseline_ids": None,
+        },
+        "total_assets": " 1.000,- ",
+        "total_liabilities": "",
+        "total": "f 900",
+    }
+    assert [label for label, _ in deed_boxes(q)] == ["H", "B"]
+    assert p["annotation"]["balance"] is None  # original untouched
+    with pytest.raises(ValueError):  # at most one
+        set_balance(q, "p2.jpg", [0, 0, 5, 5], "1", "", "")
+    with pytest.raises(ValueError):  # at least one total
+        set_balance(p, "p2.jpg", [0, 0, 5, 5], " ", "", "")
+    # Cleared, it can be saved again.
+    assert clear_balance(q) == p
+    assert set_balance(clear_balance(q), "p2.jpg", [0, 0, 5, 5], "1", "", "")
+
+
 def test_replace_block_keeps_position_unless_type_changes():
     box = [("p1.jpg", [0, 0, 5, 5])]
     p = new_deed_record(DEED, "p1.jpg", [0] * 4)
@@ -159,6 +188,9 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
         "p3.jpg",
         "p4.jpg",
     ]
+    # So does the balance's.
+    p = set_balance(p, "p5.jpg", [0] * 4, "1", "", "")
+    assert close_deed_record(p, page_names, "p2.jpg")["scans"][-1] == "p5.jpg"
 
 
 def test_add_block_rejects_missing_type_boxes_or_text():

@@ -69,6 +69,7 @@ def new_deed_record(deed: dict, header_scan: str, header_bbox: list[int]) -> dic
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
             "header": new_box(header_scan, header_bbox),
+            "balance": None,  # optional: see set_balance
             "assets": [],
             "liabilities": [],
         },
@@ -108,6 +109,40 @@ def add_block(
     return deed_record
 
 
+def set_balance(
+    deed_record: dict,
+    scan: str,
+    bbox: list[int],
+    total_assets: str,
+    total_liabilities: str,
+    total: str,
+) -> dict:
+    """Return a copy of ``deed_record`` with its balance: ``bbox`` on ``scan``.
+
+    The totals are stored as typed; at least one must be non-blank. A deed/person has at
+    most one balance: a second raises ``ValueError``; ``clear_balance`` first.
+    """
+    if deed_record["annotation"]["balance"] is not None:
+        raise ValueError("a deed/person has at most one balance")
+    if not any(t.strip() for t in (total_assets, total_liabilities, total)):
+        raise ValueError("a balance needs at least one total")
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation"]["balance"] = {
+        "layout": new_box(scan, bbox),
+        "total_assets": total_assets,
+        "total_liabilities": total_liabilities,
+        "total": total,
+    }
+    return deed_record
+
+
+def clear_balance(deed_record: dict) -> dict:
+    """Return a copy of ``deed_record`` without a balance."""
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation"]["balance"] = None
+    return deed_record
+
+
 def block_labels(deed_record: dict | None) -> list[tuple[str, dict]]:
     """``(label, item)`` for every item: ``A1, A2…`` for assets, then ``L1, L2…``.
 
@@ -123,17 +158,23 @@ def block_labels(deed_record: dict | None) -> list[tuple[str, dict]]:
 
 
 def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
-    """``(label, BOX)`` for every box: ``("H", header)``, then each item's, by label.
+    """``(label, BOX)`` for every box: ``("H", header)``, ``("B", balance)`` if any, then
+    each item's, by label.
 
     ``None`` (no open deed/person) has none.
     """
     if deed_record is None:
         return []
-    return [("H", deed_record["annotation"]["header"])] + [
-        (label, box)
-        for label, item in block_labels(deed_record)
-        for box in item["layout"]
-    ]
+    balance = deed_record["annotation"]["balance"]
+    return (
+        [("H", deed_record["annotation"]["header"])]
+        + ([("B", balance["layout"])] if balance else [])
+        + [
+            (label, box)
+            for label, item in block_labels(deed_record)
+            for box in item["layout"]
+        ]
+    )
 
 
 def split_label(label: str) -> tuple[str, int]:
@@ -184,7 +225,7 @@ def close_deed_record(
     """Return a copy of ``deed_record`` closed on ``close_scan``.
 
     ``scans`` becomes every page in ``page_names`` (the book's, in order) from the
-    header page (``scans[0]``) to ``close_scan`` or the last page an item reaches,
+    header page (``scans[0]``) to ``close_scan`` or the last page a box reaches,
     whichever is later, both included, with or without items. Closing before the header
     page raises ``ValueError``.
     """
@@ -193,12 +234,7 @@ def close_deed_record(
     if end < start:
         raise ValueError("a deed/person cannot close before its header page")
     end = max(
-        [end]
-        + [
-            page_names.index(box["scan"])
-            for _, item in block_labels(deed_record)
-            for box in item["layout"]
-        ]
+        [end] + [page_names.index(box["scan"]) for _, box in deed_boxes(deed_record)]
     )
     deed_record = copy.deepcopy(deed_record)
     deed_record["scans"] = page_names[start : end + 1]
@@ -308,7 +344,7 @@ def saved_boxes(
 ) -> list[tuple[str, list[int]]]:
     """``(label, bbox)`` of every box on ``scan`` in ``book``'s deed files, by deed.
 
-    Labels as in ``deed_boxes``: ``H`` for a header.
+    Labels as in ``deed_boxes``: ``H`` for a header, ``B`` for a balance.
 
     ``skip_deed_id`` is the open deed/person: it is drawn from memory, labelled, not
     faded.
