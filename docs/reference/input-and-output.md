@@ -29,13 +29,16 @@ changes only on purpose, and never describes internals.
 - Before opening, you draw a box around the deed/person's header on its first page;
   **open** stays disabled until there is one. The file is written as soon as the
   deed/person is opened. The page of the header box is its **header page**.
+- While a deed/person is open, a box drawn on its header page or any later page can be
+  saved as its **balance**, with three totals, at least one filled in. A deed/person
+  has at most one balance, or none: clear it to save another.
 - The file holds:
   - `deed_id`: as in `deeds.json`
   - `copied_deed_person_data`: the deed's `aktenummer` and `plaats`, and every field
     of its overledene except `rol`, side by side, copied as they are in `deeds.json`
   - `scans`: every page from the header page to the page it was closed on, in page
-    order, with or without items. If an item has a box on a later page, `scans` reaches
-    that page instead. Until the first close, only the header page.
+    order, with or without items. If an item or the balance has a box on a later page,
+    `scans` reaches that page instead. Until the first close, only the header page.
   - `annotation_metadata`:
     - `annotator_name`: the annotator of the latest write
     - `annotation_date`: the time of the latest write, with its timezone (ISO 8601,
@@ -43,6 +46,9 @@ changes only on purpose, and never describes internals.
   - `annotation`:
     - `header`: the header box, a single box shaped like an item's `layout` entry
       (`scan`, `bbox`, `pagexml_link`, `pagexml_baseline_ids`)
+    - `balance`: `null` without one; otherwise `layout` (a single box, shaped like
+      `header`), and `total_assets`, `total_liabilities` and `total`, strings stored
+      exactly as typed (`""` when left empty)
     - then `assets` and `liabilities`, each a list of items
 - An item's **type** (asset or liability) is the list it's in. There is no separate
   field for it. Each item has:
@@ -57,7 +63,8 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed/person is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, and every added, changed or deleted item, is in the file at once.
+  version. Opening, every added, changed or deleted item, and saving or clearing the
+  balance, is in the file at once.
   Closing rewrites `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
 - Moving past a book's last page closes the open deed/person there.
@@ -88,6 +95,10 @@ changes only on purpose, and never describes internals.
   "annotation": {
     "header": {"scan": "page_01.jpg", "bbox": [300, 120, 2400, 520],
                "pagexml_link": null, "pagexml_baseline_ids": null},
+    "balance": {
+      "layout": {"scan": "page_02.jpg", "bbox": [400, 2600, 2300, 3000],
+                 "pagexml_link": null, "pagexml_baseline_ids": null},
+      "total_assets": "900,-", "total_liabilities": "", "total": "900,-"},
     "assets": [
       {"layout": [
          {"scan": "page_01.jpg", "bbox": [412, 1880, 2310, 2240],
