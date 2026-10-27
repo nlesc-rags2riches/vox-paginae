@@ -293,6 +293,64 @@ def test_balance_box_is_saved_once_cleared_and_saved_again(
     assert balance["total_liabilities"] == "50"
 
 
+def test_edit_balance_rewrites_it_in_place(marimo_server, data_root, page, click):
+    open_app(page, marimo_server)
+    open_deed(page, click)
+    # An item, so only the edit can disable edit and delete below.
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.35, 0.8, 0.45)
+    fill(page, "value", "1,-")
+    save(page, click)
+    drag_box(page, *BALANCE)
+    fill(page, "total assets", "1")
+    click("save box as balance")
+    expect(text_input(page, "total assets")).to_be_disabled()
+
+    # Cancelled: the saved totals come back, read only.
+    click("edit balance box")
+    expect(status(page, "· editing balance")).to_be_visible()
+    fill(page, "total assets", "2")
+    click("cancel balance edit")
+    expect(status(page, "· editing balance")).to_have_count(0)
+    expect(text_input(page, "total assets")).to_have_value("1")
+    expect(text_input(page, "total assets")).to_be_disabled()
+
+    # Only the totals change: no box drawn keeps the saved one.
+    click("edit balance box")
+    fill(page, "total", "3")
+    click("save box as balance")
+    expect(text_input(page, "total")).to_be_disabled()
+    balance = deed_record(data_root)["annotation"]["balance"]
+    assert balance["layout"]["scan"] == "page_01.jpg"
+    assert fractions(balance["layout"]["bbox"]) == pytest.approx(BALANCE, abs=0.01)
+    assert (balance["total_assets"], balance["total"]) == ("1", "3")
+
+    # A box drawn replaces it, on another page too.
+    click("edit balance box")
+    click("next page")
+    expect(status(page, "page 2/3 · pending 0 · editing balance")).to_be_visible()
+    # Locked, as if closed: with an item, a type, a value and a drawn box, nothing else
+    # would disable these.
+    drag_box(page, *NEW_HEADER)
+    fill(page, "value", "2,-")  # not "1,-": typing it again is not sent (marimo)
+    for label in [
+        "save",
+        "continue",
+        "edit",
+        "delete",
+        "close deed/person",
+        "edit header",
+        "clear balance box",
+    ]:
+        expect(button(page, label)).to_be_disabled()
+    click("save box as balance")
+    expect(status(page, "· editing balance")).to_have_count(0)
+    balance = deed_record(data_root)["annotation"]["balance"]
+    assert balance["layout"]["scan"] == "page_02.jpg"
+    assert fractions(balance["layout"]["bbox"]) == pytest.approx(NEW_HEADER, abs=0.01)
+    assert (balance["total_assets"], balance["total"]) == ("1", "3")
+
+
 def test_annotator_name_is_locked_first_and_every_write_records_it(
     marimo_server, data_root, page, click
 ):
