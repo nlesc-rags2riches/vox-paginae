@@ -46,7 +46,6 @@ def imports():
         Image,
         Path,
         add_item,
-        item_tags,
         clear_balance,
         close_deed_record,
         crop,
@@ -55,6 +54,7 @@ def imports():
         deed_path,
         delete_item,
         find_books,
+        item_tags,
         list_pages,
         load_deed_records,
         load_deeds,
@@ -262,7 +262,7 @@ def type_input(get_type, mo):
 
 
 @app.cell(hide_code=True)
-def _(item_tags, get_deed_record, get_editing, mo):
+def _(get_deed_record, get_editing, item_tags, mo):
     get_deed_record()  # re-created (cleared) after every open, write and close
     # Prefilled from the item being edited, if any.
     _item = dict(item_tags(get_deed_record())).get(get_editing(), {})
@@ -280,7 +280,7 @@ def _(item_tags, get_deed_record, get_editing, mo):
         full_width=True,
         debounce=False,
     )
-    return category_in, desc_in, amount_in
+    return amount_in, category_in, desc_in
 
 
 @app.cell(hide_code=True)
@@ -497,8 +497,8 @@ def zooms(book, crop, layout_boxes, mo):
 @app.cell(hide_code=True)
 def item_buttons(
     add_item,
+    amount_in,
     annotator_name,
-    item_tags,
     book,
     category_in,
     close_deed_record,
@@ -510,6 +510,7 @@ def item_buttons(
     get_editing_balance,
     get_editing_header,
     get_pending_boxes,
+    item_tags,
     layout_boxes,
     mo,
     page,
@@ -522,7 +523,6 @@ def item_buttons(
     set_type,
     split_tag,
     type_radio,
-    amount_in,
 ):
     _names = [p.name for p in pages]
     # Editing the header or balance locks the items, as if closed.
@@ -645,13 +645,13 @@ def item_buttons(
         on_click=_close_deed,
     )
     return (
-        item_dd,
         cancel_edit_btn,
         clear_pending_btn,
         close_deed_btn,
         continue_btn,
         delete_btn,
         edit_btn,
+        item_dd,
         save_btn,
     )
 
@@ -951,8 +951,8 @@ def deed_move_picker(
     get_deed_record()
     move_dd = mo.ui.dropdown(
         options={
-            _tag: _deed_id
-            for _tag, _deed_id in deed_choices(deeds, book).items()
+            _choice: _deed_id
+            for _choice, _deed_id in deed_choices(deeds, book).items()
             if not deed_path(book, _deed_id).exists()
         },
         searchable=True,
@@ -1180,8 +1180,8 @@ def status_line(
 
 @app.cell(hide_code=True)
 def layout(
+    amount_in,
     annotator_row,
-    item_dd,
     book,
     book_dd,
     cancel_balance_btn,
@@ -1205,6 +1205,7 @@ def layout(
     fig_h_slider,
     get_deed_id,
     go_to_btn,
+    item_dd,
     mo,
     move_ui,
     next_page_btn,
@@ -1222,7 +1223,6 @@ def layout(
     total_in,
     total_liabilities_in,
     type_radio,
-    amount_in,
     zooms,
 ):
     _page_column = mo.vstack(
@@ -1367,8 +1367,8 @@ def jump_strip(
     _i = jump_slider.value - 1
     _target = all_pages[_i]
     _here = get_book_page()
-    # A deed never crosses books, and pending boxes belong to this page: while either
-    # is open the slider and strip are view only.
+    # A deed never crosses books, and pending boxes belong to this page: while a deed is
+    # open or boxes are pending, the slider and strip are view only.
     jump_btn = mo.ui.button(
         label="go",
         disabled=get_deed_record() is not None

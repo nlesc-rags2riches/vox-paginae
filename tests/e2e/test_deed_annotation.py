@@ -134,7 +134,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
         # No balance: optional.
         "annotation": {"balance": None, "assets": [], "liabilities": []},
     }
-    # While open, the deed row is text: the one deed dropdown is move annotation's target.
+    # While open, the deed row is text: the one deed dropdown is the move annotation target.
     expect(page.get_by_test_id("marimo-plugin-searchable-dropdown")).to_have_count(1)
     expect(page.get_by_text("move to", exact=True)).to_be_visible()
     expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
@@ -323,7 +323,7 @@ def test_edit_balance_rewrites_it_in_place(marimo_server, data_root, page, click
     click("edit balance box")
     click("next page")
     expect(status(page, "page 2/3 · pending 0 · editing balance")).to_be_visible()
-    # Locked, as if closed: with an item, a type, a value and a drawn box, nothing else
+    # Locked, as if closed: with an item, a type, an amount and a drawn box, nothing else
     # would disable these.
     drag_box(page, *NEW_HEADER)
     fill(page, "amount", "1,-")
@@ -482,7 +482,7 @@ def test_restart_after_close_lands_on_the_close_page(data_root, page, click):
     assert deed_record(data_root, "deed-7g")["scans"] == ["page_02.jpg"]
 
 
-def test_old_person_files_are_ignored(data_root, page):
+def test_old_files_are_ignored(data_root, page):
     # Old format, on page 2: neither resumed from, listed nor drawn.
     (data_root / "book1" / "person-0001.json").write_text(
         json.dumps({"metadata": {"scans": ["page_02.jpg"]}}), encoding="utf-8"
@@ -513,7 +513,7 @@ def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, cl
     expect(button(page, "open")).to_be_disabled()  # two deed persons: cannot be used
     open_deed(page, click)
     # The item inputs are re-created on open.
-    expect(button(page, "save")).to_be_disabled()  # no value, no description
+    expect(button(page, "save")).to_be_disabled()  # no amount, no description
     fill(page, "amount", "  ")
     expect(button(page, "save")).to_be_disabled()  # blank counts as empty
     fill(page, "amount", "900,-")
@@ -735,9 +735,9 @@ def test_edit_replaces_item_in_place(marimo_server, data_root, page, click):
     open_app(page, marimo_server)
     open_deed(page, click)
     page.get_by_role("radio", name="assets").check()
-    for value in ["1,-", "2,-"]:
+    for amount in ["1,-", "2,-"]:
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
-        fill(page, "amount", value)
+        fill(page, "amount", amount)
         save(page, click)
     expect(button(page, "cancel edit")).to_be_disabled()
 
@@ -827,7 +827,7 @@ def test_go_to_deed_moves_to_its_header_page(marimo_server, data_root, page, cli
     expect(button(page, "go to deed")).to_be_disabled()  # deed-3 is open
 
     click("close deed")
-    # Wait: until then the searchable dropdown is still move annotation's one.
+    # Wait: until then the searchable dropdown is still the move annotation one.
     expect(status(page, "no deed")).to_be_visible()
     pick_deed(page, "Westdorp")
     expect(button(page, "go to deed")).to_be_disabled()  # no file: open it
