@@ -272,7 +272,8 @@ def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
                 deed("d2", "105", "Alphen", "C"),
                 deed("d3", "93", "Oostdorp", "A"),
             ]
-        )
+        ),
+        encoding="utf-8",
     )
     deeds = load_deeds(tmp_path)
     assert list(deeds) == ["d1", "d2", "d3"]
@@ -350,7 +351,9 @@ def test_single_overledene_returns_the_one_person():
 
 def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     assert load_deed_records(tmp_path) == {}
-    (tmp_path / "person-0001.json").write_text('{"metadata": {}}')  # old format
+    (tmp_path / "person-0001.json").write_text(
+        '{"metadata": {}}', encoding="utf-8"
+    )  # old format
     p = add_block(
         new_deed_record(DEED, "a.jpg", [0] * 4),
         "assets",

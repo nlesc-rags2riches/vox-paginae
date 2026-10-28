@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  # A file opened without `encoding=` fails the tests (see pyproject.toml).
+  PYTHONWARNDEFAULTENCODING: "1"
 jobs:
   lint:
     runs-on: ubuntu-latest
