@@ -16,6 +16,7 @@ from vox_paginae.blocks import (
     list_pages,
     load_deed_records,
     load_deeds,
+    move_deed_record,
     new_deed_record,
     next_page,
     replace_balance,
@@ -350,6 +351,58 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     assert sorted(f.name for f in tmp_path.iterdir()) == [
         "labeled-deed-d1.json",
         "person-0001.json",
+    ]
+
+
+def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
+    other = {
+        "deed_id": "d2",
+        "aktenummer": "7",
+        "plaats": "Oostdorp",
+        "personen": [
+            {"naam_volledig": "Piet Smit", "plaats_overlijden": "Oostdorp",
+             "rol": "overledene"}
+        ],
+    }  # fmt: skip
+    p = set_balance(
+        add_block(
+            new_deed_record(DEED, "a.jpg", [1, 2, 3, 4]),
+            "assets", "", "1,-", "", [("b.jpg", [5, 6, 7, 8])],
+        ),
+        "b.jpg", [0, 0, 9, 9], "1,-", "", "",
+    )  # fmt: skip
+    p["scans"] = ["a.jpg", "b.jpg"]
+    save_deed_record(tmp_path, p, "Ann")
+
+    moved = move_deed_record(tmp_path, p, other, "Bob")
+    assert moved["deed_id"] == "d2"
+    assert moved["copied_deed_person_data"] == {
+        "aktenummer": "7",
+        "plaats": "Oostdorp",
+        "naam_volledig": "Piet Smit",
+        "plaats_overlijden": "Oostdorp",
+    }
+    # The labels stay as they are.
+    assert moved["scans"] == p["scans"]
+    assert moved["annotation"] == p["annotation"]
+    assert [f.name for f in tmp_path.iterdir()] == ["labeled-deed-d2.json"]
+    saved = load_deed_records(tmp_path)["d2"]
+    assert saved["annotation_metadata"]["annotator_name"] == "Bob"
+    assert {k: v for k, v in saved.items() if k != "annotation_metadata"} == {
+        k: v for k, v in moved.items() if k != "annotation_metadata"
+    }
+
+    # A deed that cannot be used, or that has a file, leaves the file alone.
+    with pytest.raises(ValueError, match="2 persons"):
+        move_deed_record(
+            tmp_path, moved, {**DEED, "personen": DEED["personen"] * 2}, "Bob"
+        )
+    save_deed_record(tmp_path, p, "Ann")
+    with pytest.raises(ValueError, match="already has a file"):
+        move_deed_record(tmp_path, moved, DEED, "Bob")
+    assert sorted(f.name for f in tmp_path.iterdir()) == [
+        "labeled-deed-d1.json",
+        "labeled-deed-d2.json",
     ]
 
 

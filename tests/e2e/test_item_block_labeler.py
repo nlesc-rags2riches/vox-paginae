@@ -141,8 +141,9 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
         # No balance: optional.
         "annotation": {"balance": None, "assets": [], "liabilities": []},
     }
-    # While open, the deed row is text: no dropdown to pick another deed from.
-    expect(page.get_by_test_id("marimo-plugin-searchable-dropdown")).to_have_count(0)
+    # While open, the deed row is text: the one deed dropdown is move labels' target.
+    expect(page.get_by_test_id("marimo-plugin-searchable-dropdown")).to_have_count(1)
+    expect(page.get_by_text("move to", exact=True)).to_be_visible()
     expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
     expect(button(page, "open")).to_be_disabled()
 
@@ -821,6 +822,8 @@ def test_go_to_person_moves_to_their_header_page(marimo_server, data_root, page,
     expect(button(page, "go to deed/person")).to_be_disabled()  # deed-3 is open
 
     click("close deed/person")
+    # Wait: until then the searchable dropdown is still move labels' one.
+    expect(status(page, "no deed/person")).to_be_visible()
     pick_deed(page, "Westdorp")
     expect(button(page, "go to deed/person")).to_be_disabled()  # no file: open it
     for n in [2, 3]:
@@ -905,6 +908,52 @@ def test_delete_person_needs_confirmation(marimo_server, data_root, page, click)
     click("open")
     expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
     assert path.exists()
+
+
+def test_move_labels_to_another_deed(marimo_server, data_root, page, click):
+    open_app(page, marimo_server)
+    open_deed(page, click)  # the wrong deed
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.2, 0.8, 0.3)
+    fill(page, "value", "1,-")
+    save(page, click)
+    expect(button(page, "move labels")).to_be_disabled()  # no deed picked
+    # Only the deeds without a file.
+    expect(deed_options(page, "Jan Modaal")).to_have_count(0)
+    page.keyboard.press("Escape")
+    drag_box(page, 0.2, 0.4, 0.8, 0.5)
+    click("continue")
+    pick_deed(page, "Westdorp")
+    expect(button(page, "move labels")).to_be_disabled()  # as close deed/person
+    # Clearing pending re-creates the dropdown (via the book): pick again.
+    click("clear pending")
+    pick_deed(page, "Westdorp")
+
+    click("move labels")
+    expect(status(page, "editing labeled-deed-deed-7g")).to_be_visible()
+    expect(page.get_by_text("deed: 7 · Westdorp · Piet Smit")).to_be_visible()
+    assert [p.name for p in (data_root / "book1").glob("labeled-deed-*.json")] == [
+        "labeled-deed-deed-7g.json"
+    ]
+    moved = deed_record(data_root, "deed-7g")
+    assert moved["copied_deed_person_data"]["naam_volledig"] == "Piet Smit"
+    assert [i["amount"] for i in moved["annotation"]["assets"]] == ["1,-"]
+
+    # Still open: the next item goes into the new file.
+    page.get_by_role("radio", name="assets").check()
+    drag_box(page, 0.2, 0.4, 0.8, 0.5)
+    fill(page, "value", "2,-")
+    save(page, click)
+    moved = deed_record(data_root, "deed-7g")
+    assert [i["amount"] for i in moved["annotation"]["assets"]] == ["1,-", "2,-"]
+
+    # The old deed has no file again: it can be opened anew.
+    click("close deed/person")
+    expect(status(page, "no deed/person")).to_be_visible()
+    expect(deed_options(page, "Jan Modaal")).to_have_text(["3 · Oostdorp · Jan Modaal"])
+    deed_options(page, "Jan Modaal").click()
+    drag_box(page, *HEADER)
+    expect(button(page, "open")).to_be_enabled()
 
 
 def test_deed_dropdown_shows_the_picked_deed(marimo_server, page, click):

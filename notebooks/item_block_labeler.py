@@ -27,6 +27,7 @@ def imports():
         list_pages,
         load_deed_records,
         load_deeds,
+        move_deed_record,
         new_deed_record,
         next_page,
         replace_balance,
@@ -58,6 +59,7 @@ def imports():
         load_deed_records,
         load_deeds,
         mo,
+        move_deed_record,
         new_deed_record,
         next_page,
         np,
@@ -935,6 +937,82 @@ def deed_file_buttons(
 
 
 @app.cell(hide_code=True)
+def deed_move_picker(
+    book,
+    deed_choices,
+    deed_path,
+    deeds,
+    get_deed_record,
+    mo,
+):
+    # The deed to move the open deed/person's labels to: one without a file. Re-created
+    # (cleared) on every open, write and close, so the deeds with a file are up to date.
+    get_deed_record()
+    move_dd = mo.ui.dropdown(
+        options={
+            _label: _deed_id
+            for _label, _deed_id in deed_choices(deeds, book).items()
+            if not deed_path(book, _deed_id).exists()
+        },
+        searchable=True,
+        label="move to",
+    )
+    return (move_dd,)
+
+
+@app.cell(hide_code=True)
+def deed_move(
+    annotator_name,
+    book,
+    deed_path,
+    deeds,
+    get_deed_record,
+    get_editing,
+    get_editing_balance,
+    get_editing_header,
+    get_pending_boxes,
+    mo,
+    move_dd,
+    move_deed_record,
+    set_deed_id,
+    set_deed_record,
+):
+    # Moves the open deed/person's labels to the picked deed: same rules as close deed/person.
+    # It stays open, under the new deed; its old deed has no file again.
+    def _move(_):
+        try:
+            _deed_record = move_deed_record(
+                book, get_deed_record(), deeds[move_dd.value], annotator_name
+            )
+        # The deed cannot be used, or another tab opened it meanwhile.
+        except ValueError as _e:
+            mo.status.toast(str(_e))
+            return
+        set_deed_id(_deed_record["deed_id"])
+        set_deed_record(_deed_record)
+        mo.status.toast(
+            f"saved {deed_path(book, _deed_record['deed_id']).name}, labels moved"
+        )
+
+    move_btn = mo.ui.button(
+        label="move labels",
+        disabled=move_dd.value is None
+        or bool(get_pending_boxes())
+        or get_editing() is not None
+        or get_editing_header()
+        or get_editing_balance(),
+        on_click=_move,
+    )
+    # Only while a deed/person is open: there are no labels to move otherwise.
+    move_ui = (
+        mo.hstack([move_dd, move_btn], justify="start", align="end")
+        if get_deed_record() is not None
+        else mo.md("")
+    )
+    return (move_ui,)
+
+
+@app.cell(hide_code=True)
 def balance_inputs(get_deed_record, get_editing_balance, mo):
     # The balance's totals: its saved values, read only, while it has one (a typo check),
     # unless it is edited. Re-created on every open, write, close and balance edit or cancel;
@@ -1126,6 +1204,7 @@ def layout(
     get_deed_id,
     go_to_btn,
     mo,
+    move_ui,
     next_page_btn,
     open_btn,
     open_hint,
@@ -1159,7 +1238,9 @@ def layout(
             else status_line,
             book_dd,
             mo.hstack(
-                [deed_row, deed_details], justify="start", align="center"
+                [deed_row, deed_details, move_ui],
+                justify="start",
+                align="center",
             ),
             open_hint,
             mo.hstack(
