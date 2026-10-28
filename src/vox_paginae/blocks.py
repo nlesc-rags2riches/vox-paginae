@@ -307,6 +307,27 @@ def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path
     return path
 
 
+def move_deed_record(
+    book: Path, deed_record: dict, deed: dict, annotator_name: str
+) -> dict:
+    """Move ``deed_record``'s labels to ``deed``, a deed without a file in ``book``.
+
+    ``deed_id`` and ``copied_deed_person_data`` come from ``deed``, as on open; the rest
+    stays. The new file is written before the old one goes, so an interrupted move never
+    loses the labels. A deed that cannot be used, or has a file, raises ``ValueError``.
+    """
+    header = deed_record["annotation"]["header"]
+    fresh = new_deed_record(deed, header["scan"], header["bbox"])
+    if deed_path(book, deed["deed_id"]).exists():
+        raise ValueError("this deed already has a file")
+    moved = copy.deepcopy(deed_record)
+    moved["deed_id"] = fresh["deed_id"]
+    moved["copied_deed_person_data"] = fresh["copied_deed_person_data"]
+    save_deed_record(book, moved, annotator_name)
+    deed_path(book, deed_record["deed_id"]).unlink(missing_ok=True)
+    return moved
+
+
 def load_deed_records(book: Path) -> dict[str, dict]:
     """``{deed_id: deed_record}`` for every ``labeled-deed-*.json`` in ``book``.
 
