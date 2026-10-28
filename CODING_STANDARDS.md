@@ -13,21 +13,21 @@ skill sets the rules.
 ### A disabled-button check must be able to fail
 
 Some features lock buttons while they run: while you edit the header or the balance,
-**save**, **edit**, **delete**, **close deed/person** and **move labels** are disabled. A browser test
+**save**, **edit**, **delete**, **close deed** and **move annotation** are disabled. A browser test
 checks this with `expect(button(...)).to_be_disabled()`.
 
 That check only proves something if nothing else could disable the button. **edit** is
-also disabled when the deed/person has no items, so a check made then passes even if the
+also disabled when the deed has no items, so a check made then passes even if the
 lock is broken.
 
-Before the check, set up everything the button needs to be enabled: an item, a type, a
-value, a drawn box. Example: `test_edit_balance_rewrites_it_in_place` saves an item first.
+Before the check, set up everything the button needs to be enabled: an item, a type, an
+amount, a drawn box. Example: `test_edit_balance_rewrites_it_in_place` saves an item first.
 
 ## Docs
 
 ### Reference wording is short and says each fact once
 
-`docs/reference/` is a promise to the person labeling, confirmed with the user word by
+`docs/reference/` is a promise to the annotator, confirmed with the user word by
 word. Short sentences, one fact each, no nested clauses. Each fact has one place: a
 bullet adds to the ones above it, and a field note adds to the rule it annotates.
 

@@ -17,4 +17,4 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
 - Docs follow Diátaxis, built with Zensical. Keep them in step with the code:
   a read/write change updates `docs/reference/input-and-output.md` (draft it to
   `CODING_STANDARDS.md` › Docs, then confirm the wording with the user: it is a promise
-  to the person labeling).
+  to the annotator).
