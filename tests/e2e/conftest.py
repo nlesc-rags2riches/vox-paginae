@@ -73,7 +73,7 @@ def data_root(tmp_path):
         Image.fromarray(page).save(book / name)
     # Not in page order, and aktenummer 7 repeats: as in a real book.
     (book / "deeds.json").write_text(
-        json.dumps([DEED_7_WEST, DEED_12, DEED_3, DEED_7_OOST])
+        json.dumps([DEED_7_WEST, DEED_12, DEED_3, DEED_7_OOST]), encoding="utf-8"
     )
     return tmp_path / "data"
 

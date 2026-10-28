@@ -108,7 +108,7 @@ def drag_box(page, x0, y0, x1, y1):
 
 def deed_record(data_root, deed_id="deed-3", book="book1"):
     path = data_root / book / f"labeled-deed-{deed_id}.json"
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def fractions(bbox):
@@ -490,7 +490,7 @@ def test_restart_after_close_lands_on_the_close_page(data_root, page, click):
 def test_old_person_files_are_ignored(data_root, page):
     # Old format, on page 2: neither resumed from, listed nor drawn.
     (data_root / "book1" / "person-0001.json").write_text(
-        json.dumps({"metadata": {"scans": ["page_02.jpg"]}})
+        json.dumps({"metadata": {"scans": ["page_02.jpg"]}}), encoding="utf-8"
     )
     with serve(data_root) as url:
         open_app(page, url)

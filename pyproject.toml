@@ -26,6 +26,9 @@ exclude-newer = "1 week"
 [tool.pytest.ini_options]
 markers = ["e2e: browser tests (Playwright); run with `pytest -m e2e`"]
 addopts = "-m 'not e2e'"
+# With PYTHONWARNDEFAULTENCODING=1 (CI sets it), a file opened without `encoding=`
+# fails on every OS, not only where the default is not UTF-8.
+filterwarnings = ["error::EncodingWarning"]
 
 [tool.marimo.runtime]
 # marimo sizes outputs with sys.getsizeof, so one character outside Latin-1 (ƒ, ’) in the
