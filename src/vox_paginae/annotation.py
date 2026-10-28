@@ -1,4 +1,4 @@
-"""Item-block labeling: books, pages, deed/person records and their blocks (non-UI part)."""
+"""Annotation: books, pages, deeds, their deed files, items and boxes (non-UI part)."""
 
 # TODO: Split this into appropriate files and detailed human review
 
@@ -49,20 +49,20 @@ def new_box(scan: str, bbox: list[int]) -> dict:
 
 
 def new_deed_record(deed: dict, header_scan: str, header_bbox: list[int]) -> dict:
-    """A blank deed/person record for ``deed``, opened on its header box.
+    """A blank deed record for ``deed``, opened on its header box.
 
     ``header_bbox`` on ``header_scan`` becomes ``annotation.header``; that is the header page.
 
     The deed's ``aktenummer``, ``plaats`` and its overledene's fields (all but ``rol``,
     always ``overledene``) are copied flat, as they are in ``deeds.json``.
     """
-    person = {k: v for k, v in single_overledene(deed).items() if k != "rol"}
+    overledene = {k: v for k, v in single_overledene(deed).items() if k != "rol"}
     return {
         "deed_id": deed["deed_id"],
         "copied_deed_person_data": {
             "aktenummer": deed["aktenummer"],
             "plaats": deed["plaats"],
-            **person,
+            **overledene,
         },
         "scans": [header_scan],
         # Filled in by every write.
@@ -76,7 +76,7 @@ def new_deed_record(deed: dict, header_scan: str, header_bbox: list[int]) -> dic
     }
 
 
-def add_block(
+def add_item(
     deed_record: dict,
     type_: str,
     category: str,
@@ -94,9 +94,9 @@ def add_block(
     if type_ not in TYPES:
         raise ValueError(f"type must be one of {TYPES}, got {type_!r}")
     if not layout_boxes:
-        raise ValueError("a block needs at least one box")
+        raise ValueError("an item needs at least one box")
     if not (amount.strip() or description.strip()):
-        raise ValueError("a block needs an amount or a description")
+        raise ValueError("an item needs an amount or a description")
     deed_record = copy.deepcopy(deed_record)
     deed_record["annotation"][type_].append(
         {
@@ -119,11 +119,11 @@ def set_balance(
 ) -> dict:
     """Return a copy of ``deed_record`` with its balance: ``bbox`` on ``scan``.
 
-    The totals are stored as typed; at least one must be non-blank. A deed/person has at
+    The totals are stored as typed; at least one must be non-blank. A deed has at
     most one balance: a second raises ``ValueError``; ``clear_balance`` first.
     """
     if deed_record["annotation"]["balance"] is not None:
-        raise ValueError("a deed/person has at most one balance")
+        raise ValueError("a deed has at most one balance")
     if not any(t.strip() for t in (total_assets, total_liabilities, total)):
         raise ValueError("a balance needs at least one total")
     deed_record = copy.deepcopy(deed_record)
@@ -163,15 +163,15 @@ def set_header(
     """Return a copy of ``deed_record`` with its header: ``bbox`` on ``scan``.
 
     ``scan`` becomes the header page, in ``page_names`` (the book's, in order). A
-    closed deed/person's ``scans`` then runs from ``scan`` to its old last page (or is
+    closed deed's ``scans`` then runs from ``scan`` to its old last page (or is
     just ``scan``, if later); one never closed keeps only the header page. A balance or
     item box before ``scan`` would be outside ``scans``: that raises ``ValueError``.
     """
     start = page_names.index(scan)
     if any(
         page_names.index(box["scan"]) < start
-        for label, box in deed_boxes(deed_record)
-        if label != "H"
+        for tag, box in deed_boxes(deed_record)
+        if tag != "H"
     ):
         raise ValueError("the header page cannot come after a saved box")
     # ponytail: one page also means closed on its header page; the next close redoes it.
@@ -186,10 +186,10 @@ def set_header(
     return deed_record
 
 
-def block_labels(deed_record: dict | None) -> list[tuple[str, dict]]:
-    """``(label, item)`` for every item: ``A1, A2…`` for assets, then ``L1, L2…``.
+def item_tags(deed_record: dict | None) -> list[tuple[str, dict]]:
+    """``(tag, item)`` for every item: ``A1, A2…`` for assets, then ``L1, L2…``.
 
-    ``None`` (no open deed/person) has no items.
+    ``None`` (no open deed) has no items.
     """
     if deed_record is None:
         return []
@@ -201,10 +201,10 @@ def block_labels(deed_record: dict | None) -> list[tuple[str, dict]]:
 
 
 def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
-    """``(label, BOX)`` for every box: ``("H", header)``, ``("B", balance)`` if any, then
-    each item's, by label.
+    """``(tag, BOX)`` for every box: ``("H", header)``, ``("B", balance)`` if any, then
+    each item's, by tag.
 
-    ``None`` (no open deed/person) has none.
+    ``None`` (no open deed) has none.
     """
     if deed_record is None:
         return []
@@ -212,44 +212,40 @@ def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
     return (
         [("H", deed_record["annotation"]["header"])]
         + ([("B", balance["layout"])] if balance else [])
-        + [
-            (label, box)
-            for label, item in block_labels(deed_record)
-            for box in item["layout"]
-        ]
+        + [(tag, box) for tag, item in item_tags(deed_record) for box in item["layout"]]
     )
 
 
-def split_label(label: str) -> tuple[str, int]:
+def split_tag(tag: str) -> tuple[str, int]:
     """``"A2"`` -> ``("assets", 1)``: the item's type and its index in that list."""
-    return {"A": "assets", "L": "liabilities"}[label[0]], int(label[1:]) - 1
+    return {"A": "assets", "L": "liabilities"}[tag[0]], int(tag[1:]) - 1
 
 
-def delete_block(deed_record: dict, label: str) -> dict:
-    """Return a copy of ``deed_record`` without the item called ``label`` (e.g. ``"A2"``)."""
-    type_, i = split_label(label)
+def delete_item(deed_record: dict, tag: str) -> dict:
+    """Return a copy of ``deed_record`` without the item called ``tag`` (e.g. ``"A2"``)."""
+    type_, i = split_tag(tag)
     deed_record = copy.deepcopy(deed_record)
     del deed_record["annotation"][type_][i]
     return deed_record
 
 
-def replace_block(
+def replace_item(
     deed_record: dict,
-    label: str,
+    tag: str,
     type_: str,
     category: str,
     amount: str,
     description: str,
     layout_boxes: list[tuple[str, list[int]]],
 ) -> dict:
-    """``add_block`` in place of the item called ``label``, with the same checks.
+    """``add_item`` in place of the item called ``tag``, with the same checks.
 
     It keeps its position (``A2`` stays ``A2``) unless ``type_`` changes; then it goes
     last of ``type_``.
     """
-    old_type, i = split_label(label)
-    deed_record = add_block(
-        delete_block(deed_record, label),
+    old_type, i = split_tag(tag)
+    deed_record = add_item(
+        delete_item(deed_record, tag),
         type_,
         category,
         amount,
@@ -275,7 +271,7 @@ def close_deed_record(
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
     if end < start:
-        raise ValueError("a deed/person cannot close before its header page")
+        raise ValueError("a deed cannot close before its header page")
     end = max(
         [end] + [page_names.index(box["scan"]) for _, box in deed_boxes(deed_record)]
     )
@@ -312,11 +308,11 @@ def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path
 def move_deed_record(
     book: Path, deed_record: dict, deed: dict, annotator_name: str
 ) -> dict:
-    """Move ``deed_record``'s labels to ``deed``, a deed without a file in ``book``.
+    """Move ``deed_record``'s annotation to ``deed``, a deed without a file in ``book``.
 
     ``deed_id`` and ``copied_deed_person_data`` come from ``deed``, as on open; the rest
     stays. The new file is written before the old one goes, so an interrupted move never
-    loses the labels. A deed that cannot be used, or has a file, raises ``ValueError``.
+    loses the annotation. A deed that cannot be used, or has a file, raises ``ValueError``.
     """
     header = deed_record["annotation"]["header"]
     # As on open, for its checks and its copied data; the rest of it is not used.
@@ -389,40 +385,40 @@ def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
 
 
 def single_overledene(deed: dict) -> dict:
-    """The deed's one person, who must have ``rol: overledene``.
+    """The deed's one deed person, who must have ``rol: overledene``.
 
-    The labeler assumes exactly that; any other deed raises ``ValueError`` with a message
+    Vox Paginae assumes exactly that; any other deed raises ``ValueError`` with a message
     for the annotator.
     """
-    persons = deed["personen"]
-    if len(persons) != 1:
+    deed_persons = deed["personen"]
+    if len(deed_persons) != 1:
         raise ValueError(
-            f"This deed has {len(persons)} persons: it needs exactly one, "
+            f"This deed has {len(deed_persons)} deed persons: it needs exactly one, "
             "with `rol: overledene`. It cannot be used."
         )
-    if persons[0].get("rol") != "overledene":
+    if deed_persons[0].get("rol") != "overledene":
         raise ValueError(
-            f"This deed's person has `rol: {persons[0].get('rol')}`: it needs "
+            f"This deed's deed person has `rol: {deed_persons[0].get('rol')}`: it needs "
             "`rol: overledene`. It cannot be used."
         )
-    return persons[0]
+    return deed_persons[0]
 
 
 def saved_boxes(
     book: Path, scan: str, skip_deed_id: str | None = None
 ) -> list[tuple[str, list[int]]]:
-    """``(label, bbox)`` of every box on ``scan`` in ``book``'s deed files, by deed.
+    """``(tag, bbox)`` of every box on ``scan`` in ``book``'s deed files, by deed.
 
-    Labels as in ``deed_boxes``: ``H`` for a header, ``B`` for a balance.
+    Tags as in ``deed_boxes``: ``H`` for a header, ``B`` for a balance.
 
-    ``skip_deed_id`` is the open deed/person: it is drawn from memory, labelled, not
+    ``skip_deed_id`` is the open deed: it is drawn from memory, tagged, not
     faded.
     """
     return [
-        (label, box["bbox"])
+        (tag, box["bbox"])
         for deed_id, deed_record in load_deed_records(book).items()
         if deed_id != skip_deed_id
-        for label, box in deed_boxes(deed_record)
+        for tag, box in deed_boxes(deed_record)
         if box["scan"] == scan
     ]
 
@@ -430,10 +426,10 @@ def saved_boxes(
 def resume(books: list[Path]) -> tuple[int, int]:
     """Where to pick up, ``(book, page)``, from the output files alone.
 
-    Books are labeled in order, so the last book with any ``labeled-deed-*.json`` is
-    open, on the latest page among its files' last ``scans``: a closed deed/person's close
+    Books are annotated in order, so the last book with any ``labeled-deed-*.json`` is
+    open, on the latest page among its files' last ``scans``: a closed deed's close
     page (or the later page a box reaches, see ``close_deed_record``), a not yet closed
-    one's header page. No deed/person is reopened. With no files at all: ``(0, 0)``.
+    one's header page. No deed is reopened. With no files at all: ``(0, 0)``.
     """
     for b in reversed(range(len(books))):
         deed_records = load_deed_records(books[b])

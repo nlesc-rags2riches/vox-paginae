@@ -13,17 +13,17 @@ def imports():
     import numpy as np
     from PIL import Image
 
-    from vox_paginae.blocks import (
-        add_block,
-        block_labels,
+    from vox_paginae.annotation import (
+        add_item,
         clear_balance,
         close_deed_record,
         crop,
         deed_boxes,
         deed_choices,
         deed_path,
-        delete_block,
+        delete_item,
         find_books,
+        item_tags,
         list_pages,
         load_deed_records,
         load_deeds,
@@ -31,29 +31,29 @@ def imports():
         new_deed_record,
         next_page,
         replace_balance,
-        replace_block,
+        replace_item,
         resume,
         save_deed_record,
         saved_boxes,
         set_balance,
         set_header,
         single_overledene,
-        split_label,
+        split_tag,
         thumbnail,
     )
 
     return (
         Image,
         Path,
-        add_block,
-        block_labels,
+        add_item,
+        item_tags,
         clear_balance,
         close_deed_record,
         crop,
         deed_boxes,
         deed_choices,
         deed_path,
-        delete_block,
+        delete_item,
         find_books,
         list_pages,
         load_deed_records,
@@ -65,14 +65,14 @@ def imports():
         np,
         plt,
         replace_balance,
-        replace_block,
+        replace_item,
         resume,
         save_deed_record,
         saved_boxes,
         set_balance,
         set_header,
         single_overledene,
-        split_label,
+        split_tag,
         thumbnail,
     )
 
@@ -262,10 +262,10 @@ def type_input(get_type, mo):
 
 
 @app.cell(hide_code=True)
-def _(block_labels, get_deed_record, get_editing, mo):
+def _(item_tags, get_deed_record, get_editing, mo):
     get_deed_record()  # re-created (cleared) after every open, write and close
     # Prefilled from the block being edited, if any.
-    _item = dict(block_labels(get_deed_record())).get(get_editing(), {})
+    _item = dict(item_tags(get_deed_record())).get(get_editing(), {})
     category_in = mo.ui.text(
         label="category", value=_item.get("category") or ""
     )
@@ -496,13 +496,13 @@ def zooms(book, crop, layout_boxes, mo):
 
 @app.cell(hide_code=True)
 def block_buttons(
-    add_block,
+    add_item,
     annotator_name,
-    block_labels,
+    item_tags,
     book,
     category_in,
     close_deed_record,
-    delete_block,
+    delete_item,
     desc_in,
     drawn_box,
     get_deed_record,
@@ -514,13 +514,13 @@ def block_buttons(
     mo,
     page,
     pages,
-    replace_block,
+    replace_item,
     save_deed_record,
     set_deed_record,
     set_editing,
     set_pending_boxes,
     set_type,
-    split_label,
+    split_tag,
     type_radio,
     value_in,
 ):
@@ -535,7 +535,7 @@ def block_buttons(
     # Text shows amount and description start, so the list doubles as a typo check.
     _labels = {
         f"{label} · {item['amount']} · {item['description'][:30]}": label
-        for label, item in block_labels(get_deed_record())
+        for label, item in item_tags(get_deed_record())
     }
 
     def _save(_):
@@ -547,9 +547,9 @@ def block_buttons(
             layout_boxes,
         )
         if get_editing() is None:
-            _deed_record = add_block(get_deed_record(), *_fields)
+            _deed_record = add_item(get_deed_record(), *_fields)
         else:
-            _deed_record = replace_block(
+            _deed_record = replace_item(
                 get_deed_record(), get_editing(), *_fields
             )
         _path = save_deed_record(book, _deed_record, annotator_name)
@@ -560,11 +560,11 @@ def block_buttons(
 
     def _edit(_):
         if block_dd.value:
-            _item = dict(block_labels(get_deed_record()))[block_dd.value]
+            _item = dict(item_tags(get_deed_record()))[block_dd.value]
             set_pending_boxes(
                 [(_box["scan"], _box["bbox"]) for _box in _item["layout"]]
             )
-            set_type(split_label(block_dd.value)[0])
+            set_type(split_tag(block_dd.value)[0])
             set_editing(block_dd.value)
 
     def _cancel_edit(_):
@@ -573,7 +573,7 @@ def block_buttons(
 
     def _delete(_):
         if block_dd.value:
-            _deed_record = delete_block(get_deed_record(), block_dd.value)
+            _deed_record = delete_item(get_deed_record(), block_dd.value)
             _path = save_deed_record(book, _deed_record, annotator_name)
             set_deed_record(_deed_record)
             mo.status.toast(f"saved {_path.name}")

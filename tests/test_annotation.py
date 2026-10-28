@@ -4,15 +4,15 @@ from datetime import UTC, datetime
 import pytest
 
 # TODO: Together with the `src` correspondent, split and human-review
-from vox_paginae.blocks import (
-    add_block,
-    block_labels,
+from vox_paginae.annotation import (
+    add_item,
     clear_balance,
     close_deed_record,
     deed_boxes,
     deed_choices,
-    delete_block,
+    delete_item,
     find_books,
+    item_tags,
     list_pages,
     load_deed_records,
     load_deeds,
@@ -20,7 +20,7 @@ from vox_paginae.blocks import (
     new_deed_record,
     next_page,
     replace_balance,
-    replace_block,
+    replace_item,
     resume,
     save_deed_record,
     saved_boxes,
@@ -81,10 +81,10 @@ def test_new_deed_record_copies_the_deed_and_starts_on_the_header_box():
     }
 
 
-def test_blocks_go_into_the_annotation_and_leave_scans_alone():
+def test_items_go_into_the_annotation_and_leave_scans_alone():
     p = new_deed_record(DEED, "p2.jpg", [0] * 4)
-    p = add_block(p, "assets", "", "900,-", "huis", [("p2.jpg", [1, 2, 3, 4])])
-    p = add_block(
+    p = add_item(p, "assets", "", "900,-", "huis", [("p2.jpg", [1, 2, 3, 4])])
+    p = add_item(
         p,
         "assets",
         "cash",
@@ -92,9 +92,9 @@ def test_blocks_go_into_the_annotation_and_leave_scans_alone():
         "",
         [("p1.jpg", [0, 0, 5, 5]), ("p4.jpg", [0, 0, 5, 5])],
     )
-    p = add_block(p, "liabilities", "", "10", "schuld", [("p3.jpg", [0, 0, 9, 9])])
-    assert [label for label, _ in block_labels(p)] == ["A1", "A2", "L1"]
-    assert block_labels(None) == []  # no current deed/person
+    p = add_item(p, "liabilities", "", "10", "schuld", [("p3.jpg", [0, 0, 9, 9])])
+    assert [tag for tag, _ in item_tags(p)] == ["A1", "A2", "L1"]
+    assert item_tags(None) == []  # no current deed
     assert p["annotation"]["liabilities"] == [
         {
             "layout": [
@@ -114,9 +114,9 @@ def test_blocks_go_into_the_annotation_and_leave_scans_alone():
     # The header page is fixed at open: a box on an earlier page does not move it.
     assert p["scans"] == ["p2.jpg"]
 
-    q = delete_block(p, "A2")
-    assert [label for label, _ in block_labels(q)] == ["A1", "L1"]
-    q = delete_block(delete_block(q, "A1"), "L1")
+    q = delete_item(p, "A2")
+    assert [tag for tag, _ in item_tags(q)] == ["A1", "L1"]
+    q = delete_item(delete_item(q, "A1"), "L1")
     assert (q["annotation"]["assets"], q["annotation"]["liabilities"]) == ([], [])
     assert q["scans"] == ["p2.jpg"]
     assert len(p["annotation"]["assets"]) == 2  # originals untouched
@@ -136,7 +136,7 @@ def test_balance_is_one_optional_box_with_three_totals_as_typed():
         "total_liabilities": "",
         "total": "f 900",
     }
-    assert [label for label, _ in deed_boxes(q)] == ["H", "B"]
+    assert [tag for tag, _ in deed_boxes(q)] == ["H", "B"]
     assert p["annotation"]["balance"] is None  # original untouched
     with pytest.raises(ValueError):  # at most one
         set_balance(q, "p2.jpg", [0, 0, 5, 5], "1", "", "")
@@ -168,21 +168,21 @@ def test_replace_balance_rewrites_box_and_totals_in_place():
         replace_balance(p, "p2.jpg", [0, 0, 5, 5], " ", "", "")
 
 
-def test_replace_block_keeps_position_unless_type_changes():
+def test_replace_item_keeps_position_unless_type_changes():
     box = [("p1.jpg", [0, 0, 5, 5])]
     p = new_deed_record(DEED, "p1.jpg", [0] * 4)
     for amount in ["1", "2", "3"]:
-        p = add_block(p, "assets", "", amount, "", box)
-    p = replace_block(p, "A2", "assets", "cash", "20", "", [("p2.jpg", [1, 1, 9, 9])])
+        p = add_item(p, "assets", "", amount, "", box)
+    p = replace_item(p, "A2", "assets", "cash", "20", "", [("p2.jpg", [1, 1, 9, 9])])
     items = p["annotation"]["assets"]
     assert [i["amount"] for i in items] == ["1", "20", "3"]  # A2 stays A2
     assert items[1]["category"] == "cash"
     assert p["scans"] == ["p1.jpg"]
     # A type change moves it to the end of the other type.
-    p = replace_block(p, "A1", "liabilities", "", "1", "", box)
-    assert [label for label, _ in block_labels(p)] == ["A1", "A2", "L1"]
-    with pytest.raises(ValueError):  # same checks as add_block
-        replace_block(p, "A1", "assets", "", "", "", box)
+    p = replace_item(p, "A1", "liabilities", "", "1", "", box)
+    assert [tag for tag, _ in item_tags(p)] == ["A1", "A2", "L1"]
+    with pytest.raises(ValueError):  # same checks as add_item
+        replace_item(p, "A1", "assets", "", "", "", box)
 
 
 def test_set_header_moves_the_header_page_and_scans_with_it():
@@ -201,7 +201,7 @@ def test_set_header_moves_the_header_page_and_scans_with_it():
     # Later, but no box before it: scans is just the header page.
     assert set_header(p, page_names, "p4.jpg", [0] * 4)["scans"] == ["p4.jpg"]
     # A saved box before the new header page would be outside scans.
-    with_item = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0] * 4)])
+    with_item = add_item(p, "assets", "", "1,-", "", [("p2.jpg", [0] * 4)])
     with_balance = set_balance(p, "p2.jpg", [0] * 4, "1,-", "", "")
     for r in (with_item, with_balance):
         assert set_header(r, page_names, "p2.jpg", [0] * 4)["scans"][0] == "p2.jpg"
@@ -212,7 +212,7 @@ def test_set_header_moves_the_header_page_and_scans_with_it():
 def test_close_fills_scans_from_the_header_page_to_the_close_page():
     page_names = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg", "p5.jpg"]
     p = new_deed_record(DEED, "p2.jpg", [0] * 4)
-    p = add_block(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
+    p = add_item(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
     # p3 has no items: still in the range.
     assert close_deed_record(p, page_names, "p4.jpg")["scans"] == [
         "p2.jpg",
@@ -229,9 +229,7 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
     with pytest.raises(ValueError):  # before the header page
         close_deed_record(p, page_names, "p1.jpg")
     # Closed before an item's last page (e.g. right after reopen): the range reaches it.
-    p = add_block(
-        p, "assets", "", "2,-", "", [("p3.jpg", [0] * 4), ("p4.jpg", [0] * 4)]
-    )
+    p = add_item(p, "assets", "", "2,-", "", [("p3.jpg", [0] * 4), ("p4.jpg", [0] * 4)])
     assert close_deed_record(p, page_names, "p2.jpg")["scans"] == [
         "p2.jpg",
         "p3.jpg",
@@ -242,17 +240,17 @@ def test_close_fills_scans_from_the_header_page_to_the_close_page():
     assert close_deed_record(p, page_names, "p2.jpg")["scans"][-1] == "p5.jpg"
 
 
-def test_add_block_rejects_missing_type_boxes_or_text():
+def test_add_item_rejects_missing_type_boxes_or_text():
     p = new_deed_record(DEED, "p1.jpg", [0] * 4)
     box = [("p1.jpg", [0, 0, 5, 5])]
     with pytest.raises(ValueError):
-        add_block(p, None, "", "1,-", "", box)
+        add_item(p, None, "", "1,-", "", box)
     with pytest.raises(ValueError):
-        add_block(p, "assets", "", "1,-", "", [])
+        add_item(p, "assets", "", "1,-", "", [])
     with pytest.raises(ValueError):
-        add_block(p, "assets", "", " ", "  ", box)  # needs amount or description
-    add_block(p, "assets", "", "1,-", "", box)
-    add_block(p, "assets", "", "", "Een huis", box)
+        add_item(p, "assets", "", " ", "  ", box)  # needs amount or description
+    add_item(p, "assets", "", "1,-", "", box)
+    add_item(p, "assets", "", "", "Een huis", box)
 
 
 def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
@@ -314,7 +312,7 @@ def test_load_deeds_reads_utf8_whatever_the_system_default(tmp_path):
 
 
 def test_deed_files_are_utf8_whatever_the_system_default(tmp_path):
-    p = add_block(
+    p = add_item(
         new_deed_record(DEED, "a.jpg", [0] * 4),
         "assets",
         "",
@@ -334,9 +332,9 @@ def test_deed_files_are_utf8_whatever_the_system_default(tmp_path):
 @pytest.mark.parametrize(
     "personen, error",
     [
-        ([], "has 0 persons"),
-        ([{"rol": "overledene"}, {"rol": "erfgenaam"}], "has 2 persons"),
-        ([{"rol": "erfgenaam"}], "`rol: erfgenaam`"),
+        ([], "has 0 deed persons"),
+        ([{"rol": "overledene"}, {"rol": "erfgenaam"}], "has 2 deed persons"),
+        ([{"rol": "erfgenaam"}], "deed person has `rol: erfgenaam`"),
     ],
 )
 def test_single_overledene_rejects_a_deed_without_exactly_one(personen, error):
@@ -344,9 +342,9 @@ def test_single_overledene_rejects_a_deed_without_exactly_one(personen, error):
         single_overledene({"personen": personen})
 
 
-def test_single_overledene_returns_the_one_person():
-    person = {"naam_volledig": "Jan Modaal", "rol": "overledene"}
-    assert single_overledene({"personen": [person]}) is person
+def test_single_overledene_returns_the_one_deed_person():
+    overledene = {"naam_volledig": "Jan Modaal", "rol": "overledene"}
+    assert single_overledene({"personen": [overledene]}) is overledene
 
 
 def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
@@ -354,7 +352,7 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     (tmp_path / "person-0001.json").write_text(
         '{"metadata": {}}', encoding="utf-8"
     )  # old format
-    p = add_block(
+    p = add_item(
         new_deed_record(DEED, "a.jpg", [0] * 4),
         "assets",
         "",
@@ -374,7 +372,7 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     date = datetime.fromisoformat(meta["annotation_date"])
     assert date.tzinfo is not None and before <= date <= datetime.now(UTC)
     # Saving again rewrites the same file: one file per deed, with the latest of both.
-    save_deed_record(tmp_path, delete_block(p, "A1"), "Bob")
+    save_deed_record(tmp_path, delete_item(p, "A1"), "Bob")
     again = load_deed_records(tmp_path)["d1"]
     assert again["annotation"]["assets"] == []
     assert again["annotation_metadata"]["annotator_name"] == "Bob"
@@ -401,7 +399,7 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
         ],
     }
     p = set_balance(
-        add_block(
+        add_item(
             new_deed_record(DEED, "a.jpg", [1, 2, 3, 4]),
             "assets",
             "",
@@ -426,7 +424,7 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
         "naam_volledig": "Piet Smit",
         "plaats_overlijden": "Oostdorp",
     }
-    # The labels stay as they are.
+    # The annotation stays as it is.
     assert moved["scans"] == p["scans"]
     assert moved["annotation"] == p["annotation"]
     assert [f.name for f in tmp_path.iterdir()] == ["labeled-deed-d2.json"]
@@ -437,7 +435,7 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     }
 
     # A deed that cannot be used, or that has a file, leaves the file alone.
-    with pytest.raises(ValueError, match="2 persons"):
+    with pytest.raises(ValueError, match="2 deed persons"):
         move_deed_record(
             tmp_path, moved, {**DEED, "personen": DEED["personen"] * 2}, "Bob"
         )
@@ -461,7 +459,7 @@ def test_resume_lands_on_the_latest_page_of_the_last_book_with_files(tmp_path):
 
     save_deed_record(a, new_deed_record(DEED, "a2.jpg", [0] * 4), "Ann")
     assert resume(books) == (0, 1)
-    # Book b has files, so labeling stopped there: on its latest page, whichever deed.
+    # Book b has files, so annotating stopped there: on its latest page, whichever deed.
     save_deed_record(b, new_deed_record(DEED, "b2.jpg", [0] * 4), "Ann")
     save_deed_record(
         b, new_deed_record({**DEED, "deed_id": "d0"}, "b1.jpg", [0] * 4), "Ann"
@@ -476,7 +474,7 @@ def test_resume_lands_on_the_latest_page_of_the_last_book_with_files(tmp_path):
 
 
 def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
-    p1 = add_block(
+    p1 = add_item(
         new_deed_record(DEED, "a.jpg", [0] * 4),
         "liabilities",
         "",
@@ -484,7 +482,7 @@ def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
         "",
         [("a.jpg", [1, 2, 3, 4]), ("b.jpg", [5, 6, 7, 8])],
     )
-    p2 = add_block(
+    p2 = add_item(
         new_deed_record({**DEED, "deed_id": "d2"}, "b.jpg", [0] * 4),
         "assets",
         "",
@@ -500,5 +498,5 @@ def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
         ("A1", [0, 0, 9, 9]),
     ]
     assert saved_boxes(tmp_path, "a.jpg") == [("H", [0, 0, 0, 0]), ("L1", [1, 2, 3, 4])]
-    # The open deed/person is drawn from memory, not from its (stale) file.
+    # The open deed is drawn from memory, not from its (stale) file.
     assert saved_boxes(tmp_path, "b.jpg", skip_deed_id="d2") == [("L1", [5, 6, 7, 8])]
