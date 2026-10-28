@@ -84,7 +84,7 @@ def serve(data_root, *args):
     port = get_free_port()
     # fmt: off
     proc = subprocess.Popen(
-        ["uv", "run", "marimo", "run", "notebooks/item_block_labeler.py",
+        ["uv", "run", "marimo", "run", "notebooks/deed_annotation.py",
          "--port", str(port), "--headless", "--", "--data-root", str(data_root), *args],
         cwd=PROJECT,
     )

@@ -11,7 +11,7 @@ uv sync
 Start the labeler on a folder of scans:
 
 ```bash
-uv run marimo run notebooks/item_block_labeler.py -- --data-root /path/to/scans
+uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
 ```
 
 - `--data-root` is where the folder picker starts, and it cannot go above it. Without

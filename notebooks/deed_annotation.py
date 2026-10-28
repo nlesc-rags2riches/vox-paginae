@@ -79,7 +79,7 @@ def imports():
 
 @app.cell
 def _(Path, mo):
-    # `marimo edit|run notebooks/item_block_labeler.py -- --data-root <dir>` overrides the default.
+    # `marimo edit|run notebooks/deed_annotation.py -- --data-root <dir>` overrides the default.
     default_root = Path(
         mo.cli_args().get("data-root")
         or Path.home()

@@ -1,7 +1,7 @@
 [project]
 name = "vox-paginae"
 version = "0.1.0"
-description = "Labeling tool (MVP, work in progress)"
+description = "Annotates scanned death-duty deeds (MVP, work in progress)"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -32,10 +32,10 @@ filterwarnings = ["error::EncodingWarning"]
 
 [tool.marimo.runtime]
 # marimo sizes outputs with sys.getsizeof, so one character outside Latin-1 (ƒ, ’) in the
-# item-block labeler's layout counts its ~5 MB page PNG double, an emoji 4x. The PNG
+# Vox Paginae's layout counts its ~5 MB page PNG double, an emoji 4x. The PNG
 # itself is capped in the notebook; this only stops the overcount.
 output_max_bytes = 25_000_000
-# Cells importing a changed module (e.g. src/vox_paginae/blocks.py) are marked stale, so
+# Cells importing a changed module (e.g. src/vox_paginae/annotation.py) are marked stale, so
 # a library edit never leaves the live kernel silently running old code.
 auto_reload = "lazy"
 

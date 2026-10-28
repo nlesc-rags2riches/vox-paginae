@@ -1,6 +1,6 @@
 [project]
 site_name = "Vox Paginae"
-site_description = "Item-block labeler for death-duty deed scans (MVP, work in progress)"
+site_description = "Annotates scanned death-duty deeds (MVP, work in progress)"
 site_url = "https://nlesc-rags2riches.github.io/vox-paginae/"
 repo_url = "https://github.com/nlesc-rags2riches/vox-paginae"
 edit_uri = "edit/main/docs/"
