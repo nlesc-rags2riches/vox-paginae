@@ -4,7 +4,6 @@ Vox Paginae annotates scanned death-duty deeds (*memories van successie*): where
 deed's header, balance and items are on its pages, and what the items say.
 
 Where a term has another name in the UI, the files or the code, its entry says so.
-Names marked "today" are out of step and due to be renamed.
 
 ## Language
 
@@ -22,15 +21,13 @@ _Avoid_: scan, image
 **Deed**:
 One memorie van successie: an entry in its book's `deeds.json`, written on one or more
 consecutive pages. It is what Vox Paginae annotates.
-_UI today_: deed/person
 _Code_: `deed` (the `deeds.json` entry), `deed_record` (the deed file's contents)
 _Avoid_: deed/person, person
 
 **Deed person**:
 A person listed in a deed's `personen`.
-_UI today_: person ("This deed has 2 persons")
 _File_: an entry of `personen`
-_Code today_: `persons`
+_Code_: `deed_persons`
 _Avoid_: person (on its own)
 
 **Overledene**:
@@ -42,7 +39,7 @@ _Avoid_: deceased person, person
 
 **Vox Paginae**:
 The tool.
-_Code today_: `item_block_labeler.py`
+_Code_: `notebooks/deed_annotation.py`
 _Avoid_: labeler, item-block labeler, annotator
 
 **Annotator**:
@@ -52,14 +49,13 @@ _Avoid_: labeler, user, person
 
 **Annotation**:
 A deed's header, balance and items together.
-_UI today_: labels (**move labels**)
 _File_: `annotation`
 _Avoid_: labels, blocks
 
 **Deed file**:
 The file holding one deed's annotation, plus a copy of the deed's and its overledene's
 data, next to its book's pages.
-_File_: `labeled-deed-<deed_id>.json`; the copy is `copied_deed_person_data`
+_File_: `deed-annotation-<deed_id>.json`; the copy is `copied_deed_person_data`
 _Avoid_: person file
 
 **Open deed**:
@@ -68,7 +64,7 @@ _Avoid_: open person
 
 **Move**:
 Giving an open deed's annotation and pages to another deed that has no deed file yet.
-_UI today_: **move labels**
+_UI_: **move annotation**
 
 ### What is annotated
 
@@ -95,8 +91,6 @@ later page. A deed has at most one balance, or none.
 **Item**:
 One asset or liability of a deed: its type, an optional category, an amount or a
 description (or both), and one or more boxes.
-_Code today_: block (`add_block`, `block_labels`, `delete_block`, `replace_block`,
-`blocks.py`)
 _Avoid_: block, item block
 
 **Type**:
@@ -105,13 +99,11 @@ _File_: which list the item is in, `assets` or `liabilities`
 
 **Amount**:
 An item's value as written in the deed.
-_UI today_: value
 _Avoid_: value
 
 **Tag**:
 The short name shown on a box: `H` for the header, `B` for the balance, `A1, A2…` for
 assets and `L1, L2…` for liabilities, by position.
-_Code today_: label
 _Avoid_: label
 
 ## Relationships

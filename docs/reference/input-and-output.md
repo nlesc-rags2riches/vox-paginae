@@ -1,6 +1,6 @@
 # Input and output
 
-Exactly what the tool reads and writes. This is a promise to the person labeling: it
+Exactly what the tool reads and writes. This is a promise to the annotator: it
 changes only on purpose, and never describes internals.
 
 ## In
@@ -11,30 +11,31 @@ changes only on purpose, and never describes internals.
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
-  book, and nothing can be labeled or saved in it. Its deeds are listed to pick from. A
-  deed must have exactly one person, with `rol: overledene`; picking it shows that
-  person's name, death place and death date. Picking a deed that doesn't satisfy this
+  book, and nothing can be annotated or saved in it. Its deeds are listed to pick from. A
+  deed must have exactly one deed person, with `rol: overledene`; picking it shows that
+  deed person's name, death place and death date. Picking a deed that doesn't satisfy this
   rule shows an error, and that deed cannot be used. `deeds.json` is read as UTF-8.
 - Nothing else is read except the tool's own output (see Out): no other JSON
   (`metadata.json` included), no PageXML, no state file. Other files in the tree are
-  ignored, and so are files from the old format (`person-NNNN.json`): they are neither
-  read, shown nor removed.
+  ignored, and so are files from the old format (`person-NNNN.json`) and deed files
+  with the old name (`labeled-deed-<deed_id>.json`): they are neither read, shown nor
+  removed. Rename an old deed file to `deed-annotation-<deed_id>.json` to use it.
 
 ## Out
 
-- One file per **deed/person** (a deed and its deceased person):
-  `<book>/labeled-deed-<deed_id>.json`, saved next to the jpgs. A deed that has a file
+- One **deed file** per deed:
+  `<book>/deed-annotation-<deed_id>.json`, saved next to the jpgs. A deed that has a file
   cannot be opened anew, only reopened. It is written and read as UTF-8, on every
   system, so a file saved on one system opens unchanged on another.
-- A deed/person belongs to exactly one book.
-- Before opening, you draw a box around the deed/person's header on its first page;
+- A deed belongs to exactly one book.
+- Before opening, you draw a box around the deed's header on its first page;
   **open** stays disabled until there is one. The file is written as soon as the
-  deed/person is opened. The page of the header box is its **header page**.
+  deed is opened. The page of the header box is its **header page**.
 - While it is open, **edit header** redraws the header box on any page up to the first
   page with a saved item or balance box; that page becomes the header page. Until
   **save header** or **cancel header edit**, the balance and items cannot be changed.
-- While a deed/person is open, a box drawn on its header page or any later page can be
-  saved as its **balance**, with three totals, at least one filled in. A deed/person
+- While a deed is open, a box drawn on its header page or any later page can be
+  saved as its **balance**, with three totals, at least one filled in. A deed
   has at most one balance, or none: clear it to save another.
   **edit balance box** lets you change the saved balance. Its totals can be retyped.
   A new box drawn on the page replaces its box; without one, the old box stays. Until
@@ -67,26 +68,27 @@ changes only on purpose, and never describes internals.
   - `amount`: a string, stored exactly as typed
   - `description`: a single line
   - at least one of `amount` and `description` is non-blank; the other may be `""`
-- A deed/person can have no items: every item can be deleted, and the file stays.
+- A deed can have no items: every item can be deleted, and the file stays.
 - Fields the tool doesn't fill are written as `null`, not left out.
-- **Not in the file:** transcriptions, whether the deed/person is open right now.
+- **Not in the file:** transcriptions, whether the deed is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, moving the labels, every added, changed or deleted item, saving,
+  version. Opening, moving the annotation, every added, changed or deleted item, saving,
   editing or clearing the balance, and saving the header, is in the file at once.
   Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
-- Moving past a book's last page closes the open deed/person there.
-- A closed deed/person can be reopened: it is open again as if never closed, and the
+- Moving past a book's last page closes the open deed there.
+- A closed deed can be reopened: it is open again as if never closed, and the
   next writes rewrite the same file.
-- A deed/person's file can be deleted, after a confirmation. Its deed can then be
-  opened anew.
-- While it is open, **move labels** moves the deed/person to another deed without a
-  file. Its file is then that deed's `labeled-deed-<deed_id>.json`. The old file is
-  gone. `deed_id` and `copied_deed_person_data` come from the new deed; the header,
-  balance, items and `scans` are kept. The deed/person is still open. The old deed can
-  then be opened anew. An interrupted move can leave both files, with the same labels.
+- A deed's file can be deleted, after a confirmation. The deed can then be opened
+  anew.
+- While a deed is open, **move annotation** moves its annotation to another deed
+  without a file. The file is then that deed's `deed-annotation-<deed_id>.json`. The old
+  file is gone. `deed_id` and `copied_deed_person_data` come from the new deed; the
+  header, balance, items and `scans` are kept. The new deed is open. The old deed can
+  then be opened anew. An interrupted move can leave both files, with the same
+  annotation.
 - These files are read back as they are on disk; no other state is kept between
-  runs. A deed/person open when the tool stopped is not open after a restart.
+  runs. A deed open when the tool stopped is not open after a restart.
 
 ## Example
 
@@ -132,10 +134,10 @@ changes only on purpose, and never describes internals.
 - `bbox`: in the same pixel space as PageXML.
 - `pagexml_link`, `pagexml_baseline_ids`: `null` means "not computed"; `[]` would mean
   "computed, no match".
-- `scans`: a page can appear in two deed/persons' files (one deed ends and the next
+- `scans`: a page can appear in two deeds' files (one deed ends and the next
   starts on the same page). `scans` always starts on the header page, the page of
   `annotation.header`. Opening sets it. **save header** on another page moves it, and
   `scans` then starts on that page.
-- `copied_deed_person_data`: copied when the deed/person is opened or moved; a later
+- `copied_deed_person_data`: copied when the deed is opened or moved; a later
   change to `deeds.json` does not reach an existing file.
-- Item labels (`A1`, `L2`) are computed from list positions and never stored.
+- Item tags (`A1`, `L2`) are computed from list positions and never stored.
