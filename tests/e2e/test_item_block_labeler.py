@@ -20,17 +20,10 @@ def text_input(page, label):
 
 
 def fill(page, label, text):
-    """Type into a text input and leave it, so marimo sends the value.
-
-    A debounced input (``debounce=300``, ``delay`` in the DOM) sends only after its
-    delay, and leaving it does not flush that: wait it out, or a click right after (e.g.
-    save) reaches the kernel first and the typed text arrives too late.
-    """
+    """Type into a text input and leave it, so marimo sends the value."""
     box = text_input(page, label)
     box.fill(text)
     box.blur()
-    if delay := box.get_attribute("delay"):
-        page.wait_for_timeout(int(delay) + 100)
 
 
 def button(page, label):
@@ -747,6 +740,10 @@ def test_edit_replaces_block_in_place(marimo_server, data_root, page, click):
     # The block is loaded into the inputs, its box into pending.
     expect(status(page, "pending 1 · editing A1")).to_be_visible()
     expect(text_input(page, "value")).to_have_value("1,-")
+    # No timed debounce (it renders a `delay`): marimo's can send back the value edit
+    # or cancel edit just replaced (#11). Too narrow a race to catch by timing clicks.
+    expect(page.locator("marimo-text input")).not_to_have_count(0)
+    expect(page.locator("marimo-text input[delay]")).to_have_count(0)
     expect(button(page, "delete")).to_be_disabled()
     expect(button(page, "close deed/person")).to_be_disabled()
 
