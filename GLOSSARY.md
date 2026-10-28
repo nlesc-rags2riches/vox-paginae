@@ -21,7 +21,8 @@ _Avoid_: scan, image
 **Deed**:
 One memorie van successie: an entry in its book's `deeds.json`, written on one or more
 consecutive pages. It is what Vox Paginae annotates.
-_Code_: `deed` (the `deeds.json` entry), `deed_record` (the deed file's contents)
+_Code_: `deed` (the `deeds.json` entry), `deed_record` (the deed annotation file's
+contents)
 _Avoid_: deed/person, person
 
 **Deed person**:
@@ -52,18 +53,19 @@ A deed's header, balance and items together.
 _File_: `annotation`
 _Avoid_: labels, blocks
 
-**Deed file**:
+**Deed annotation file**:
 The file holding one deed's annotation, plus a copy of the deed's and its overledene's
 data, next to its book's pages.
 _File_: `deed-annotation-<deed_id>.json`; the copy is `copied_deed_person_data`
-_Avoid_: person file
+_Avoid_: deed file, person file
 
 **Open deed**:
 The one deed being annotated right now; the others are closed.
 _Avoid_: open person
 
 **Move**:
-Giving an open deed's annotation and pages to another deed that has no deed file yet.
+Giving an open deed's annotation and pages to another deed that has no deed annotation
+file yet.
 _UI_: **move annotation**
 
 ### What is annotated
@@ -110,4 +112,4 @@ _Avoid_: label
 
 - A **book** has many **pages** and many **deeds**.
 - A page can hold the end of one **deed** and the start of the next.
-- A **deed** has at most one **deed file**, which holds its **annotation**.
+- A **deed** has at most one **deed annotation file**, which holds its **annotation**.

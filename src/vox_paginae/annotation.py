@@ -1,4 +1,4 @@
-"""Annotation: books, pages, deeds, their deed files, items and boxes (non-UI part)."""
+"""Annotation: books, pages, deeds, their deed annotation files, items and boxes (non-UI part)."""
 
 # TODO: Split this into appropriate files and detailed human review
 
@@ -408,7 +408,7 @@ def single_overledene(deed: dict) -> dict:
 def saved_boxes(
     book: Path, scan: str, skip_deed_id: str | None = None
 ) -> list[tuple[str, list[int]]]:
-    """``(tag, bbox)`` of every box on ``scan`` in ``book``'s deed files, by deed.
+    """``(tag, bbox)`` of every box on ``scan`` in ``book``'s deed annotation files, by deed.
 
     Tags as in ``deed_boxes``: ``H`` for a header, ``B`` for a balance.
 

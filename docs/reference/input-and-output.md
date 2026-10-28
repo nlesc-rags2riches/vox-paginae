@@ -17,13 +17,14 @@ changes only on purpose, and never describes internals.
   rule shows an error, and that deed cannot be used. `deeds.json` is read as UTF-8.
 - Nothing else is read except the tool's own output (see Out): no other JSON
   (`metadata.json` included), no PageXML, no state file. Other files in the tree are
-  ignored, and so are files from the old format (`person-NNNN.json`) and deed files
-  with the old name (`labeled-deed-<deed_id>.json`): they are neither read, shown nor
-  removed. Rename an old deed file to `deed-annotation-<deed_id>.json` to use it.
+  ignored, and so are files from the old format (`person-NNNN.json`) and deed
+  annotation files with the old name (`labeled-deed-<deed_id>.json`): they are neither
+  read, shown nor removed. Rename an old deed annotation file to
+  `deed-annotation-<deed_id>.json` to use it.
 
 ## Out
 
-- One **deed file** per deed:
+- One **deed annotation file** per deed:
   `<book>/deed-annotation-<deed_id>.json`, saved next to the jpgs. A deed that has a file
   cannot be opened anew, only reopened. It is written and read as UTF-8, on every
   system, so a file saved on one system opens unchanged on another.
