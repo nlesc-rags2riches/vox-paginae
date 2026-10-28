@@ -36,7 +36,7 @@ def wait_until_ready(port, timeout=60):
 
 
 def deed(deed_id, aktenummer, plaats, name, date):
-    """One `deeds.json` entry, with only the fields the labeler reads."""
+    """One `deeds.json` entry, with only the fields Vox Paginae reads."""
     return {
         "deed_id": deed_id,
         "aktenummer": aktenummer,
@@ -55,7 +55,7 @@ def deed(deed_id, aktenummer, plaats, name, date):
 DEED_3 = deed("deed-3", "3", "Oostdorp", "Jan Modaal", "1880-01-02")
 DEED_7_OOST = deed("deed-7b", "7", "Oostdorp", "Jan de Wit", "1880-03-04")
 DEED_7_WEST = deed("deed-7g", "7", "Westdorp", "Piet Smit", "1880-05-06")
-# Two persons: the labeler needs exactly one, so this deed cannot be used.
+# Two deed persons: Vox Paginae needs exactly one, so this deed cannot be used.
 DEED_12 = deed("deed-12", "12", "Oostdorp", "Kees Bakker", "1880-07-08")
 DEED_12["personen"].append({**DEED_12["personen"][0], "naam_volledig": "Klaas Bakker"})
 
