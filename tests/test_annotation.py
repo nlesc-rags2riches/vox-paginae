@@ -347,11 +347,16 @@ def test_single_overledene_returns_the_one_deed_person():
     assert single_overledene({"personen": [overledene]}) is overledene
 
 
-def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
+def test_save_and_load_deed_records_ignore_old_files(tmp_path):
     assert load_deed_records(tmp_path) == {}
     (tmp_path / "person-0001.json").write_text(
         '{"metadata": {}}', encoding="utf-8"
     )  # old format
+    (tmp_path / "labeled-deed-d9.json").write_text(
+        json.dumps({**new_deed_record(DEED, "a.jpg", [0] * 4), "deed_id": "d9"}),
+        encoding="utf-8",
+    )  # old name
+    assert load_deed_records(tmp_path) == {}
     p = add_item(
         new_deed_record(DEED, "a.jpg", [0] * 4),
         "assets",
@@ -362,7 +367,7 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
     )
     before = datetime.now(UTC)
     path = save_deed_record(tmp_path, p, "Ann")
-    assert path == tmp_path / "labeled-deed-d1.json"
+    assert path == tmp_path / "deed-annotation-d1.json"
     # Every write records who wrote it and when, and leaves the record passed in alone.
     assert p["annotation_metadata"] == {"annotator_name": None, "annotation_date": None}
     saved = load_deed_records(tmp_path)["d1"]
@@ -380,7 +385,8 @@ def test_save_and_load_deed_records_ignore_old_person_files(tmp_path):
         datetime.fromisoformat(again["annotation_metadata"]["annotation_date"]) >= date
     )
     assert sorted(f.name for f in tmp_path.iterdir()) == [
-        "labeled-deed-d1.json",
+        "deed-annotation-d1.json",
+        "labeled-deed-d9.json",
         "person-0001.json",
     ]
 
@@ -427,7 +433,7 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     # The annotation stays as it is.
     assert moved["scans"] == p["scans"]
     assert moved["annotation"] == p["annotation"]
-    assert [f.name for f in tmp_path.iterdir()] == ["labeled-deed-d2.json"]
+    assert [f.name for f in tmp_path.iterdir()] == ["deed-annotation-d2.json"]
     saved = load_deed_records(tmp_path)["d2"]
     assert saved["annotation_metadata"]["annotator_name"] == "Bob"
     assert {k: v for k, v in saved.items() if k != "annotation_metadata"} == {
@@ -443,8 +449,8 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     with pytest.raises(ValueError, match="already has a file"):
         move_deed_record(tmp_path, moved, DEED, "Bob")
     assert sorted(f.name for f in tmp_path.iterdir()) == [
-        "labeled-deed-d1.json",
-        "labeled-deed-d2.json",
+        "deed-annotation-d1.json",
+        "deed-annotation-d2.json",
     ]
 
 

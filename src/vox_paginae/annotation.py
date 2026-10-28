@@ -281,8 +281,8 @@ def close_deed_record(
 
 
 def deed_path(book: Path, deed_id: str) -> Path:
-    """``<book>/labeled-deed-<deed_id>.json``: one file per deed."""
-    return Path(book) / f"labeled-deed-{deed_id}.json"
+    """``<book>/deed-annotation-<deed_id>.json``: one file per deed."""
+    return Path(book) / f"deed-annotation-{deed_id}.json"
 
 
 def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path:
@@ -328,15 +328,16 @@ def move_deed_record(
 
 
 def load_deed_records(book: Path) -> dict[str, dict]:
-    """``{deed_id: deed_record}`` for every ``labeled-deed-*.json`` in ``book``.
+    """``{deed_id: deed_record}`` for every ``deed-annotation-*.json`` in ``book``.
 
-    Files from the old format (``person-NNNN.json``) are not read.
+    Files from the old format (``person-NNNN.json``) or with the old name
+    (``labeled-deed-*.json``) are not read.
     """
     return {
         r["deed_id"]: r
         for r in (
             json.loads(p.read_text(encoding="utf-8"))
-            for p in sorted(Path(book).glob("labeled-deed-*.json"))
+            for p in sorted(Path(book).glob("deed-annotation-*.json"))
         )
     }
 
@@ -426,7 +427,7 @@ def saved_boxes(
 def resume(books: list[Path]) -> tuple[int, int]:
     """Where to pick up, ``(book, page)``, from the output files alone.
 
-    Books are annotated in order, so the last book with any ``labeled-deed-*.json`` is
+    Books are annotated in order, so the last book with any ``deed-annotation-*.json`` is
     open, on the latest page among its files' last ``scans``: a closed deed's close
     page (or the later page a box reaches, see ``close_deed_record``), a not yet closed
     one's header page. No deed is reopened. With no files at all: ``(0, 0)``.

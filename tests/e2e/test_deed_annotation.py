@@ -87,7 +87,7 @@ def open_deed(page, click, search="Jan Modaal"):
     drag_box(page, *HEADER)
     pick_deed(page, search)
     click("open")
-    expect(status(page, "editing labeled-deed-")).to_be_visible()
+    expect(status(page, "editing deed-annotation-")).to_be_visible()
 
 
 def drag_box(page, x0, y0, x1, y1):
@@ -100,7 +100,7 @@ def drag_box(page, x0, y0, x1, y1):
 
 
 def deed_record(data_root, deed_id="deed-3", book="book1"):
-    path = data_root / book / f"labeled-deed-{deed_id}.json"
+    path = data_root / book / f"deed-annotation-{deed_id}.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -116,7 +116,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     click("next page")
     expect(status(page, "page 2/3")).to_be_visible()
     open_deed(page, click)
-    expect(status(page, "editing labeled-deed-deed-3 · page 2/3")).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-3 · page 2/3")).to_be_visible()
     # Written at once, before any item: the current page is the header page.
     record = deed_record(data_root)
     assert record.pop("annotation_metadata")["annotator_name"] == "Ann"
@@ -175,7 +175,7 @@ def test_header_box_is_required_to_open(marimo_server, data_root, page, click):
     expect(button(page, "open")).to_be_enabled()
     expect(hint).to_have_count(0)
     click("open")
-    expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-3 · page 1/3")).to_be_visible()
     expect(hint).to_have_count(0)  # nothing to open while one is open
 
     header = deed_record(data_root)["annotation"]["header"]
@@ -380,7 +380,7 @@ def test_annotator_name_is_locked_first_and_every_write_records_it(
     lock_annotator(page, "Bob")
     pick_deed(page, "Jan Modaal")
     click("reopen")
-    expect(status(page, "editing labeled-deed-deed-3")).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-3")).to_be_visible()
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.2, 0.8, 0.3)
     fill(page, "amount", "1,-")
@@ -407,7 +407,7 @@ def test_continued_item_spans_two_pages(marimo_server, data_root, page, click):
     fill(page, "amount", "1,-")  # save needs amount or description
     save(page, click)
     expect(
-        status(page, "editing labeled-deed-deed-3 · page 2/3 · pending 0")
+        status(page, "editing deed-annotation-deed-3 · page 2/3 · pending 0")
     ).to_be_visible()
     click("next page")  # page 3 has no items: closing there still includes it
     expect(status(page, "page 3/3")).to_be_visible()
@@ -440,7 +440,7 @@ def test_restart_resumes_on_last_page_with_no_open_deed(data_root, page, click):
         fill(page, "amount", "1,-")  # save needs amount or description
         save(page, click)
         expect(
-            status(page, "editing labeled-deed-deed-3 · page 3/3 · pending 0")
+            status(page, "editing deed-annotation-deed-3 · page 3/3 · pending 0")
         ).to_be_visible()
         # No close: a restart mid-deed must not reopen it.
 
@@ -454,7 +454,9 @@ def test_restart_resumes_on_last_page_with_no_open_deed(data_root, page, click):
         drag_box(page, 0.2, 0.5, 0.8, 0.6)
         fill(page, "amount", "1,-")  # save needs amount or description
         save(page, click)
-        expect(status(page, "editing labeled-deed-deed-7g · page 2/3")).to_be_visible()
+        expect(
+            status(page, "editing deed-annotation-deed-7g · page 2/3")
+        ).to_be_visible()
 
     assert len(deed_record(data_root)["annotation"]["assets"]) == 2
     second = deed_record(data_root, "deed-7g")
@@ -523,7 +525,7 @@ def test_buttons_are_disabled_until_their_fields_are_set(marimo_server, page, cl
     expect(button(page, "close deed")).to_be_disabled()  # boxes pending
     save(page, click)
     expect(
-        status(page, "editing labeled-deed-deed-3 · page 1/3 · pending 0")
+        status(page, "editing deed-annotation-deed-3 · page 1/3 · pending 0")
     ).to_be_visible()
     expect(button(page, "close deed")).to_be_enabled()
 
@@ -570,7 +572,7 @@ def test_end_of_book_closes_deed_then_all_books_done(data_root, page, click):
         fill(page, "amount", "1,-")  # save needs amount or description
         save(page, click)
         expect(
-            status(page, "editing labeled-deed-deed-3 · page 3/3 · pending 0")
+            status(page, "editing deed-annotation-deed-3 · page 3/3 · pending 0")
         ).to_be_visible()
         expect(button(page, "next page")).to_be_enabled()
 
@@ -585,7 +587,7 @@ def test_end_of_book_closes_deed_then_all_books_done(data_root, page, click):
         expect(page.get_by_text("all books done")).to_be_visible()
         choose(page, "book1")  # the book dropdown stays: no slider needed to go back
         expect(page.get_by_text("book1/page_01.jpg", exact=True)).to_be_visible()
-    assert not list(book2.glob("labeled-deed-*.json"))
+    assert not list(book2.glob("deed-annotation-*.json"))
 
 
 def test_delete_writes_at_once(marimo_server, data_root, page, click):
@@ -602,7 +604,7 @@ def test_delete_writes_at_once(marimo_server, data_root, page, click):
     fill(page, "description", "Een stoel")
     save(page, click)
     expect(
-        status(page, "editing labeled-deed-deed-3 · page 2/3 · pending 0")
+        status(page, "editing deed-annotation-deed-3 · page 2/3 · pending 0")
     ).to_be_visible()
 
     options = page.locator("select option")
@@ -720,10 +722,12 @@ def test_jump_is_view_only_while_a_deed_is_open(data_root, page, click):
         expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
         # Each book has its own files: deed-3 has one in book1 only.
         open_deed(page, click)
-        expect(status(page, "editing labeled-deed-deed-3 · page 1/1")).to_be_visible()
+        expect(
+            status(page, "editing deed-annotation-deed-3 · page 1/1")
+        ).to_be_visible()
 
-    assert [p.name for p in book2.glob("labeled-deed-*.json")] == [
-        "labeled-deed-deed-3.json"
+    assert [p.name for p in book2.glob("deed-annotation-*.json")] == [
+        "deed-annotation-deed-3.json"
     ]
 
 
@@ -774,7 +778,9 @@ def test_debug_panel_shows_the_file(data_root, page, click):
         expect(page.get_by_text("no file yet")).to_be_visible()
         open_deed(page, click)
         # Written at once, so shown before any item.
-        expect(page.get_by_text("labeled-deed-deed-3.json", exact=True)).to_be_visible()
+        expect(
+            page.get_by_text("deed-annotation-deed-3.json", exact=True)
+        ).to_be_visible()
         page.get_by_role("radio", name="assets").check()
         drag_box(page, 0.2, 0.2, 0.8, 0.3)
         fill(page, "amount", "12,-")
@@ -831,7 +837,7 @@ def test_go_to_deed_moves_to_its_header_page(marimo_server, data_root, page, cli
     pick_deed(page, "Jan Modaal")
     click("go to deed")
     expect(status(page, "no deed · page 1/3")).to_be_visible()  # moves, writes nothing
-    assert len(list((data_root / "book1").glob("labeled-deed-*.json"))) == 1
+    assert len(list((data_root / "book1").glob("deed-annotation-*.json"))) == 1
 
 
 def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
@@ -855,7 +861,7 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
     pick_deed(page, "Jan Modaal")
     expect(button(page, "open")).to_be_disabled()  # has a file: reopen it
     click("reopen")  # back on the header page
-    expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-3 · page 1/3")).to_be_visible()
     expect(page.get_by_text("deed: 3 · Oostdorp · Jan Modaal")).to_be_visible()
 
     choose(page, "A1 · 1,- ·")
@@ -867,8 +873,8 @@ def test_reopen_rewrites_the_same_file(marimo_server, data_root, page, click):
     click("close deed")
     expect(status(page, "no deed")).to_be_visible()
 
-    assert [p.name for p in (data_root / "book1").glob("labeled-deed-*.json")] == [
-        "labeled-deed-deed-3.json"
+    assert [p.name for p in (data_root / "book1").glob("deed-annotation-*.json")] == [
+        "deed-annotation-deed-3.json"
     ]
     record = deed_record(data_root)
     assert [i["amount"] for i in record["annotation"]["assets"]] == ["10,-", "2,-"]
@@ -887,11 +893,11 @@ def test_delete_deed_needs_confirmation(marimo_server, data_root, page, click):
     click("delete deed")
     click("cancel")  # writes nothing
     expect(button(page, "delete deed")).to_be_enabled()
-    path = data_root / "book1" / "labeled-deed-deed-3.json"
+    path = data_root / "book1" / "deed-annotation-deed-3.json"
     assert path.exists()
 
     click("delete deed")
-    click("confirm delete labeled-deed-deed-3")
+    click("confirm delete deed-annotation-deed-3")
     expect(
         button(page, "delete deed")
     ).to_be_disabled()  # dropdown rebuilt, nothing picked
@@ -903,7 +909,7 @@ def test_delete_deed_needs_confirmation(marimo_server, data_root, page, click):
     expect(button(page, "open")).to_be_enabled()
     expect(button(page, "delete deed")).to_be_disabled()
     click("open")
-    expect(status(page, "editing labeled-deed-deed-3 · page 1/3")).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-3 · page 1/3")).to_be_visible()
     assert path.exists()
 
 
@@ -927,10 +933,10 @@ def test_move_annotation_to_another_deed(marimo_server, data_root, page, click):
     pick_deed(page, "Westdorp")
 
     click("move annotation")
-    expect(status(page, "editing labeled-deed-deed-7g")).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-7g")).to_be_visible()
     expect(page.get_by_text("deed: 7 · Westdorp · Piet Smit")).to_be_visible()
-    assert [p.name for p in (data_root / "book1").glob("labeled-deed-*.json")] == [
-        "labeled-deed-deed-7g.json"
+    assert [p.name for p in (data_root / "book1").glob("deed-annotation-*.json")] == [
+        "deed-annotation-deed-7g.json"
     ]
     moved = deed_record(data_root, "deed-7g")
     assert moved["copied_deed_person_data"]["naam_volledig"] == "Piet Smit"
@@ -1001,7 +1007,7 @@ def test_book_without_deeds_json_stops_annotating(data_root, page):
             expect(button(page, label)).to_have_count(0)
         choose(page, "book2")  # the book dropdown stays: no slider needed to leave
         expect(page.get_by_text("book2/only.jpg", exact=True)).to_be_visible()
-    assert not list((data_root / "book1").glob("labeled-deed-*.json"))
+    assert not list((data_root / "book1").glob("deed-annotation-*.json"))
 
 
 def test_deed_without_exactly_one_overledene_shows_an_error(marimo_server, page):
@@ -1043,4 +1049,4 @@ def test_book_dropdown_moves_to_the_first_page(data_root, page, click):
         expect(book_dd).to_be_enabled()
         choose(page, "book2")
         expect(status(page, "no deed · page 1/2")).to_be_visible()
-    assert not list(book2.glob("labeled-deed-*.json"))
+    assert not list(book2.glob("deed-annotation-*.json"))
