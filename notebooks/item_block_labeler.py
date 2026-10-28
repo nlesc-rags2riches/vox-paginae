@@ -110,9 +110,9 @@ def annotator_state(mo):
 def annotator_input(get_annotator, mo):
     _name, _locked = get_annotator()
     # Read-only while locked: a stray keystroke cannot change who is recorded.
-    # debounce: lock enables while typing, as save does
+    # debounce=False: lock enables while typing, as save does (no timed debounce: #11)
     annotator_in = mo.ui.text(
-        label="annotator", value=_name, disabled=_locked, debounce=300
+        label="annotator", value=_name, disabled=_locked, debounce=False
     )
     # A plain name for now: every write records it. "" until locked: nothing past the
     # book cell runs. From the state, not the input, so typing reruns nothing below.
@@ -269,15 +269,16 @@ def _(block_labels, get_deed_record, get_editing, mo):
     category_in = mo.ui.text(
         label="category", value=_item.get("category") or ""
     )
-    # debounce: save enables while typing, as for the name
+    # debounce=False: save enables while typing. Not debounce=300: marimo's timed
+    # debounce can send back a value the kernel replaced, e.g. edit then cancel edit (#11).
     value_in = mo.ui.text(
-        label="value", value=_item.get("amount", ""), debounce=300
+        label="value", value=_item.get("amount", ""), debounce=False
     )
     desc_in = mo.ui.text(
         label="description",
         value=_item.get("description", ""),
         full_width=True,
-        debounce=300,
+        debounce=False,
     )
     return category_in, desc_in, value_in
 
@@ -1020,13 +1021,13 @@ def balance_inputs(get_deed_record, get_editing_balance, mo):
     # clear balance box empties them again.
     _open = get_deed_record()
     _balance = (_open and _open["annotation"]["balance"]) or {}
-    # debounce: save box as balance enables while typing, as for the item value
+    # debounce=False: save box as balance enables while typing, as for the item value
     total_assets_in, total_liabilities_in, total_in = (
         mo.ui.text(
             label=_field.replace("_", " "),
             value=_balance.get(_field, ""),
             disabled=bool(_balance) and not get_editing_balance(),
-            debounce=300,
+            debounce=False,
         )
         for _field in ["total_assets", "total_liabilities", "total"]
     )
