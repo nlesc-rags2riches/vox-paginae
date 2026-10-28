@@ -4,7 +4,8 @@ Standalone continuation of the item-block labeler from the Rags2Riches playgroun
 (`exploration-loghi-fine-tuning/item-block-labeler.py`). An MVP whose code is not yet
 human-reviewed: keep changes small, one step at a time, with the user in the loop.
 
-- Domain words (deed, deed person, item, box, …): `GLOSSARY.md`. Use its terms, not the "Avoid" ones.
+- Domain words (deed, deed person, item, box, …): `GLOSSARY.md`. Use its terms, not
+  the "Avoid" ones.
 - UI: `notebooks/item_block_labeler.py` (marimo). Logic: `src/vox_paginae/blocks.py`.
   The `marimo-library` skill governs the split. Edit the notebook only through
   `marimo-pair`, including when the server runs with `--watch`: the running kernel is
