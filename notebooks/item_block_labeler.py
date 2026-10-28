@@ -1298,7 +1298,9 @@ def layout(
                             "**DEBUG PANE**"
                             + (f" · `{_path.name}`" if _path else "")
                         ),
-                        mo.md(f"```json\n{_path.read_text()}\n```")
+                        mo.md(
+                            f"```json\n{_path.read_text(encoding='utf-8')}\n```"
+                        )
                         if _path and _path.exists()
                         else mo.md("no file yet"),
                     ]

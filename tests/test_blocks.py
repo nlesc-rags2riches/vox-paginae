@@ -300,6 +300,36 @@ def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
     ]
 
 
+# Outside cp1252 (Windows' default) and Latin-1: only UTF-8 holds them.
+NOT_CP1252 = "Ődön Şahin ‐ Łódź"
+
+
+def test_load_deeds_reads_utf8_whatever_the_system_default(tmp_path):
+    deed = {**DEED, "plaats": NOT_CP1252}
+    (tmp_path / "deeds.json").write_bytes(
+        json.dumps([deed], ensure_ascii=False).encode("utf-8")
+    )
+    assert load_deeds(tmp_path) == {"d1": deed}
+
+
+def test_deed_files_are_utf8_whatever_the_system_default(tmp_path):
+    p = add_block(
+        new_deed_record(DEED, "a.jpg", [0] * 4),
+        "assets",
+        "",
+        "1,-",
+        NOT_CP1252,
+        [("a.jpg", [0] * 4)],
+    )
+    path = save_deed_record(tmp_path, p, NOT_CP1252)
+    # UTF-8 on disk, so it opens on another system.
+    on_disk = json.loads(path.read_bytes().decode("utf-8"))
+    assert on_disk["annotation_metadata"]["annotator_name"] == NOT_CP1252
+    saved = load_deed_records(tmp_path)["d1"]
+    assert saved == on_disk
+    assert saved["annotation"]["assets"][0]["description"] == NOT_CP1252
+
+
 @pytest.mark.parametrize(
     "personen, error",
     [

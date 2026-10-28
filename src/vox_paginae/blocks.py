@@ -302,7 +302,9 @@ def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path
     }
     path = deed_path(book, deed_record["deed_id"])
     tmp = path.with_suffix(".json.tmp")  # write-then-rename: a crash never truncates
-    tmp.write_text(json.dumps(deed_record, indent=2, ensure_ascii=False) + "\n")
+    tmp.write_text(
+        json.dumps(deed_record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     tmp.replace(path)
     return path
 
@@ -337,7 +339,7 @@ def load_deed_records(book: Path) -> dict[str, dict]:
     return {
         r["deed_id"]: r
         for r in (
-            json.loads(p.read_text())
+            json.loads(p.read_text(encoding="utf-8"))
             for p in sorted(Path(book).glob("labeled-deed-*.json"))
         )
     }
@@ -348,7 +350,9 @@ def load_deeds(book: Path) -> dict[str, dict] | None:
     path = Path(book) / "deeds.json"
     if not path.exists():
         return None
-    return {deed["deed_id"]: deed for deed in json.loads(path.read_text())}
+    return {
+        deed["deed_id"]: deed for deed in json.loads(path.read_text(encoding="utf-8"))
+    }
 
 
 def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:

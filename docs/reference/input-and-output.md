@@ -14,7 +14,7 @@ changes only on purpose, and never describes internals.
   book, and nothing can be labeled or saved in it. Its deeds are listed to pick from. A
   deed must have exactly one person, with `rol: overledene`; picking it shows that
   person's name, death place and death date. Picking a deed that doesn't satisfy this
-  rule shows an error, and that deed cannot be used.
+  rule shows an error, and that deed cannot be used. `deeds.json` is read as UTF-8.
 - Nothing else is read except the tool's own output (see Out): no other JSON
   (`metadata.json` included), no PageXML, no state file. Other files in the tree are
   ignored, and so are files from the old format (`person-NNNN.json`): they are neither
@@ -24,7 +24,8 @@ changes only on purpose, and never describes internals.
 
 - One file per **deed/person** (a deed and its deceased person):
   `<book>/labeled-deed-<deed_id>.json`, saved next to the jpgs. A deed that has a file
-  cannot be opened anew, only reopened.
+  cannot be opened anew, only reopened. It is written and read as UTF-8, on every
+  system, so a file saved on one system opens unchanged on another.
 - A deed/person belongs to exactly one book.
 - Before opening, you draw a box around the deed/person's header on its first page;
   **open** stays disabled until there is one. The file is written as soon as the
