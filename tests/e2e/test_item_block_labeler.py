@@ -227,10 +227,10 @@ def test_edit_header_moves_it_to_an_earlier_page(marimo_server, data_root, page,
     # Unlocked: an item now goes on page 1, before the old header page.
     page.get_by_role("radio", name="assets").check()
     drag_box(page, 0.2, 0.5, 0.8, 0.6)
-    fill(page, "value", "2,-")  # not "1,-": typing it again is not sent (marimo)
+    fill(page, "value", "1,-")  # as before: a timed debounce did not send it (#11)
     save(page, click)
     (item,) = deed_record(data_root)["annotation"]["assets"]
-    assert item["amount"] == "2,-"
+    assert item["amount"] == "1,-"
     assert item["layout"][0]["scan"] == "page_01.jpg"
 
 
@@ -326,7 +326,7 @@ def test_edit_balance_rewrites_it_in_place(marimo_server, data_root, page, click
     # Locked, as if closed: with an item, a type, a value and a drawn box, nothing else
     # would disable these.
     drag_box(page, *NEW_HEADER)
-    fill(page, "value", "2,-")  # not "1,-": typing it again is not sent (marimo)
+    fill(page, "value", "1,-")
     for label in [
         "save",
         "continue",
