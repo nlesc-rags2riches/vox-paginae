@@ -13,7 +13,7 @@ skill sets the rules.
 ### A disabled-button check must be able to fail
 
 Some features lock buttons while they run: while you edit the header or the balance,
-**save**, **edit**, **delete** and **close deed/person** are disabled. A browser test
+**save**, **edit**, **delete**, **close deed/person** and **move labels** are disabled. A browser test
 checks this with `expect(button(...)).to_be_disabled()`.
 
 That check only proves something if nothing else could disable the button. **edit** is

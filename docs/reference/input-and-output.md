@@ -70,8 +70,8 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed/person is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, moving, every added, changed or deleted item, saving, editing or clearing
-  the balance, and saving the header, is in the file at once.
+  version. Opening, moving the labels, every added, changed or deleted item, saving,
+  editing or clearing the balance, and saving the header, is in the file at once.
   Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
 - Moving past a book's last page closes the open deed/person there.
@@ -80,9 +80,10 @@ changes only on purpose, and never describes internals.
 - A deed/person's file can be deleted, after a confirmation. Its deed can then be
   opened anew.
 - While it is open, **move labels** moves the deed/person to another deed without a
-  file. Its file becomes that deed's `labeled-deed-<deed_id>.json`, and the old file is
-  gone. `deed_id` and `copied_deed_person_data` come from the new deed; the rest stays.
-  It stays open. The old deed can then be opened anew.
+  file. Its file is then that deed's `labeled-deed-<deed_id>.json`. The old file is
+  gone. `deed_id` and `copied_deed_person_data` come from the new deed; the header,
+  balance, items and `scans` are kept. The deed/person is still open. The old deed can
+  then be opened anew. An interrupted move can leave both files, with the same labels.
 - These files are read back as they are on disk; no other state is kept between
   runs. A deed/person open when the tool stopped is not open after a restart.
 

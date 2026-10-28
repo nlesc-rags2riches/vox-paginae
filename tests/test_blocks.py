@@ -360,17 +360,28 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
         "aktenummer": "7",
         "plaats": "Oostdorp",
         "personen": [
-            {"naam_volledig": "Piet Smit", "plaats_overlijden": "Oostdorp",
-             "rol": "overledene"}
+            {
+                "naam_volledig": "Piet Smit",
+                "plaats_overlijden": "Oostdorp",
+                "rol": "overledene",
+            }
         ],
-    }  # fmt: skip
+    }
     p = set_balance(
         add_block(
             new_deed_record(DEED, "a.jpg", [1, 2, 3, 4]),
-            "assets", "", "1,-", "", [("b.jpg", [5, 6, 7, 8])],
+            "assets",
+            "",
+            "1,-",
+            "",
+            [("b.jpg", [5, 6, 7, 8])],
         ),
-        "b.jpg", [0, 0, 9, 9], "1,-", "", "",
-    )  # fmt: skip
+        "b.jpg",
+        [0, 0, 9, 9],
+        "1,-",
+        "",
+        "",
+    )
     p["scans"] = ["a.jpg", "b.jpg"]
     save_deed_record(tmp_path, p, "Ann")
 

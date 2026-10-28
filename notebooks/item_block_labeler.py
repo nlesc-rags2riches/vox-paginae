@@ -977,7 +977,8 @@ def deed_move(
     set_deed_id,
     set_deed_record,
 ):
-    # Moves the open deed/person's labels to the picked deed: same rules as close deed/person.
+    # Moves the open deed/person's labels to the picked deed. Locked as close deed/person, but on
+    # any page: a move does not depend on the page.
     # It stays open, under the new deed; its old deed has no file again.
     def _move(_):
         try:

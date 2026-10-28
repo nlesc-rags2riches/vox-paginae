@@ -317,6 +317,7 @@ def move_deed_record(
     loses the labels. A deed that cannot be used, or has a file, raises ``ValueError``.
     """
     header = deed_record["annotation"]["header"]
+    # As on open, for its checks and its copied data; the rest of it is not used.
     fresh = new_deed_record(deed, header["scan"], header["bbox"])
     if deed_path(book, deed["deed_id"]).exists():
         raise ValueError("this deed already has a file")
