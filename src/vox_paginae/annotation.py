@@ -399,7 +399,7 @@ def single_overledene(deed: dict) -> dict:
         )
     if deed_persons[0].get("rol") != "overledene":
         raise ValueError(
-            f"This deed's deed person has `rol: {deed_persons[0].get('rol')}`: it needs "
+            f"Its one deed person has `rol: {deed_persons[0].get('rol')}`: it needs "
             "`rol: overledene`. It cannot be used."
         )
     return deed_persons[0]

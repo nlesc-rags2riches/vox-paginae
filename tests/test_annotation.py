@@ -334,7 +334,7 @@ def test_deed_files_are_utf8_whatever_the_system_default(tmp_path):
     [
         ([], "has 0 deed persons"),
         ([{"rol": "overledene"}, {"rol": "erfgenaam"}], "has 2 deed persons"),
-        ([{"rol": "erfgenaam"}], "deed person has `rol: erfgenaam`"),
+        ([{"rol": "erfgenaam"}], "Its one deed person has `rol: erfgenaam`"),
     ],
 )
 def test_single_overledene_rejects_a_deed_without_exactly_one(personen, error):
