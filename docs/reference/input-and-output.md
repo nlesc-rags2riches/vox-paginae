@@ -70,7 +70,7 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed/person is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, every added, changed or deleted item, saving, editing or clearing
+  version. Opening, moving, every added, changed or deleted item, saving, editing or clearing
   the balance, and saving the header, is in the file at once.
   Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
@@ -79,6 +79,10 @@ changes only on purpose, and never describes internals.
   next writes rewrite the same file.
 - A deed/person's file can be deleted, after a confirmation. Its deed can then be
   opened anew.
+- While it is open, **move labels** moves the deed/person to another deed without a
+  file. Its file becomes that deed's `labeled-deed-<deed_id>.json`, and the old file is
+  gone. `deed_id` and `copied_deed_person_data` come from the new deed; the rest stays.
+  It stays open. The old deed can then be opened anew.
 - These files are read back as they are on disk; no other state is kept between
   runs. A deed/person open when the tool stopped is not open after a restart.
 
@@ -130,6 +134,6 @@ changes only on purpose, and never describes internals.
   starts on the same page). `scans` always starts on the header page, the page of
   `annotation.header`. Opening sets it. **save header** on another page moves it, and
   `scans` then starts on that page.
-- `copied_deed_person_data`: copied when the deed/person is opened; a later change to
-  `deeds.json` does not reach an existing file.
+- `copied_deed_person_data`: copied when the deed/person is opened or moved; a later
+  change to `deeds.json` does not reach an existing file.
 - Item labels (`A1`, `L2`) are computed from list positions and never stored.
