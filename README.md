@@ -11,7 +11,7 @@ person.
 
 ```bash
 uv sync
-uv run marimo run notebooks/item_block_labeler.py -- --data-root /path/to/scans
+uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
 ```
 
 Documentation is in [`docs/`](docs/index.md). Preview it with `uv run --group docs zensical serve`.
