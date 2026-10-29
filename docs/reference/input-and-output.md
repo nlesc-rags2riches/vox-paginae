@@ -5,8 +5,8 @@ changes only on purpose, and never describes internals.
 
 ## In
 
-- You give your name as the **annotator** and lock it. Until it is locked nothing else
-  can be used. While locked it cannot be edited; unlock it to change it.
+- You give your name as the **annotator** and lock it. Until it is locked, only the
+  root folder can be changed. While locked it cannot be edited; unlock it to change it.
 - You pick a root folder. Every folder under it that directly contains `*.jpg` is a
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
@@ -32,12 +32,14 @@ changes only on purpose, and never describes internals.
 - Before opening, you draw a box around the deed's header on its first page;
   **open** stays disabled until there is one. The file is written as soon as the
   deed is opened. The page of the header box is its **header page**.
+- While it is open, its item and balance boxes go on its header page or a later page.
+  It is closed on one of those pages too.
 - While it is open, **edit header** redraws the header box on any page up to the first
   page with a saved item or balance box; that page becomes the header page. Until
   **save header** or **cancel header edit**, the balance and items cannot be changed.
-- While a deed is open, a box drawn on its header page or any later page can be
-  saved as its **balance**, with three totals, at least one filled in. A deed
-  has at most one balance, or none: clear it to save another.
+- While a deed is open, a drawn box can be saved as its **balance**, with three
+  totals, at least one filled in. A deed has at most one balance, or none: clear it to
+  save another.
   **edit balance box** lets you change the saved balance. Its totals can be retyped.
   A new box drawn on the page replaces its box; without one, the old box stays. Until
   **save box as balance** or **cancel balance edit**, the header and items cannot be
@@ -73,8 +75,10 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. Opening, moving the annotation, every added, changed or deleted item, saving,
-  editing or clearing the balance, and saving the header, is in the file at once.
+  version. It can also leave a `deed-annotation-<deed_id>.json.tmp` next to it. That
+  file is never read. Opening, moving the annotation, every added, changed or deleted
+  item, saving, editing or clearing the balance, and saving the header, is in the file
+  at once.
   Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
 - Moving past a book's last page closes the open deed there.
