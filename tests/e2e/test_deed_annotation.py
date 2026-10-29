@@ -256,7 +256,7 @@ def test_balance_box_is_saved_once_cleared_and_saved_again(
     click("save box as balance")
     # Read only, showing what was saved; one balance at most.
     expect(text_input(page, "total assets")).to_be_disabled()
-    expect(text_input(page, "total assets")).to_have_value(" 1.000,- ")
+    expect(text_input(page, "total assets")).to_have_value("1.000,-")
     expect(button(page, "save box as balance")).to_be_disabled()
     drag_box(page, *BALANCE)
     expect(button(page, "save box as balance")).to_be_disabled()
@@ -264,7 +264,7 @@ def test_balance_box_is_saved_once_cleared_and_saved_again(
     balance = deed_record(data_root)["annotation"]["balance"]
     assert balance.pop("layout")["scan"] == "page_01.jpg"
     assert balance == {
-        "total_assets": " 1.000,- ",
+        "total_assets": "1.000,-",
         "total_liabilities": "",
         "total": "f 900",
     }

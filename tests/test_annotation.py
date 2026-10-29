@@ -122,9 +122,22 @@ def test_items_go_into_the_annotation_and_leave_scans_alone():
     assert len(p["annotation"]["assets"]) == 2  # originals untouched
 
 
-def test_balance_is_one_optional_box_with_three_totals_as_typed():
+def test_item_text_is_stripped_and_a_blank_category_is_none():
     p = new_deed_record(DEED, "p2.jpg", [0] * 4)
-    q = set_balance(p, "p3.jpg", [1, 2.6, 30, 40], " 1.000,- ", "", "f 900")
+    p = add_item(p, "assets", " cash ", " 900,- ", "\tEen huis ", [("p2.jpg", [0] * 4)])
+    p = add_item(p, "assets", "  ", "1", " ", [("p2.jpg", [0] * 4)])
+    a1, a2 = p["annotation"]["assets"]
+    assert (a1["category"], a1["amount"], a1["description"]) == (
+        "cash",
+        "900,-",
+        "Een huis",
+    )
+    assert (a2["category"], a2["description"]) == (None, "")
+
+
+def test_balance_is_one_optional_box_with_three_stripped_totals():
+    p = new_deed_record(DEED, "p2.jpg", [0] * 4)
+    q = set_balance(p, "p3.jpg", [1, 2.6, 30, 40], " 1.000,- ", " ", "f 900\t")
     assert q["annotation"]["balance"] == {
         "layout": {
             "scan": "p3.jpg",
@@ -132,7 +145,7 @@ def test_balance_is_one_optional_box_with_three_totals_as_typed():
             "pagexml_link": None,
             "pagexml_baseline_ids": None,
         },
-        "total_assets": " 1.000,- ",
+        "total_assets": "1.000,-",
         "total_liabilities": "",
         "total": "f 900",
     }

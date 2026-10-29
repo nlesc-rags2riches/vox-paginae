@@ -88,14 +88,15 @@ def add_item(
 
     Each ``(scan, bbox)`` in ``layout_boxes`` becomes one ``layout`` entry.
 
-    ``amount`` and ``description`` are stored as typed; at least one must be non-blank.
-    An empty ``category`` becomes ``None``.
+    ``amount`` and ``description`` are stored as typed, stripped; at least one must be
+    non-blank. A blank ``category`` becomes ``None``.
     """
     if type_ not in TYPES:
         raise ValueError(f"type must be one of {TYPES}, got {type_!r}")
     if not layout_boxes:
         raise ValueError("an item needs at least one box")
-    if not (amount.strip() or description.strip()):
+    category, amount, description = (t.strip() for t in (category, amount, description))
+    if not (amount or description):
         raise ValueError("an item needs an amount or a description")
     deed_record = copy.deepcopy(deed_record)
     deed_record["annotation"][type_].append(
@@ -119,12 +120,15 @@ def set_balance(
 ) -> dict:
     """Return a copy of ``deed_record`` with its balance: ``bbox`` on ``scan``.
 
-    The totals are stored as typed; at least one must be non-blank. A deed has at
-    most one balance: a second raises ``ValueError``; ``clear_balance`` first.
+    The totals are stored as typed, stripped; at least one must be non-blank. A deed has
+    at most one balance: a second raises ``ValueError``; ``clear_balance`` first.
     """
     if deed_record["annotation"]["balance"] is not None:
         raise ValueError("a deed has at most one balance")
-    if not any(t.strip() for t in (total_assets, total_liabilities, total)):
+    total_assets, total_liabilities, total = (
+        t.strip() for t in (total_assets, total_liabilities, total)
+    )
+    if not any((total_assets, total_liabilities, total)):
         raise ValueError("a balance needs at least one total")
     deed_record = copy.deepcopy(deed_record)
     deed_record["annotation"]["balance"] = {

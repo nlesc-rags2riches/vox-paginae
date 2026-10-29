@@ -59,20 +59,22 @@ changes only on purpose, and never describes internals.
     - `header`: the header box, a single box shaped like an item's `layout` entry
       (`scan`, `bbox`, `pagexml_link`, `pagexml_baseline_ids`)
     - `balance`: `null` without one; otherwise `layout` (a single box, shaped like
-      `header`), and `total_assets`, `total_liabilities` and `total`, strings stored
-      exactly as typed (`""` when left empty)
+      `header`), and `total_assets`, `total_liabilities` and `total`, strings (`""`
+      when left empty)
     - then `assets` and `liabilities`, each a list of items
 - An item's **type** (asset or liability) is the list it's in. There is no separate
   field for it. Each item has:
   - `layout`: one entry per box, each with `scan` (the filename), `bbox`
     (`[x0, y0, x1, y1]` in image pixels, origin top-left), and `pagexml_link` and
     `pagexml_baseline_ids` (always `null`)
-  - `category`: optional free text; left empty, it is written as `null`
-  - `amount`: a string, stored exactly as typed
+  - `category`: optional free text; left blank, it is written as `null`
+  - `amount`: a string
   - `description`: a single line
   - at least one of `amount` and `description` is non-blank; the other may be `""`
 - A deed can have no items: every item can be deleted, and the file stays.
 - Fields the tool doesn't fill are written as `null`, not left out.
+- Every typed field is stored exactly as typed, except for leading and trailing
+  whitespaces, which are stripped off.
 - **Not in the file:** transcriptions, whether the deed is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
   version. An interrupted write can also leave a `deed-annotation-<deed_id>.json.tmp`.
