@@ -6,7 +6,7 @@ changes only on purpose, and never describes internals.
 ## In
 
 - You give your name as the **annotator** and lock it. Until it is locked, only the
-  root folder can be changed. While locked it cannot be edited; unlock it to change it.
+  name and the root folder can be changed. While locked it cannot be edited; unlock it to change it.
 - You pick a root folder. Every folder under it that directly contains `*.jpg` is a
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
@@ -17,9 +17,9 @@ changes only on purpose, and never describes internals.
   rule shows an error, and that deed cannot be used. `deeds.json` is read as UTF-8.
 - Nothing else is read except the tool's own output (see Out): no other JSON
   (`metadata.json` included), no PageXML, no state file. Other files in the tree are
-  ignored, and so are files from the old format (`person-NNNN.json`) and deed
-  annotation files with the old name (`labeled-deed-<deed_id>.json`): they are neither
-  read, shown nor removed. Rename an old deed annotation file to
+  ignored, and so are files from the old format (`person-NNNN.json`), deed annotation
+  files with the old name (`labeled-deed-<deed_id>.json`) and leftover `.json.tmp`
+  files: they are neither read, shown nor removed. Rename an old deed annotation file to
   `deed-annotation-<deed_id>.json` to use it.
 
 ## Out
@@ -32,8 +32,8 @@ changes only on purpose, and never describes internals.
 - Before opening, you draw a box around the deed's header on its first page;
   **open** stays disabled until there is one. The file is written as soon as the
   deed is opened. The page of the header box is its **header page**.
-- While it is open, its item and balance boxes go on its header page or a later page.
-  It is closed on one of those pages too.
+- While it is open, item and balance boxes can be saved only on its header page or a
+  later page. It can be closed only there too.
 - While it is open, **edit header** redraws the header box on any page up to the first
   page with a saved item or balance box; that page becomes the header page. Until
   **save header** or **cancel header edit**, the balance and items cannot be changed.
@@ -75,15 +75,15 @@ changes only on purpose, and never describes internals.
 - Fields the tool doesn't fill are written as `null`, not left out.
 - **Not in the file:** transcriptions, whether the deed is open right now.
 - Each write replaces the whole file, and an interrupted write leaves the previous
-  version. It can also leave a `deed-annotation-<deed_id>.json.tmp` next to it. That
-  file is never read. Opening, moving the annotation, every added, changed or deleted
+  version. An interrupted write can also leave a `deed-annotation-<deed_id>.json.tmp`.
+  Opening, moving the annotation, every added, changed or deleted
   item, saving, editing or clearing the balance, and saving the header, is in the file
   at once.
   Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
   `annotation_date`.
 - Moving past a book's last page closes the open deed there.
-- A closed deed can be reopened: it is open again as if never closed, and the
-  next writes rewrite the same file.
+- A closed deed can be reopened: it is open again, and the next writes rewrite the
+  same file. `scans` stays as it was until the next close.
 - A deed's file can be deleted, after a confirmation. The deed can then be opened
   anew.
 - While a deed is open, **move annotation** moves its annotation to another deed
