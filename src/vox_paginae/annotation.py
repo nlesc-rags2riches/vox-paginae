@@ -36,6 +36,9 @@ def next_page(book_page: tuple[int, int], page_counts: list[int]) -> tuple[int, 
 
 
 TYPES = ("assets", "liabilities")
+# The version of the deed annotation file's format (Semantic Versioning 2.0.0), written
+# into every file. The reference's Format versions section says when it changes.
+FORMAT_VERSION = "0.1.0"
 
 
 def new_box(scan: str, bbox: list[int]) -> dict:
@@ -292,10 +295,12 @@ def deed_path(book: Path, deed_id: str) -> Path:
 def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path:
     """Write ``deed_record`` to its ``deed_path``, by ``annotator_name``, now.
 
-    Every write records the current annotator and the time (local, with its timezone),
-    so a reopened file gets the latest of both.
+    Every write records the format version, the current annotator and the time (local,
+    with its timezone), so a reopened file, or one without a version, gets the latest.
     """
-    deed_record = copy.deepcopy(deed_record)
+    # First in the file, for whoever reads it; an older version is replaced.
+    deed_record = {"format_version": FORMAT_VERSION, **copy.deepcopy(deed_record)}
+    deed_record["format_version"] = FORMAT_VERSION
     deed_record["annotation_metadata"] = {
         "annotator_name": annotator_name,
         "annotation_date": datetime.now().astimezone().isoformat(),

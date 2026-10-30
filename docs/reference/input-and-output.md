@@ -45,6 +45,7 @@ changes only on purpose, and never describes internals.
   **save box as balance** or **cancel balance edit**, the header and items cannot be
   changed.
 - The file holds:
+  - `format_version`: the version of the file's format (see Format versions)
   - `deed_id`: as in `deeds.json`
   - `copied_deed_person_data`: the deed's `aktenummer` and `plaats`, and every field
     of its overledene except `rol`, side by side, copied as they are in `deeds.json`
@@ -81,8 +82,8 @@ changes only on purpose, and never describes internals.
   Opening, moving the annotation, every added, changed or deleted
   item, saving, editing or clearing the balance, and saving the header, is in the file
   at once.
-  Closing and saving the header rewrite `scans`. Every write rewrites `annotator_name` and
-  `annotation_date`.
+  Closing and saving the header rewrite `scans`.
+  Every write rewrites `format_version`, `annotator_name` and `annotation_date`.
 - Moving past a book's last page closes the open deed there.
 - A closed deed can be reopened: it is open again, and the next writes rewrite the
   same file. `scans` stays as it was until the next close.
@@ -101,6 +102,7 @@ changes only on purpose, and never describes internals.
 
 ```json
 {
+  "format_version": "<the tool's format version>",
   "deed_id": "<deed_id from deeds.json>",
   "copied_deed_person_data": {
     "aktenummer": "93",
@@ -148,3 +150,20 @@ changes only on purpose, and never describes internals.
 - `copied_deed_person_data`: copied when the deed is opened or moved; a later
   change to `deeds.json` does not reach an existing file.
 - Item tags (`A1`, `L2`) are computed from list positions and never stored.
+
+## Format versions
+
+- `format_version` is the version of the file's format (`MAJOR.MINOR.PATCH`), not of
+  the annotation or of the tool. It follows
+  [Semantic Versioning 2.0.0](https://semver.org).
+- The format is the file's name, its encoding, its fields, and what each field holds.
+  How the tool lets you edit a deed is not part of the format.
+- A change that can break a reader bumps MAJOR. For example: a field dropped or
+  renamed, a changed type, a stricter rule, or a field that now holds something else.
+- A change that breaks no reader bumps MINOR. For example: a new optional field.
+- A change that leaves the fields as they are bumps PATCH. For example: a fixed typo
+  in the format's description.
+- While MAJOR is `0`, a change that can break a reader bumps MINOR, and any other
+  change bumps PATCH.
+- A file without `format_version` opens as usual. Its next write adds it. Its other
+  fields stay as they were written.
