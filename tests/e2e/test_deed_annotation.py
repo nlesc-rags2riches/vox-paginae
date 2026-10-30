@@ -7,6 +7,8 @@ from datetime import datetime
 import pytest
 from playwright.sync_api import expect
 
+from vox_paginae.annotation import FORMAT_VERSION
+
 from .conftest import PAGE_H, PAGE_W, serve
 
 pytestmark = pytest.mark.e2e
@@ -122,6 +124,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     assert record.pop("annotation_metadata")["annotator_name"] == "Ann"
     assert record["annotation"].pop("header")["scan"] == "page_02.jpg"
     assert record == {
+        "format_version": FORMAT_VERSION,
         "deed_id": "deed-3",
         "copied_deed_person_data": {
             "aktenummer": "3",

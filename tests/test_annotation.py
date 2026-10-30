@@ -5,11 +5,13 @@ import pytest
 
 # TODO: Together with the `src` correspondent, split and human-review
 from vox_paginae.annotation import (
+    FORMAT_VERSION,
     add_item,
     clear_balance,
     close_deed_record,
     deed_boxes,
     deed_choices,
+    deed_path,
     delete_item,
     find_books,
     item_tags,
@@ -385,6 +387,7 @@ def test_save_and_load_deed_records_ignore_old_files(tmp_path):
     assert p["annotation_metadata"] == {"annotator_name": None, "annotation_date": None}
     saved = load_deed_records(tmp_path)["d1"]
     meta = saved.pop("annotation_metadata")
+    assert saved.pop("format_version") == FORMAT_VERSION
     assert saved == {k: v for k, v in p.items() if k != "annotation_metadata"}
     assert meta["annotator_name"] == "Ann"
     date = datetime.fromisoformat(meta["annotation_date"])
@@ -402,6 +405,20 @@ def test_save_and_load_deed_records_ignore_old_files(tmp_path):
         "labeled-deed-d9.json",
         "person-0001.json",
     ]
+
+
+def test_a_file_without_format_version_opens_and_its_next_write_adds_it(tmp_path):
+    p = new_deed_record(DEED, "a.jpg", [0] * 4)
+    deed_path(tmp_path, "d1").write_text(json.dumps(p), encoding="utf-8")
+    loaded = load_deed_records(tmp_path)["d1"]
+    assert loaded == p
+    annotated = add_item(loaded, "assets", "", "1,-", "", [("a.jpg", [0] * 4)])
+    save_deed_record(tmp_path, annotated, "Ann")
+    saved = load_deed_records(tmp_path)["d1"]
+    assert saved.pop("format_version") == FORMAT_VERSION
+    # Its other fields stay as they were written.
+    saved.pop("annotation_metadata")
+    assert saved == {k: v for k, v in annotated.items() if k != "annotation_metadata"}
 
 
 def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
@@ -449,6 +466,7 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     assert [f.name for f in tmp_path.iterdir()] == ["deed-annotation-d2.json"]
     saved = load_deed_records(tmp_path)["d2"]
     assert saved["annotation_metadata"]["annotator_name"] == "Bob"
+    assert saved.pop("format_version") == FORMAT_VERSION
     assert {k: v for k, v in saved.items() if k != "annotation_metadata"} == {
         k: v for k, v in moved.items() if k != "annotation_metadata"
     }
