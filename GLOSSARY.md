@@ -1,7 +1,7 @@
 # Vox Paginae
 
 Vox Paginae annotates scanned death-duty deeds (*memories van successie*): where each
-deed's header, balance and items are on its pages, and what the items say.
+deed's header, balance and items are on its scans, and what the items say.
 
 Where a term has another name in the UI, the files or the code, its entry says so.
 
@@ -10,23 +10,23 @@ Where a term has another name in the UI, the files or the code, its entry says s
 ### Sources
 
 **Book**:
-A set of scanned pages. It may have a `deeds.json` listing its deeds.
+A set of scans. It may have a `deeds.json` listing its deeds.
 _Avoid_: folder, register
 
-**Page**:
-One scanned image in a book.
+**Scan**:
+One image file in a book. It can show one page or two.
 _File_: `scan` (the image's filename), `scans`
-_Avoid_: scan, image
+_Avoid_: page, image
 
 **Deed**:
-An entry in a book, written on one or more consecutive pages. Also called a *memorie*
+An entry in a book, shown on one or more consecutive scans. Also called a *memorie*
 (van successie). It is what Vox Paginae annotates.
 _Code_: `deed` (the `deeds.json` entry), `deed_record` (the deed annotation file's
 contents)
 _Avoid_: deed/person, person
 
 **Single Deed Folder**:
-The part of a book that holds one deed (for example pages 6–12), as a folder of its
+The part of a book that holds one deed (for example scans 6–12), as a folder of its
 own. It is identified by its deed's `ref_reg`.
 _Avoid_: deed folder
 
@@ -63,7 +63,7 @@ _Avoid_: labels, blocks
 
 **Deed annotation file**:
 The file holding one deed's annotation, plus a copy of the deed's and its overledene's
-data when its input has them. It sits next to the deed's pages: in its book, or in its
+data when its input has them. It sits next to the deed's scans: in its book, or in its
 Single Deed Folder.
 _File_: `deed-annotation-<deed_id>.json`; the copy is `copied_deed_person_data`
 _Avoid_: deed file, person file
@@ -73,14 +73,14 @@ The one deed being annotated right now; the others are closed.
 _Avoid_: open person
 
 **Move**:
-Giving an open deed's annotation and pages to another deed that has no deed annotation
+Giving an open deed's annotation and scans to another deed that has no deed annotation
 file yet.
 _UI_: **move annotation**
 
 ### What is annotated
 
 **Box**:
-One rectangle on one page.
+One rectangle on one scan.
 _File_: an object with `scan` and `bbox`; an item's boxes are its `layout`
 _Avoid_: block, region, layout
 
@@ -93,11 +93,11 @@ _Avoid_: pending block
 The heading where a deed starts, marked by one box.
 
 **Header page**:
-The page of the header's box: a deed's first page.
+The scan of the header's box: a deed's first scan.
 
 **Balance**:
 A deed's totals (assets, liabilities, total), marked by one box on the header page or a
-later page. A deed has at most one balance, or none.
+later scan. A deed has at most one balance, or none.
 
 **Item**:
 One asset or liability of a deed: its type, an optional category, an amount or a
@@ -119,8 +119,8 @@ _Avoid_: label
 
 ## Relationships
 
-- A **book** has many **pages** and many **deeds**.
-- A **Single Deed Folder** is part of a **book**. It holds one **deed**, its **pages**
+- A **book** has many **scans** and many **deeds**.
+- A **Single Deed Folder** is part of a **book**. It holds one **deed**, its **scans**
   and one **Single Deed Input**.
-- A page can hold the end of one **deed** and the start of the next.
+- A scan can hold the end of one **deed** and the start of the next.
 - A **deed** has at most one **deed annotation file**, which holds its **annotation**.
