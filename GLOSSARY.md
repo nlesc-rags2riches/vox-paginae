@@ -25,13 +25,13 @@ _Code_: `deed` (the `deeds.json` entry), `deed_record` (the deed annotation file
 contents)
 _Avoid_: deed/person, person
 
-**Single Deed Folder**:
+**Single deed folder**:
 The part of a book that holds one deed (for example scans 6–12), as a folder of its
 own. It is identified by its deed's `ref_reg`.
 _Avoid_: deed folder
 
-**Single Deed Input**:
-The JSON in a Single Deed Folder describing its deed.
+**Single deed input**:
+The JSON in a single deed folder describing its deed.
 
 **Deed person**:
 A person listed in a deed's `personen`.
@@ -64,7 +64,7 @@ _Avoid_: labels, blocks
 **Deed annotation file**:
 The file holding one deed's annotation, plus a copy of the deed's and its overledene's
 data when its input has them. It sits next to the deed's scans: in its book, or in its
-Single Deed Folder.
+single deed folder.
 _File_: `deed-annotation-<deed_id>.json`; the copy is `copied_deed_person_data`
 _Avoid_: deed file, person file
 
@@ -120,7 +120,7 @@ _Avoid_: label
 ## Relationships
 
 - A **book** has many **scans** and many **deeds**.
-- A **Single Deed Folder** is part of a **book**. It holds one **deed**, its **scans**
-  and one **Single Deed Input**.
+- A **single deed folder** is part of a **book**. It holds one **deed**, its **scans**
+  and one **single deed input**.
 - A scan can hold the end of one **deed** and the start of the next.
 - A **deed** has at most one **deed annotation file**, which holds its **annotation**.
