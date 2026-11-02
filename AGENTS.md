@@ -27,7 +27,8 @@ GitHub Issues on `nlesc-rags2riches/vox-paginae`, via `gh`. See `agents/issue-tr
 
 ### Triage labels
 
-The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `agents/triage-labels.md`.
+The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`,
+`wontfix`. See `agents/triage-labels.md`.
 
 ### Domain docs
 
