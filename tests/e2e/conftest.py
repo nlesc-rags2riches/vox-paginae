@@ -82,13 +82,23 @@ def data_root(tmp_path):
 def serve(data_root, *args):
     """Run the notebook as an app on `data_root` (plus notebook `args`); yields its URL."""
     port = get_free_port()
-    # fmt: off
     proc = subprocess.Popen(
-        ["uv", "run", "marimo", "run", "notebooks/deed_annotation.py",
-         "--port", str(port), "--headless", "--", "--data-root", str(data_root), *args],
+        [
+            "uv",
+            "run",
+            "marimo",
+            "run",
+            "notebooks/deed_annotation.py",
+            "--port",
+            str(port),
+            "--headless",
+            "--",
+            "--data-root",
+            str(data_root),
+            *args,
+        ],
         cwd=PROJECT,
     )
-    # fmt: on
     try:
         wait_until_ready(port)
         yield f"http://127.0.0.1:{port}"

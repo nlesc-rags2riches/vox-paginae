@@ -5,3 +5,10 @@ repos:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
+  - repo: local
+    hooks:
+      - id: no-fmt-skip
+        name: ruff formats every line
+        language: pygrep
+        entry: '#\s*fmt:\s*(skip|off)'
+        types: [python]
