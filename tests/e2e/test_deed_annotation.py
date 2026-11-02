@@ -930,9 +930,13 @@ def test_move_annotation_to_another_deed(marimo_server, data_root, page, click):
     drag_box(page, 0.2, 0.4, 0.8, 0.5)
     click("continue")
     pick_deed(page, "Westdorp")
+    move_to = page.get_by_test_id("marimo-plugin-searchable-dropdown")
+    expect(move_to).to_contain_text("Westdorp")
     expect(button(page, "move annotation")).to_be_disabled()  # as close deed
-    # Clearing pending re-creates the dropdown (via the book): pick again.
+    # Clearing pending re-creates the dropdown (via the book), empty: wait for that,
+    # or the pick lands in the old one and is lost (#74). Then pick again.
     click("clear pending")
+    expect(move_to).not_to_contain_text("Westdorp")
     pick_deed(page, "Westdorp")
 
     click("move annotation")
