@@ -18,3 +18,17 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   a read/write change updates `docs/reference/input-and-output.md` (draft it to
   `CODING_STANDARDS.md` › Docs, then confirm the wording with the user: it is a promise
   to the annotator).
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `nlesc-rags2riches/vox-paginae`, via `gh`. See `agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` at the root, ADRs in `docs/adr/` (none yet). See `agents/domain.md`.
