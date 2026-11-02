@@ -1,6 +1,6 @@
 # Coding standards
 
-Judgement calls for review. Mechanical rules live in ruff (the prek hook and CI).
+Judgement calls for review. Mechanical rules live in the prek hooks (run locally and in CI).
 
 ## Notebook or library
 
