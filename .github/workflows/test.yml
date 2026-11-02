@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `labeled`: adding `pr/test-all-os` starts a run on all OSs (any label starts a run).
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,7 +25,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # A pull request runs on ubuntu only, unless it has the `pr/test-all-os` label.
+        os: ${{ (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'pr/test-all-os')) && fromJSON('["ubuntu-latest","macos-latest","windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
         python: ["3.11", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
