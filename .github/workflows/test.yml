@@ -6,6 +6,10 @@ on:
     # `labeled`: adding `pr/test-all-os` starts a run on all OSs (any label starts a run).
     types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
+# A new run on the same pull request cancels the older one; runs on main all finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 env:
