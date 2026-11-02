@@ -16,7 +16,7 @@ Each deed's annotation is saved as one JSON file next to its book's pages.
 ## Where to go
 
 | You want to… | Read |
-|---|---|
+| --- | --- |
 | Install and start Vox Paginae | [How to install and run](how-to/install-and-run.md) |
 | Know exactly what is read and written | [Input and output](reference/input-and-output.md) |
 
