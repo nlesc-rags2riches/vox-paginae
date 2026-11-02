@@ -10,7 +10,7 @@ Where a term has another name in the UI, the files or the code, its entry says s
 ### Sources
 
 **Book**:
-A set of scanned pages and the deeds listed for them in its `deeds.json`.
+A set of scanned pages. It may have a `deeds.json` listing its deeds.
 _Avoid_: folder, register
 
 **Page**:
@@ -19,11 +19,19 @@ _File_: `scan` (the image's filename), `scans`
 _Avoid_: scan, image
 
 **Deed**:
-One memorie van successie: an entry in its book's `deeds.json`, written on one or more
-consecutive pages. It is what Vox Paginae annotates.
+An entry in a book, written on one or more consecutive pages. Also called a *memorie*
+(van successie). It is what Vox Paginae annotates.
 _Code_: `deed` (the `deeds.json` entry), `deed_record` (the deed annotation file's
 contents)
 _Avoid_: deed/person, person
+
+**Single Deed Folder**:
+The part of a book that holds one deed (for example pages 6–12), as a folder of its
+own. It is identified by its deed's `ref_reg`.
+_Avoid_: deed folder
+
+**Single Deed Input**:
+The JSON in a Single Deed Folder describing its deed.
 
 **Deed person**:
 A person listed in a deed's `personen`.
@@ -32,8 +40,8 @@ _Code_: `deed_persons`
 _Avoid_: person (on its own)
 
 **Overledene**:
-The deceased: the deed person with `rol: overledene`. A deed can be annotated only if
-the overledene is its one deed person.
+The deceased: the deed person with `rol: overledene`. A deed in a book's
+`deeds.json` can be annotated only if the overledene is its one deed person.
 _Avoid_: deceased person, person
 
 ### Annotating
@@ -55,7 +63,8 @@ _Avoid_: labels, blocks
 
 **Deed annotation file**:
 The file holding one deed's annotation, plus a copy of the deed's and its overledene's
-data, next to its book's pages.
+data when its input has them. It sits next to the deed's pages: in its book, or in its
+Single Deed Folder.
 _File_: `deed-annotation-<deed_id>.json`; the copy is `copied_deed_person_data`
 _Avoid_: deed file, person file
 
@@ -111,5 +120,7 @@ _Avoid_: label
 ## Relationships
 
 - A **book** has many **pages** and many **deeds**.
+- A **Single Deed Folder** is part of a **book**. It holds one **deed**, its **pages**
+  and one **Single Deed Input**.
 - A page can hold the end of one **deed** and the start of the next.
 - A **deed** has at most one **deed annotation file**, which holds its **annotation**.
