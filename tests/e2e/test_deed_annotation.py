@@ -66,18 +66,19 @@ def open_app(page, url):
     expect(status(page, "no deed")).to_be_visible(timeout=60_000)
 
 
-def deed_options(page, search=""):
-    """The searchable deed dropdown's entries matching ``search``; leaves it open."""
-    page.get_by_test_id("marimo-plugin-searchable-dropdown").get_by_role(
-        "button"
-    ).click()
+def deed_options(page, search="", label="deed"):
+    """The entries matching ``search`` in the searchable dropdown labeled ``label``;
+    leaves it open."""
+    # Unlike text inputs (see text_input), its <label for=…> names the button.
+    page.get_by_label(label, exact=True).click()
     page.get_by_placeholder("Search...").fill(search)
     return page.get_by_role("dialog").get_by_role("option")
 
 
-def pick_deed(page, search):
-    """Pick the one deed matching ``search`` in the searchable deed dropdown."""
-    deed_options(page, search).click()
+def pick_deed(page, search, label="deed"):
+    """Pick the one deed matching ``search`` in the searchable dropdown labeled
+    ``label``."""
+    deed_options(page, search, label).click()
 
 
 HEADER = (0.1, 0.05, 0.9, 0.15)  # clear of the item boxes the tests draw
@@ -830,8 +831,6 @@ def test_go_to_deed_moves_to_its_header_page(marimo_server, data_root, page, cli
     expect(button(page, "go to deed")).to_be_disabled()  # deed-3 is open
 
     click("close deed")
-    # Wait: until then the searchable dropdown is still the move annotation one.
-    expect(status(page, "no deed")).to_be_visible()
     pick_deed(page, "Westdorp")
     expect(button(page, "go to deed")).to_be_disabled()  # no file: open it
     for n in [2, 3]:
@@ -925,19 +924,19 @@ def test_move_annotation_to_another_deed(marimo_server, data_root, page, click):
     save(page, click)
     expect(button(page, "move annotation")).to_be_disabled()  # no deed picked
     # Only the deeds without a file.
-    expect(deed_options(page, "Jan Modaal")).to_have_count(0)
+    expect(deed_options(page, "Jan Modaal", "move to")).to_have_count(0)
     page.keyboard.press("Escape")
     drag_box(page, 0.2, 0.4, 0.8, 0.5)
     click("continue")
-    pick_deed(page, "Westdorp")
-    move_to = page.get_by_test_id("marimo-plugin-searchable-dropdown")
+    pick_deed(page, "Westdorp", "move to")
+    move_to = page.get_by_label("move to", exact=True)
     expect(move_to).to_contain_text("Westdorp")
     expect(button(page, "move annotation")).to_be_disabled()  # as close deed
     # Clearing pending re-creates the dropdown (via the book), empty: wait for that,
     # or the pick lands in the old one and is lost (#74). Then pick again.
     click("clear pending")
     expect(move_to).not_to_contain_text("Westdorp")
-    pick_deed(page, "Westdorp")
+    pick_deed(page, "Westdorp", "move to")
 
     click("move annotation")
     expect(status(page, "editing deed-annotation-deed-7g")).to_be_visible()
