@@ -27,7 +27,8 @@ def thumbnail(scan: Path, height: int) -> bytes:
 
 def crop(scan: Path, bbox: list[int]) -> bytes:
     """``bbox`` of ``scan`` at full resolution, as a grayscale JPEG."""
-    im = Image.open(scan).crop(bbox).convert("L")
+    x0, y0, x1, y1 = bbox
+    im = Image.open(scan).crop((x0, y0, x1, y1)).convert("L")
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=90)
     return buf.getvalue()
@@ -56,7 +57,7 @@ def scan_for_display(
     # Decode at reduced scale (fast), then Lanczos down to exactly px tall (sharp).
     im.draft("L", (1, px))
     im = im.convert("L")
-    im.thumbnail((size[0], px), Image.LANCZOS)
+    im.thumbnail((size[0], px), Image.Resampling.LANCZOS)
     return np.asarray(im), size, dpi
 
 

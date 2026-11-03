@@ -60,6 +60,7 @@ def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
         encoding="utf-8",
     )
     deeds = load_deeds(tmp_path)
+    assert deeds is not None
     assert list(deeds) == ["d1", "d2", "d3"]
     assert deed_choices(deeds, tmp_path) == {
         "93 · Oostdorp · A": "d3",
