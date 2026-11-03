@@ -1,10 +1,13 @@
-"""Generic UI: images to show the annotator, with no UI framework."""
+"""Generic UI: images and figures to show the annotator, with no UI framework."""
 
 import functools
 import io
+from collections.abc import Iterable
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
 from PIL import Image
 
 
@@ -53,3 +56,68 @@ def scan_for_display(
     im = im.convert("L")
     im.thumbnail((size[0], px), Image.LANCZOS)
     return np.asarray(im), size, dpi
+
+
+# By tag initial: header, balance, asset, liability.
+TAG_COLOURS = {"H": "tab:green", "B": "tab:purple", "A": "tab:blue", "L": "tab:orange"}
+
+
+def draw_scan(
+    pixels: np.ndarray,
+    size: tuple[int, int],
+    height_in: float,
+    dpi: float,
+    saved: Iterable[tuple[str, list[int]]] = (),
+    deed: Iterable[tuple[str, list[int]]] = (),
+    pending: Iterable[list[int]] = (),
+) -> Axes:
+    """Axes showing a scan with its boxes, ``height_in`` inches tall at ``dpi``.
+
+    ``pixels`` come from ``scan_for_display``; ``size`` is the scan's original size,
+    which the axes span, so boxes drawn on them come back in original pixels. Boxes:
+    ``saved`` (tag, bbox) pairs not of the open deed (all of them with no deed open),
+    faded; ``deed`` (tag, bbox) pairs of the open deed, with their tag; ``pending``
+    bboxes, dashed.
+    """
+    w, h = size
+    # Figure matches the scan's aspect and axes fill it; otherwise mo.ui.matplotlib maps
+    # the pointer across the whole canvas and every box comes back offset.
+    fig, ax = plt.subplots(figsize=(height_in * w / h, height_in), dpi=dpi)
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    ax.imshow(
+        pixels,
+        extent=(0, w, h, 0),
+        cmap="gray",
+        vmin=0,  # fixed uint8 range: no contrast stretch, flat scans not black
+        vmax=255,
+    )
+    ax.set_xlim(0, w)
+    ax.set_ylim(h, 0)
+    ax.set_axis_off()
+
+    def draw(bbox, colour, tag=None, style="-", alpha=1.0):
+        x0, y0, x1, y1 = bbox
+        ax.add_patch(
+            plt.Rectangle(
+                (x0, y0),
+                x1 - x0,
+                y1 - y0,
+                fill=False,
+                edgecolor=colour,
+                linewidth=2,
+                linestyle=style,
+                alpha=alpha,
+            )
+        )
+        if tag:
+            ax.text(
+                x0, y0, tag, color=colour, va="bottom", fontsize=14, fontweight="bold"
+            )
+
+    for tag, bbox in saved:
+        draw(bbox, TAG_COLOURS[tag[0]], alpha=0.4)
+    for tag, bbox in deed:
+        draw(bbox, TAG_COLOURS[tag[0]], tag)
+    for bbox in pending:
+        draw(bbox, "grey", style="--")
+    return ax
