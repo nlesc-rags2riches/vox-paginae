@@ -17,7 +17,6 @@ def imports():
         add_item,
         clear_balance,
         close_deed_record,
-        crop,
         deed_boxes,
         deed_choices,
         deed_path,
@@ -39,8 +38,8 @@ def imports():
         set_header,
         single_overledene,
         split_tag,
-        thumbnail,
     )
+    from vox_paginae.ui import crop, thumbnail
 
     return (
         Image,

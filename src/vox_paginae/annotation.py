@@ -3,13 +3,9 @@
 # TODO: Split this into appropriate files and detailed human review
 
 import copy
-import functools
-import io
 import json
 from datetime import datetime
 from pathlib import Path
-
-from PIL import Image
 
 
 def find_books(root: Path) -> list[Path]:
@@ -447,23 +443,3 @@ def resume(books: list[Path]) -> tuple[int, int]:
             pages = [p.name for p in list_pages(books[b])]
             return b, max(pages.index(r["scans"][-1]) for r in deed_records.values())
     return 0, 0
-
-
-@functools.lru_cache(maxsize=512)
-def thumbnail(page: Path, height: int = 120) -> bytes:
-    """``page`` as a small grayscale JPEG, ``height`` px tall (cached: pages never change)."""
-    im = Image.open(page)
-    im.draft("L", (1, height))
-    im = im.convert("L")
-    im.thumbnail((im.width, height))
-    buf = io.BytesIO()
-    im.save(buf, "JPEG", quality=80)
-    return buf.getvalue()
-
-
-def crop(page: Path, bbox: list[int]) -> bytes:
-    """``bbox`` of ``page`` at full resolution, as a grayscale JPEG."""
-    im = Image.open(page).crop(bbox).convert("L")
-    buf = io.BytesIO()
-    im.save(buf, "JPEG", quality=90)
-    return buf.getvalue()
