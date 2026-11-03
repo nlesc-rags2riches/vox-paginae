@@ -33,7 +33,7 @@ filterwarnings = ["error::EncodingWarning"]
 [tool.marimo.runtime]
 # marimo sizes outputs with sys.getsizeof, so one character outside Latin-1 (ƒ, ’) in the
 # Vox Paginae layout counts its ~5 MB page PNG double, an emoji 4x. The PNG
-# itself is capped in the notebook; this only stops the overcount.
+# itself is capped in vox_paginae.ui; this only stops the overcount.
 output_max_bytes = 25_000_000
 # Cells importing a changed module (e.g. src/vox_paginae/annotation.py) are marked stale, so
 # a library edit never leaves the live kernel silently running old code.
