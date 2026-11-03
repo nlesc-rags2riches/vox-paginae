@@ -1,4 +1,4 @@
-"""Generic UI: images and figures to show the annotator, with no UI framework."""
+"""Generic UI: images, figures, Markdown and HTML for the annotator, with no UI framework."""
 
 import functools
 import io
@@ -142,7 +142,7 @@ def selection_box(selection) -> list[int] | None:
     return [round(s.x_min), round(s.y_min), round(s.x_max), round(s.y_max)]
 
 
-def item_label(tag: str, item: dict) -> str:
+def item_option(tag: str, item: dict) -> str:
     """``item``'s entry in the item dropdown: its tag, amount and description start.
 
     Showing them makes the list double as a typo check.
@@ -192,7 +192,7 @@ OKABE_ITO = [
 ]
 
 
-def folder_bar_html(
+def book_bar_html(
     books: list[Path], book_scans: list[list[Path]], here: int, slider: int
 ) -> str:
     """A bar of all scans of all ``books``, as HTML.
@@ -208,7 +208,7 @@ def folder_bar_html(
         f"background: {OKABE_ITO[k % len(OKABE_ITO)]}99; overflow: hidden; "
         f'white-space: nowrap; text-overflow: ellipsis; font-size: 11px; padding: 0 4px">'
         f"{book.name}</div>"
-        for k, (book, scans) in enumerate(zip(books, book_scans))
+        for k, (book, scans) in enumerate(zip(books, book_scans, strict=True))
     )
 
     def marker(j, css):

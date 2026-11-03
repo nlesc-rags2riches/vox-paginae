@@ -10,10 +10,10 @@ from PIL import Image
 
 from vox_paginae.ui import (
     MAX_DISPLAY_PX,
+    book_bar_html,
     crop,
     draw_scan,
-    folder_bar_html,
-    item_label,
+    item_option,
     scan_for_display,
     selection_box,
     status_text,
@@ -119,12 +119,12 @@ def test_a_plain_click_or_no_selection_draws_no_box():
     assert selection_box(None) is None
 
 
-def test_item_label_shows_tag_amount_and_description_start():
+def test_item_option_shows_tag_amount_and_description_start():
     item = {
         "amount": "f 120,-",
         "description": "Een huis en erf aan de Hoogstraat te Ergens",
     }
-    assert item_label("A1", item) == "A1 · f 120,- · Een huis en erf aan de Hoogstr"
+    assert item_option("A1", item) == "A1 · f 120,- · Een huis en erf aan de Hoogstr"
 
 
 def test_status_line_with_no_deed_open():
@@ -150,13 +150,13 @@ def test_status_line_names_the_open_deed_and_what_is_being_edited():
     assert status_text(**status, editing_balance=True).endswith(" · editing balance")
 
 
-def test_folder_bar_has_a_segment_per_book_and_marks_here_and_the_slider():
+def test_book_bar_has_a_segment_per_book_and_marks_here_and_the_slider():
     books = [Path("b1"), Path("b2")]
     book_scans = [
         [Path("b1/1.jpg"), Path("b1/2.jpg"), Path("b1/3.jpg")],
         [Path("b2/1.jpg")],
     ]
-    html = folder_bar_html(books, book_scans, here=1, slider=3)
+    html = book_bar_html(books, book_scans, here=1, slider=3)
     segments = re.findall(r'title="([^"]+)" style="flex: (\d+);', html)
     assert segments == [("b1: 3 pages", "3"), ("b2: 1 pages", "1")]
     # each marker sits at the middle of its scan's quarter of the bar
