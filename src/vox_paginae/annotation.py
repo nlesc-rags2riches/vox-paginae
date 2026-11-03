@@ -8,11 +8,6 @@ from datetime import datetime
 from pathlib import Path
 
 
-def find_books(root: Path) -> list[Path]:
-    """Every folder under ``root`` that directly contains ``*.jpg``, in sorted path order."""
-    return sorted({p.parent for p in Path(root).rglob("*.jpg")})
-
-
 def list_pages(book: Path) -> list[Path]:
     """The ``*.jpg`` in ``book``, sorted by filename as plain strings."""
     return sorted(Path(book).glob("*.jpg"), key=lambda p: p.name)
@@ -47,22 +42,21 @@ def new_box(scan: str, bbox: list[int]) -> dict:
     }
 
 
-def new_deed_record(deed: dict, header_scan: str, header_bbox: list[int]) -> dict:
-    """A blank deed record for ``deed``, opened on its header box.
+def new_deed_record(
+    deed_id: str,
+    copied_deed_person_data: dict,
+    header_scan: str,
+    header_bbox: list[int],
+) -> dict:
+    """A blank deed record for deed ``deed_id``, opened on its header box.
 
     ``header_bbox`` on ``header_scan`` becomes ``annotation.header``; that is the header page.
 
-    The deed's ``aktenummer``, ``plaats`` and its overledene's fields (all but ``rol``,
-    always ``overledene``) are copied flat, as they are in ``deeds.json``.
+    ``copied_deed_person_data`` is the deed's data from its input, kept as given.
     """
-    overledene = {k: v for k, v in single_overledene(deed).items() if k != "rol"}
     return {
-        "deed_id": deed["deed_id"],
-        "copied_deed_person_data": {
-            "aktenummer": deed["aktenummer"],
-            "plaats": deed["plaats"],
-            **overledene,
-        },
+        "deed_id": deed_id,
+        "copied_deed_person_data": copy.deepcopy(copied_deed_person_data),
         "scans": [header_scan],
         # Filled in by every write.
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
@@ -288,8 +282,8 @@ def deed_path(book: Path, deed_id: str) -> Path:
     return Path(book) / f"deed-annotation-{deed_id}.json"
 
 
-def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path:
-    """Write ``deed_record`` to its ``deed_path``, by ``annotator_name``, now.
+def save_deed_record(path: Path, deed_record: dict, annotator_name: str) -> Path:
+    """Write ``deed_record`` to ``path``, its deed annotation file, by ``annotator_name``, now.
 
     Every write records the format version, the current annotator and the time (local,
     with its timezone), so a reopened file, or one without a version, gets the latest.
@@ -301,7 +295,7 @@ def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path
         "annotator_name": annotator_name,
         "annotation_date": datetime.now().astimezone().isoformat(),
     }
-    path = deed_path(book, deed_record["deed_id"])
+    path = Path(path)
     tmp = path.with_suffix(".json.tmp")  # write-then-rename: a crash never truncates
     tmp.write_text(
         json.dumps(deed_record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -311,24 +305,27 @@ def save_deed_record(book: Path, deed_record: dict, annotator_name: str) -> Path
 
 
 def move_deed_record(
-    book: Path, deed_record: dict, deed: dict, annotator_name: str
+    deed_record: dict,
+    old_path: Path,
+    new_path: Path,
+    deed_id: str,
+    copied_deed_person_data: dict,
+    annotator_name: str,
 ) -> dict:
-    """Move ``deed_record``'s annotation to ``deed``, a deed without a file in ``book``.
+    """Move ``deed_record``'s annotation from ``old_path`` to deed ``deed_id``'s file,
+    ``new_path``.
 
-    ``deed_id`` and ``copied_deed_person_data`` come from ``deed``, as on open; the rest
+    ``deed_id`` and ``copied_deed_person_data`` are replaced, as on open; the rest
     stays. The new file is written before the old one goes, so an interrupted move never
-    loses the annotation. A deed that cannot be used, or has a file, raises ``ValueError``.
+    loses the annotation. A ``new_path`` that exists raises ``ValueError``.
     """
-    header = deed_record["annotation"]["header"]
-    # As on open, for its checks and its copied data; the rest of it is not used.
-    fresh = new_deed_record(deed, header["scan"], header["bbox"])
-    if deed_path(book, deed["deed_id"]).exists():
+    if Path(new_path).exists():
         raise ValueError("this deed already has a file")
     moved = copy.deepcopy(deed_record)
-    moved["deed_id"] = fresh["deed_id"]
-    moved["copied_deed_person_data"] = fresh["copied_deed_person_data"]
-    save_deed_record(book, moved, annotator_name)
-    deed_path(book, deed_record["deed_id"]).unlink(missing_ok=True)
+    moved["deed_id"] = deed_id
+    moved["copied_deed_person_data"] = copy.deepcopy(copied_deed_person_data)
+    save_deed_record(new_path, moved, annotator_name)
+    Path(old_path).unlink(missing_ok=True)
     return moved
 
 
@@ -345,69 +342,6 @@ def load_deed_records(book: Path) -> dict[str, dict]:
             for p in sorted(Path(book).glob("deed-annotation-*.json"))
         )
     }
-
-
-def load_deeds(book: Path) -> dict[str, dict] | None:
-    """``{deed_id: deed}`` from ``<book>/deeds.json``, ``None`` if the book has none."""
-    path = Path(book) / "deeds.json"
-    if not path.exists():
-        return None
-    return {
-        deed["deed_id"]: deed for deed in json.loads(path.read_text(encoding="utf-8"))
-    }
-
-
-def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
-    """``{"93 · Westdorp · Jan Modaal": deed_id}``, by aktenummer, then place.
-
-    Deeds with a file in ``book`` go last, labelled with their pages, e.g.
-    ``"93 · Westdorp · Jan Modaal · pages 22-24"`` (counted from 1, as in the status line).
-    ``aktenummer`` repeats within a book (e.g. 93 in two places), hence the place;
-    ``deeds.json`` itself is not in page order.
-    """
-    deed_records = load_deed_records(book)
-    page_number = {p.name: i + 1 for i, p in enumerate(list_pages(book))}
-
-    def label(d):
-        parts = [
-            d["aktenummer"],
-            d["plaats"],
-            *(p["naam_volledig"] for p in d["personen"]),
-        ]
-        if d["deed_id"] in deed_records:
-            numbers = [page_number[s] for s in deed_records[d["deed_id"]]["scans"]]
-            first, last = min(numbers), max(numbers)
-            parts.append(f"page {first}" if first == last else f"pages {first}-{last}")
-        return " · ".join(parts)
-
-    def order(d):
-        has_file = d["deed_id"] in deed_records
-        # A non-numeric aktenummer goes after the numbered ones.
-        number = int(d["aktenummer"]) if d["aktenummer"].isdigit() else float("inf")
-        return has_file, number, d["plaats"]
-
-    ordered = sorted(deeds.values(), key=order)
-    return {label(d): d["deed_id"] for d in ordered}
-
-
-def single_overledene(deed: dict) -> dict:
-    """The deed's one deed person, who must have ``rol: overledene``.
-
-    Vox Paginae assumes exactly that; any other deed raises ``ValueError`` with a message
-    for the annotator.
-    """
-    deed_persons = deed["personen"]
-    if len(deed_persons) != 1:
-        raise ValueError(
-            f"This deed has {len(deed_persons)} deed persons: it needs exactly one, "
-            "with `rol: overledene`. It cannot be used."
-        )
-    if deed_persons[0].get("rol") != "overledene":
-        raise ValueError(
-            f"Its one deed person has `rol: {deed_persons[0].get('rol')}`: it needs "
-            "`rol: overledene`. It cannot be used."
-        )
-    return deed_persons[0]
 
 
 def saved_boxes(
