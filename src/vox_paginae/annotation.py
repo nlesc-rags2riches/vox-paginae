@@ -44,25 +44,22 @@ def new_box(scan: str, bbox: Sequence[float]) -> dict:
 
 
 def new_deed_record(
-    deed_id: str,
-    copied_deed_person_data: dict,
-    header_scan: str,
-    header_bbox: Sequence[float],
+    deed_id: str, copied_deed_person_data: dict, first_scan: str
 ) -> dict:
-    """A blank deed record for deed ``deed_id``, opened on its header box.
+    """A blank deed record for deed ``deed_id``, opened on ``first_scan``: its first page.
 
-    ``header_bbox`` on ``header_scan`` becomes ``annotation.header``; that is the header page.
+    It has no header box yet: see ``add_header_box``.
 
     ``copied_deed_person_data`` is the deed's data from its input, kept as given.
     """
     return {
         "deed_id": deed_id,
         "copied_deed_person_data": copy.deepcopy(copied_deed_person_data),
-        "scans": [header_scan],
+        "scans": [first_scan],
         # Filled in by every write.
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
-            "header": new_box(header_scan, header_bbox),
+            "header": [],  # one or more boxes, from add_header_box
             "balance": None,  # optional: see set_balance
             "assets": [],
             "liabilities": [],
@@ -155,32 +152,21 @@ def replace_balance(
     )
 
 
-def set_header(
-    deed_record: dict, page_names: list[str], scan: str, bbox: Sequence[float]
-) -> dict:
-    """Return a copy of ``deed_record`` with its header: ``bbox`` on ``scan``.
+def add_header_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
+    """Return a copy of ``deed_record`` with ``bbox`` on ``scan`` as its last header box.
 
-    ``scan`` becomes the header page, in ``page_names`` (the book's, in order). A
-    closed deed's ``scans`` then runs from ``scan`` to its old last page (or is
-    just ``scan``, if later); one never closed keeps only the header page. A balance or
-    item box before ``scan`` would be outside ``scans``: that raises ``ValueError``.
+    A header has one or more boxes, on any of the deed's pages, tagged ``H1, H2…`` by
+    position.
     """
-    start = page_names.index(scan)
-    if any(
-        page_names.index(box["scan"]) < start
-        for tag, box in deed_boxes(deed_record)
-        if tag != "H"
-    ):
-        raise ValueError("the header page cannot come after a saved box")
-    # ponytail: one page also means closed on its header page; the next close redoes it.
-    end = (
-        start
-        if len(deed_record["scans"]) == 1
-        else max(start, page_names.index(deed_record["scans"][-1]))
-    )
     deed_record = copy.deepcopy(deed_record)
-    deed_record["annotation"]["header"] = new_box(scan, bbox)
-    deed_record["scans"] = page_names[start : end + 1]
+    deed_record["annotation"]["header"].append(new_box(scan, bbox))
+    return deed_record
+
+
+def delete_header_box(deed_record: dict, tag: str) -> dict:
+    """Return a copy of ``deed_record`` without the header box called ``tag`` (``"H2"``)."""
+    deed_record = copy.deepcopy(deed_record)
+    del deed_record["annotation"]["header"][int(tag[1:]) - 1]
     return deed_record
 
 
@@ -199,8 +185,8 @@ def item_tags(deed_record: dict | None) -> list[tuple[str, dict]]:
 
 
 def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
-    """``(tag, BOX)`` for every box: ``("H", header)``, ``("B", balance)`` if any, then
-    each item's, by tag.
+    """``(tag, BOX)`` for every box: the header's (``H1, H2…``), ``("B", balance)`` if
+    any, then each item's, by tag.
 
     ``None`` (no open deed) has none.
     """
@@ -208,7 +194,10 @@ def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
         return []
     balance = deed_record["annotation"]["balance"]
     return (
-        [("H", deed_record["annotation"]["header"])]
+        [
+            (f"H{i}", box)
+            for i, box in enumerate(deed_record["annotation"]["header"], start=1)
+        ]
         + ([("B", balance["layout"])] if balance else [])
         + [(tag, box) for tag, item in item_tags(deed_record) for box in item["layout"]]
     )
@@ -262,14 +251,16 @@ def close_deed_record(
     """Return a copy of ``deed_record`` closed on ``close_scan``.
 
     ``scans`` becomes every page in ``page_names`` (the book's, in order) from the
-    header page (``scans[0]``) to ``close_scan`` or the last page a box reaches,
-    whichever is later, both included, with or without items. Closing before the header
-    page raises ``ValueError``.
+    first page (``scans[0]``) to ``close_scan`` or the last page a box reaches,
+    whichever is later, both included, with or without items. Closing a deed with no
+    header box, or before its first page, raises ``ValueError`` saying why.
     """
+    if not deed_record["annotation"]["header"]:
+        raise ValueError("this deed has no header box: save one before closing")
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
     if end < start:
-        raise ValueError("a deed cannot close before its header page")
+        raise ValueError("a deed cannot close before its first page")
     end = max(
         [end] + [page_names.index(box["scan"]) for _, box in deed_boxes(deed_record)]
     )
@@ -351,7 +342,7 @@ def saved_boxes(
 ) -> list[tuple[str, list[int]]]:
     """``(tag, bbox)`` of every box on ``scan`` in ``book``'s deed annotation files, by deed.
 
-    Tags as in ``deed_boxes``: ``H`` for a header, ``B`` for a balance.
+    Tags as in ``deed_boxes``: ``H1, H2…`` for the header, ``B`` for a balance.
 
     ``skip_deed_id`` is the open deed: it is drawn from memory, tagged, not
     faded.
@@ -371,7 +362,7 @@ def resume(books: list[Path]) -> tuple[int, int]:
     Books are annotated in order, so the last book with any ``deed-annotation-*.json`` is
     open, on the latest page among its files' last ``scans``: a closed deed's close
     page (or the later page a box reaches, see ``close_deed_record``), a not yet closed
-    one's header page. No deed is reopened. With no files at all: ``(0, 0)``.
+    one's first page. No deed is reopened. With no files at all: ``(0, 0)``.
     """
     for b in reversed(range(len(books))):
         deed_records = load_deed_records(books[b])
