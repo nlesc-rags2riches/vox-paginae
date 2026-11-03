@@ -16,6 +16,9 @@ _Avoid_: folder, register
 **Scan**:
 One image file in a book. It can show one page or two.
 _File_: `scan` (the image's filename), `scans`
+_UI_: page ("next page", "page 3/40", "all pages")
+_Code_: still `page` in older code (`(book, page)`, `page_names`, `list_pages`) until
+issue #102 renames it. New code says `scan`; don't rename old code in passing.
 _Avoid_: page, image
 
 **Deed**:
@@ -92,11 +95,13 @@ _Avoid_: pending block
 **Header**:
 The heading where a deed starts, marked by one box.
 
-**Header page**:
+**Header scan**:
 The scan of the header's box: a deed's first scan.
+_Code_: still header page in older code and in the docs, until #102
+_Avoid_: header page
 
 **Balance**:
-A deed's totals (assets, liabilities, total), marked by one box on the header page or a
+A deed's totals (assets, liabilities, total), marked by one box on the header scan or a
 later scan. A deed has at most one balance, or none.
 
 **Item**:
