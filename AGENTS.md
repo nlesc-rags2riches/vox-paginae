@@ -6,7 +6,9 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
 
 - Domain words (deed, deed person, item, box, …): `GLOSSARY.md`. Use its terms, not
   the "Avoid" ones.
-- UI: `notebooks/deed_annotation.py` (marimo). Logic: `src/vox_paginae/annotation.py`.
+- UI: `notebooks/deed_annotation.py` (marimo). Logic: `src/vox_paginae/annotation.py`,
+  the core, which works on an open deed and knows no input format; each input's
+  reading and checks live beside it (`book_input.py` for a book's `deeds.json`).
   The `marimo-library` skill governs the split. Edit the notebook only through
   `marimo-pair`, including when the server runs with `--watch`: the running kernel is
   the source of truth. To test an older notebook, use `git worktree add`: the watched
