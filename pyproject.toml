@@ -28,7 +28,11 @@ markers = ["e2e: browser tests (Playwright); run with `pytest -m e2e`"]
 addopts = "-m 'not e2e'"
 # With PYTHONWARNDEFAULTENCODING=1 (CI sets it), a file opened without `encoding=`
 # fails on every OS, not only where the default is not UTF-8.
-filterwarnings = ["error::EncodingWarning"]
+# matplotlib writes its font cache that way on first import (fresh CI runner): not ours.
+filterwarnings = [
+    "error::EncodingWarning",
+    "ignore::EncodingWarning:matplotlib",
+]
 
 [tool.marimo.runtime]
 # marimo sizes outputs with sys.getsizeof, so one character outside Latin-1 (ƒ, ’) in the
