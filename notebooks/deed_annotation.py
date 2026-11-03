@@ -12,11 +12,13 @@ def imports():
 
     from vox_paginae import marimo_ui
     from vox_paginae.annotation import (
+        add_header_box,
         add_item,
         clear_balance,
         close_deed_record,
         deed_boxes,
         deed_path,
+        delete_header_box,
         delete_item,
         item_tags,
         list_pages,
@@ -30,7 +32,6 @@ def imports():
         save_deed_record,
         saved_boxes,
         set_balance,
-        set_header,
         split_tag,
     )
     from vox_paginae.book_input import (
@@ -50,6 +51,7 @@ def imports():
 
     return (
         Path,
+        add_header_box,
         add_item,
         clear_balance,
         close_deed_record,
@@ -57,6 +59,7 @@ def imports():
         deed_boxes,
         deed_choices,
         deed_path,
+        delete_header_box,
         delete_item,
         draw_scan,
         find_books,
@@ -78,7 +81,6 @@ def imports():
         scan_for_display,
         selection_box,
         set_balance,
-        set_header,
         single_overledene,
         split_tag,
         status_text,
@@ -146,12 +148,8 @@ def session_state(find_books, list_pages, mo, resume, root):
     # Type to prefill the radio with. Set only on edit and close, so a save keeps the last
     # type used without rebuilding the radio.
     get_type, set_type = mo.state(None)
-    # True while the open deed's header is redrawn: the rest of the form is
-    # locked. Self loops: the header buttons cell both reads and sets it.
-    get_editing_header, set_editing_header = mo.state(
-        False, allow_self_loops=True
-    )
-    # Likewise while the saved balance is edited; the balance buttons cell reads and sets it.
+    # True while the saved balance is edited: the header and items are locked. Self
+    # loops: the balance buttons cell both reads and sets it.
     get_editing_balance, set_editing_balance = mo.state(
         False, allow_self_loops=True
     )
@@ -163,7 +161,6 @@ def session_state(find_books, list_pages, mo, resume, root):
         get_deed_record,
         get_editing,
         get_editing_balance,
-        get_editing_header,
         get_pending_boxes,
         get_type,
         set_book_page,
@@ -171,7 +168,6 @@ def session_state(find_books, list_pages, mo, resume, root):
         set_deed_record,
         set_editing,
         set_editing_balance,
-        set_editing_header,
         set_pending_boxes,
         set_type,
     )
@@ -184,7 +180,6 @@ def page_buttons(
     get_deed_record,
     get_editing,
     get_editing_balance,
-    get_editing_header,
     get_pending_boxes,
     mo,
     next_page,
@@ -203,11 +198,14 @@ def page_buttons(
             _last_page
         ):  # a deed never crosses books: close the open one, if any
             if get_deed_record() is not None:
-                _path = save_open_deed(
-                    close_deed_record(
+                try:
+                    _deed_record = close_deed_record(
                         get_deed_record(), [p.name for p in pages], page.name
                     )
-                )
+                except ValueError as _e:  # no header box: it stays open, here
+                    mo.status.toast(str(_e))
+                    return
+                _path = save_open_deed(_deed_record)
                 mo.status.toast(f"saved {_path.name}, deed closed")
             set_deed_record(None)
             set_type(None)
@@ -224,7 +222,6 @@ def page_buttons(
         and (
             bool(get_pending_boxes())
             or get_editing() is not None
-            or get_editing_header()
             or get_editing_balance()
         ),
         on_click=_next_page,
@@ -410,7 +407,6 @@ def item_buttons(
     get_deed_record,
     get_editing,
     get_editing_balance,
-    get_editing_header,
     get_pending_boxes,
     item_option,
     item_tags,
@@ -428,10 +424,10 @@ def item_buttons(
     type_radio,
 ):
     _names = [p.name for p in pages]
-    # Editing the header or balance locks the items, as if closed.
-    _locked = get_editing_header() or get_editing_balance()
+    # Editing the balance locks the items, as if closed.
+    _locked = get_editing_balance()
 
-    def _before_header(scan):
+    def _before_first_scan(scan):
         # Nothing is continued, saved or closed there: it would be outside scans.
         return _names.index(scan) < _names.index(get_deed_record()["scans"][0])
 
@@ -481,9 +477,14 @@ def item_buttons(
             mo.status.toast(f"saved {_path.name}")
 
     def _close_deed(_):
-        _path = save_open_deed(
-            close_deed_record(get_deed_record(), _names, page.name)
-        )
+        try:
+            _deed_record = close_deed_record(
+                get_deed_record(), _names, page.name
+            )
+        except ValueError as _e:  # no header box: it stays open
+            mo.status.toast(str(_e))
+            return
+        _path = save_open_deed(_deed_record)
         set_deed_record(None)  # no deed open until the next open
         set_type(None)
         mo.status.toast(f"saved {_path.name}, deed closed")
@@ -492,7 +493,7 @@ def item_buttons(
         label="continue",
         disabled=drawn_box is None
         or _locked
-        or (get_deed_record() is not None and _before_header(page.name)),
+        or (get_deed_record() is not None and _before_first_scan(page.name)),
         on_click=lambda _: set_pending_boxes(
             lambda p: p + [(page.name, drawn_box)]
         ),
@@ -510,7 +511,7 @@ def item_buttons(
         or not layout_boxes
         or type_radio.value is None
         or not (amount_in.value.strip() or desc_in.value.strip())
-        or any(_before_header(_scan) for _scan, _ in layout_boxes),
+        or any(_before_first_scan(_scan) for _scan, _ in layout_boxes),
         on_click=_save,
     )
     item_dd = mo.ui.dropdown(options=_tags)
@@ -541,7 +542,7 @@ def item_buttons(
         or bool(get_pending_boxes())
         or get_editing() is not None
         or _locked
-        or _before_header(page.name),
+        or _before_first_scan(page.name),
         on_click=_close_deed,
     )
     return (
@@ -645,7 +646,6 @@ def deed_open(
     deed_path,
     drawn_box,
     get_deed_record,
-    get_editing_header,
     mo,
     new_deed_record,
     openable_deed,
@@ -661,12 +661,11 @@ def deed_open(
         if deed_path(book, openable_deed["deed_id"]).exists():
             mo.status.toast("this deed already has a file: reopen it instead")
             return
-        # The box drawn now is the header: kept in the file, the redraw drops it.
+        # This page is its first page; its header boxes are saved after.
         _deed_record = new_deed_record(
             openable_deed["deed_id"],
             copied_deed_person_data(openable_deed),
             page.name,
-            drawn_box,
         )
         _path = save_open_deed(_deed_record)  # at once: one file per deed
         set_deed_id(_deed_record["deed_id"])
@@ -675,80 +674,85 @@ def deed_open(
 
     open_btn = mo.ui.button(
         label="open",
-        # A deed with a file is reopened, not opened anew. No header box, no open.
+        # A deed with a file is reopened, not opened anew.
         disabled=openable_deed is None
-        or drawn_box is None
         or deed_path(book, openable_deed["deed_id"]).exists(),
         on_click=_open,
     )
-    # The header box is easy to miss: say so until one is drawn, also when redrawn.
-    _hint = (
-        "Draw the new header box and click **save header**"
-        if get_editing_header()
-        else "Draw a box around the header and click **open**"
-        if get_deed_record() is None
+    # The header box is easy to miss: say so until the open deed has one and while
+    # none is drawn. Close would refuse it.
+    _record = get_deed_record()
+    open_hint = mo.md(
+        "Draw a box around the header and click **save box as header**"
+        if _record is not None
+        and not _record["annotation"]["header"]
+        and drawn_box is None
         else ""
     )
-    open_hint = mo.md(_hint if drawn_box is None else "")
     return open_btn, open_hint
 
 
 @app.cell(hide_code=True)
 def header_buttons(
+    add_header_box,
+    deed_boxes,
+    delete_header_box,
     drawn_box,
     get_deed_record,
     get_editing,
     get_editing_balance,
-    get_editing_header,
     get_pending_boxes,
     mo,
     page,
     pages,
     save_open_deed,
     set_deed_record,
-    set_editing_header,
-    set_header,
 ):
-    # Edit header locks the balance and items, as if closed. Save header saves the drawn box
-    # as the header, like open, on any page with no saved box before it: that is the new
-    # header page.
+    # Header boxes go in one at a time, like the balance, on the deed's first page or a
+    # later one: before it they would be outside scans. Each has its own tag: H1, H2…
+    _open = get_deed_record()
     _names = [p.name for p in pages]
-    _deed_record = None
-    if get_editing_header() and drawn_box is not None:
-        try:
-            _deed_record = set_header(
-                get_deed_record(), _names, page.name, drawn_box
-            )
-        except ValueError:
-            pass  # a saved box before this page: save header stays disabled
+    _tags = {
+        f"{_tag} · page {_names.index(_box['scan']) + 1}": _tag
+        for _tag, _box in deed_boxes(_open)
+        if _tag[0] == "H"
+    }
+    # Editing an item or the balance locks the header, as if closed.
+    _locked = get_editing() is not None or get_editing_balance()
 
-    def _save_header(_):
+    def _save_header_box(_):
+        _deed_record = add_header_box(get_deed_record(), page.name, drawn_box)
         _path = save_open_deed(_deed_record)
         set_deed_record(_deed_record)
-        set_editing_header(False)
         mo.status.toast(f"saved {_path.name}")
 
-    edit_header_btn = mo.ui.button(
-        label="edit header",
-        disabled=get_deed_record() is None
-        or bool(get_pending_boxes())
-        or get_editing() is not None
-        or get_editing_header()
-        or get_editing_balance(),
-        on_click=lambda _: set_editing_header(True),
-    )
+    def _delete_header_box(_):
+        if header_dd.value:
+            _deed_record = delete_header_box(
+                get_deed_record(), header_dd.value
+            )
+            _path = save_open_deed(_deed_record)
+            set_deed_record(_deed_record)
+            mo.status.toast(f"saved {_path.name}")
+
     save_header_btn = mo.ui.button(
-        label="save header",
-        disabled=_deed_record is None,
-        on_click=_save_header,
+        label="save box as header",
+        # Not with pending boxes: the drawn box is then the item's next one.
+        disabled=_open is None
+        or _locked
+        or drawn_box is None
+        or bool(get_pending_boxes())
+        or _names.index(page.name) < _names.index(_open["scans"][0]),
+        on_click=_save_header_box,
     )
-    # Keeps the old box.
-    cancel_header_btn = mo.ui.button(
-        label="cancel header edit",
-        disabled=not get_editing_header(),
-        on_click=lambda _: set_editing_header(False),
+    header_dd = mo.ui.dropdown(options=_tags)
+    # The later ones move up: H2 becomes H1.
+    delete_header_btn = mo.ui.button(
+        label="delete header box",
+        disabled=not _tags or _locked,
+        on_click=_delete_header_box,
     )
-    return cancel_header_btn, edit_header_btn, save_header_btn
+    return delete_header_btn, header_dd, save_header_btn
 
 
 @app.cell(hide_code=True)
@@ -795,11 +799,11 @@ def deed_file_buttons(
     def _reopen(_):
         # The picked deed is open again, as if never closed: save, delete and
         # close then rewrite its file.
-        _deed_record, _header_page_i = _read_picked_file()
+        _deed_record, _first_scan_i = _read_picked_file()
         set_deed_id(deed_dd.value)
         set_deed_record(_deed_record)
         set_type(None)
-        set_book_page(lambda book_page: (book_page[0], _header_page_i))
+        set_book_page(lambda book_page: (book_page[0], _first_scan_i))
 
     # Disabled like go; an edit needs an open deed, so that is covered too.
     reopen_btn = mo.ui.button(
@@ -872,7 +876,6 @@ def deed_move(
     get_deed_record,
     get_editing,
     get_editing_balance,
-    get_editing_header,
     get_pending_boxes,
     mo,
     move_dd,
@@ -909,7 +912,6 @@ def deed_move(
         disabled=move_dd.value is None
         or bool(get_pending_boxes())
         or get_editing() is not None
-        or get_editing_header()
         or get_editing_balance(),
         on_click=_move,
     )
@@ -949,7 +951,6 @@ def balance_buttons(
     get_deed_record,
     get_editing,
     get_editing_balance,
-    get_editing_header,
     get_pending_boxes,
     mo,
     page,
@@ -997,10 +998,9 @@ def balance_buttons(
     _names = [p.name for p in pages]
     save_balance_btn = mo.ui.button(
         label="save box as balance",
-        # At most one: clear or edit balance box first. Not before the header page:
+        # At most one: clear or edit balance box first. Not before the first page:
         # outside scans.
         disabled=_open is None
-        or get_editing_header()
         or (bool(_balance) and not _editing)
         or _box is None
         or _names.index(_box[0]) < _names.index(_open["scans"][0])
@@ -1013,17 +1013,16 @@ def balance_buttons(
     # Removes the balance, box and totals: then a new box can be saved as balance.
     clear_balance_btn = mo.ui.button(
         label="clear balance box",
-        disabled=not _balance or get_editing_header() or _editing,
+        disabled=not _balance or _editing,
         on_click=_clear_balance,
     )
     # Unlocks the totals; save box as balance then rewrites the balance. Locks the header
-    # and items, as edit header does.
+    # and items.
     edit_balance_btn = mo.ui.button(
         label="edit balance box",
         disabled=not _balance
         or bool(get_pending_boxes())
         or get_editing() is not None
-        or get_editing_header()
         or _editing,
         on_click=lambda _: set_editing_balance(True),
     )
@@ -1058,7 +1057,6 @@ def status_line(
     get_deed_record,
     get_editing,
     get_editing_balance,
-    get_editing_header,
     get_pending_boxes,
     mo,
     page,
@@ -1078,7 +1076,6 @@ def status_line(
             get_deed_record(),
             len(get_pending_boxes()),
             get_editing(),
-            get_editing_header(),
             get_editing_balance(),
         )
     )
@@ -1093,7 +1090,6 @@ def layout(
     book_dd,
     cancel_balance_btn,
     cancel_edit_btn,
-    cancel_header_btn,
     category_in,
     clear_balance_btn,
     clear_pending_btn,
@@ -1105,13 +1101,14 @@ def layout(
     deed_row,
     delete_btn,
     delete_file_ui,
+    delete_header_btn,
     desc_in,
     edit_balance_btn,
     edit_btn,
-    edit_header_btn,
     fig_h_slider,
     get_deed_id,
     go_to_btn,
+    header_dd,
     item_dd,
     mo,
     move_ui,
@@ -1136,7 +1133,7 @@ def layout(
         [page_view, mo.hstack([quality_slider, fig_h_slider], justify="start")]
     )
     # Top to bottom, from the widest scope to the narrowest, split by rules: annotator, book
-    # and deed, balance, page, item.
+    # and deed, header, balance, page, item.
     _form = mo.vstack(
         [
             annotator_row,
@@ -1158,11 +1155,13 @@ def layout(
                     go_to_btn,
                     reopen_btn,
                     delete_file_ui,
-                    edit_header_btn,
-                    save_header_btn,
-                    cancel_header_btn,
                     close_deed_btn,
                 ],
+                justify="start",
+            ),
+            mo.md("---"),
+            mo.hstack(
+                [save_header_btn, header_dd, delete_header_btn],
                 justify="start",
             ),
             mo.md("---"),

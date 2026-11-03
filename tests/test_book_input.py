@@ -71,12 +71,12 @@ def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):
     for name in ["a.jpg", "b.jpg", "c.jpg"]:
         (tmp_path / name).touch()
     save_deed_record(
-        deed_path(tmp_path, "d3"), new_deed_record("d3", {}, "b.jpg", [0] * 4), "Ann"
+        deed_path(tmp_path, "d3"), new_deed_record("d3", {}, "b.jpg"), "Ann"
     )
     save_deed_record(
         deed_path(tmp_path, "d2"),
         {
-            **new_deed_record("d2", {}, "a.jpg", [0] * 4),
+            **new_deed_record("d2", {}, "a.jpg"),
             "scans": ["a.jpg", "b.jpg", "c.jpg"],
         },
         "Ann",

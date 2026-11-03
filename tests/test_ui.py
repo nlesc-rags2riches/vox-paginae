@@ -149,7 +149,6 @@ def test_status_line_names_the_open_deed_and_what_is_being_edited():
         "`b1/s003.jpg` · editing deed-annotation-d7 · page 3/40 · pending 1"
         " · editing A2"
     )
-    assert status_text(**status, editing_header=True).endswith(" · editing header")
     assert status_text(**status, editing_balance=True).endswith(" · editing balance")
 
 

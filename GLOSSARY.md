@@ -93,16 +93,18 @@ _UI_: pending
 _Avoid_: pending block
 
 **Header**:
-The heading where a deed starts, marked by one box.
+The heading where a deed starts, marked by one or more boxes on any of the deed's
+scans. The main one can be missing; a complementary one often turns up later in the
+deed.
 
-**Header scan**:
-The scan of the header's box: a deed's first scan.
-_Code_: still header page in older code and in the docs, until #102
-_Avoid_: header page
+**First scan**:
+The scan a deed was opened on: the first of its scans. Its boxes go on it or a later
+scan.
+_UI_: first page
 
 **Balance**:
-A deed's totals (assets, liabilities, total), marked by one box on the header scan or a
-later scan. A deed has at most one balance, or none.
+A deed's totals (assets, liabilities, total), marked by one box on any of the deed's
+scans. A deed has at most one balance, or none.
 
 **Item**:
 One asset or liability of a deed: its type, an optional category, an amount or a
@@ -118,8 +120,8 @@ An item's value as written in the deed.
 _Avoid_: value
 
 **Tag**:
-The short name shown on a box: `H` for the header, `B` for the balance, `A1, A2…` for
-assets and `L1, L2…` for liabilities, by position.
+The short name shown on a box: `H1, H2…` for the header's boxes, `B` for the balance,
+`A1, A2…` for assets and `L1, L2…` for liabilities, by position.
 _Avoid_: label
 
 ## Relationships
