@@ -10,8 +10,6 @@ def imports():
 
     import marimo as mo
     import matplotlib.pyplot as plt
-    import numpy as np
-    from PIL import Image
 
     from vox_paginae.annotation import (
         add_item,
@@ -39,10 +37,9 @@ def imports():
         single_overledene,
         split_tag,
     )
-    from vox_paginae.ui import crop, thumbnail
+    from vox_paginae.ui import crop, scan_for_display, thumbnail
 
     return (
-        Image,
         Path,
         add_item,
         clear_balance,
@@ -61,13 +58,13 @@ def imports():
         move_deed_record,
         new_deed_record,
         next_page,
-        np,
         plt,
         replace_balance,
         replace_item,
         resume,
         save_deed_record,
         saved_boxes,
+        scan_for_display,
         set_balance,
         set_header,
         single_overledene,
@@ -338,24 +335,10 @@ def view_sliders(mo):
 
 
 @app.cell(hide_code=True)
-def _(Image, fig_h_slider, np, page, quality_slider):
-    # Decode at reduced scale (fast), then Lanczos down to exactly the PNG height (sharp).
-    # page_size keeps bboxes in original pixels.
-    # The PNG goes out in the layout cell's output, which marimo caps (output_max_bytes in
-    # pyproject.toml; over it, the whole form is replaced by an error). Measured ~1.1 bytes
-    # per pixel on these scans, so PNG pixels are capped and past that the quality slider
-    # stops adding any.
-    MAX_PNG_PX = 5_000_000
-    _im = Image.open(page)
-    page_size = _im.size
-    _fig_area = (
-        fig_h_slider.value**2 * page_size[0] / page_size[1]
-    )  # square inches
-    png_dpi = min(quality_slider.value, (MAX_PNG_PX / _fig_area) ** 0.5)
-    _px = round(fig_h_slider.value * png_dpi)
-    _im.draft("L", (1, _px))
-    _im.thumbnail((page_size[0], _px), Image.LANCZOS)
-    page_img = np.asarray(_im)
+def _(fig_h_slider, page, quality_slider, scan_for_display):
+    page_img, page_size, png_dpi = scan_for_display(
+        page, fig_h_slider.value, quality_slider.value
+    )
     return page_img, page_size, png_dpi
 
 
