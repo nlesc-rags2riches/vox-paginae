@@ -1,4 +1,7 @@
 import io
+import re
+from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -9,7 +12,11 @@ from vox_paginae.ui import (
     MAX_DISPLAY_PX,
     crop,
     draw_scan,
+    folder_bar_html,
+    item_label,
     scan_for_display,
+    selection_box,
+    status_text,
     thumbnail,
 )
 
@@ -95,3 +102,63 @@ def test_draw_scan_draws_saved_faded_deed_tagged_and_pending_dashed():
         ("A2", (10, 10), "tab:blue"),
         ("L1", (50, 50), "tab:orange"),
     ]
+
+
+def box_selection(x_min, y_min, x_max, y_max):
+    # Stands in for mo.ui.matplotlib's BoxSelection: selection_box reads only these fields.
+    return SimpleNamespace(x_min=x_min, y_min=y_min, x_max=x_max, y_max=y_max)
+
+
+def test_selection_box_is_in_whole_pixels():
+    assert selection_box(box_selection(10.4, 20.6, 110.3, 70.2)) == [10, 21, 110, 70]
+
+
+def test_a_plain_click_or_no_selection_draws_no_box():
+    assert selection_box(box_selection(50, 50, 50, 50)) is None  # a click
+    assert selection_box(box_selection(50, 50, 52, 90)) is None  # under 3 px wide
+    assert selection_box(None) is None
+
+
+def test_item_label_shows_tag_amount_and_description_start():
+    item = {
+        "amount": "f 120,-",
+        "description": "Een huis en erf aan de Hoogstraat te Ergens",
+    }
+    assert item_label("A1", item) == "A1 · f 120,- · Een huis en erf aan de Hoogstr"
+
+
+def test_status_line_with_no_deed_open():
+    text = status_text(Path("books/b1"), Path("books/b1/s003.jpg"), 2, 40, None, 0)
+    assert text == "`b1/s003.jpg` · no deed · page 3/40 · pending 0"
+
+
+def test_status_line_names_the_open_deed_and_what_is_being_edited():
+    deed_record = {"deed_id": "d7"}
+    status = {
+        "book": Path("b1"),
+        "scan": Path("b1/s003.jpg"),
+        "scan_i": 2,
+        "n_scans": 40,
+        "deed_record": deed_record,
+        "n_pending": 1,
+    }
+    assert status_text(**status, editing="A2") == (
+        "`b1/s003.jpg` · editing deed-annotation-d7 · page 3/40 · pending 1"
+        " · editing A2"
+    )
+    assert status_text(**status, editing_header=True).endswith(" · editing header")
+    assert status_text(**status, editing_balance=True).endswith(" · editing balance")
+
+
+def test_folder_bar_has_a_segment_per_book_and_marks_here_and_the_slider():
+    books = [Path("b1"), Path("b2")]
+    book_scans = [
+        [Path("b1/1.jpg"), Path("b1/2.jpg"), Path("b1/3.jpg")],
+        [Path("b2/1.jpg")],
+    ]
+    html = folder_bar_html(books, book_scans, here=1, slider=3)
+    segments = re.findall(r'title="([^"]+)" style="flex: (\d+);', html)
+    assert segments == [("b1: 3 pages", "3"), ("b2: 1 pages", "1")]
+    # each marker sits at the middle of its scan's quarter of the bar
+    markers = re.findall(r"left: ([\d.]+)%; border-left: (\w+) (\w+)", html)
+    assert markers == [("37.5", "3px", "solid"), ("87.5", "2px", "dashed")]

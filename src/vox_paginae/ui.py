@@ -10,6 +10,8 @@ import numpy as np
 from matplotlib.axes import Axes
 from PIL import Image
 
+from vox_paginae.annotation import deed_path
+
 
 @functools.lru_cache(maxsize=512)
 def thumbnail(scan: Path, height: int = 120) -> bytes:
@@ -121,3 +123,104 @@ def draw_scan(
     for bbox in pending:
         draw(bbox, "grey", style="--")
     return ax
+
+
+MIN_BOX_PX = 3  # a plain click still yields a zero-area box selection
+
+
+def selection_box(selection) -> list[int] | None:
+    """The page widget's box ``selection`` as a bbox in whole pixels.
+
+    ``None`` for no selection, a selection that is not a box, or one under
+    ``MIN_BOX_PX`` on a side (a plain click).
+    """
+    if not hasattr(selection, "x_min"):
+        return None
+    s = selection
+    if s.x_max - s.x_min < MIN_BOX_PX or s.y_max - s.y_min < MIN_BOX_PX:
+        return None
+    return [round(s.x_min), round(s.y_min), round(s.x_max), round(s.y_max)]
+
+
+def item_label(tag: str, item: dict) -> str:
+    """``item``'s entry in the item dropdown: its tag, amount and description start.
+
+    Showing them makes the list double as a typo check.
+    """
+    return f"{tag} · {item['amount']} · {item['description'][:30]}"
+
+
+def status_text(
+    book: Path,
+    scan: Path,
+    scan_i: int,
+    n_scans: int,
+    deed_record: dict | None,
+    n_pending: int,
+    editing: str | None = None,
+    editing_header: bool = False,
+    editing_balance: bool = False,
+) -> str:
+    """The status line, as Markdown: where the annotator is and what is being edited.
+
+    ``scan`` is number ``scan_i`` (from 0) of the book's ``n_scans``; ``deed_record`` is
+    the open deed's, or ``None``; ``editing`` is the tag of the item being edited.
+    """
+    deed = (
+        f"editing {deed_path(book, deed_record['deed_id']).stem}"
+        if deed_record
+        else "no deed"
+    )
+    return (
+        f"`{book.name}/{scan.name}` · {deed} · page {scan_i + 1}/{n_scans}"
+        f" · pending {n_pending}"
+        + (f" · editing {editing}" if editing else "")
+        + (" · editing header" if editing_header else "")
+        + (" · editing balance" if editing_balance else "")
+    )
+
+
+# Okabe-Ito (colour-blind safe), without black, which vanishes in dark mode.
+OKABE_ITO = [
+    "#E69F00",
+    "#56B4E9",
+    "#009E73",
+    "#F0E442",
+    "#0072B2",
+    "#D55E00",
+    "#CC79A7",
+]
+
+
+def folder_bar_html(
+    books: list[Path], book_scans: list[list[Path]], here: int, slider: int
+) -> str:
+    """A bar of all scans of all ``books``, as HTML.
+
+    One segment per book, sized by its scans (hover: name). Markers, in the text colour
+    so they show on any segment: solid at scan ``here`` (the current one), dashed at
+    scan ``slider``, both counted from 0 over all books. Not pixel-aligned with the
+    slider track (wishlist).
+    """
+    n = sum(len(scans) for scans in book_scans)
+    segments = "".join(
+        f'<div title="{book.name}: {len(scans)} pages" style="flex: {len(scans)}; '
+        f"background: {OKABE_ITO[k % len(OKABE_ITO)]}99; overflow: hidden; "
+        f'white-space: nowrap; text-overflow: ellipsis; font-size: 11px; padding: 0 4px">'
+        f"{book.name}</div>"
+        for k, (book, scans) in enumerate(zip(books, book_scans))
+    )
+
+    def marker(j, css):
+        return (
+            '<div style="position: absolute; top: 0; bottom: 0; '
+            f'left: {100 * (j + 0.5) / n}%; {css}"></div>'
+        )
+
+    return (
+        '<div style="position: relative; display: flex; height: 18px">'
+        + segments
+        + marker(here, "border-left: 3px solid currentColor")
+        + marker(slider, "border-left: 2px dashed currentColor")
+        + "</div>"
+    )

@@ -36,7 +36,16 @@ def imports():
         single_overledene,
         split_tag,
     )
-    from vox_paginae.ui import crop, draw_scan, scan_for_display, thumbnail
+    from vox_paginae.ui import (
+        crop,
+        draw_scan,
+        folder_bar_html,
+        item_label,
+        scan_for_display,
+        selection_box,
+        status_text,
+        thumbnail,
+    )
 
     return (
         Path,
@@ -50,6 +59,8 @@ def imports():
         delete_item,
         draw_scan,
         find_books,
+        folder_bar_html,
+        item_label,
         item_tags,
         list_pages,
         load_deed_records,
@@ -64,10 +75,12 @@ def imports():
         save_deed_record,
         saved_boxes,
         scan_for_display,
+        selection_box,
         set_balance,
         set_header,
         single_overledene,
         split_tag,
+        status_text,
         thumbnail,
     )
 
@@ -388,23 +401,8 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(get_pending_boxes, page, page_sel):
-    MIN_BOX_PX = 3  # a plain click still yields a zero-area BoxSelection
-
-    _v = page_sel.value
-    drawn_box = None
-    if (
-        _v
-        and hasattr(_v, "x_min")
-        and _v.x_max - _v.x_min >= MIN_BOX_PX
-        and _v.y_max - _v.y_min >= MIN_BOX_PX
-    ):
-        drawn_box = [
-            round(_v.x_min),
-            round(_v.y_min),
-            round(_v.x_max),
-            round(_v.y_max),
-        ]
+def _(get_pending_boxes, page, page_sel, selection_box):
+    drawn_box = selection_box(page_sel.value)
 
     # The unsaved item, in draw order: pending boxes, then the one drawn now.
     layout_boxes = get_pending_boxes() + (
@@ -450,6 +448,7 @@ def item_buttons(
     get_editing_balance,
     get_editing_header,
     get_pending_boxes,
+    item_label,
     item_tags,
     layout_boxes,
     mo,
@@ -472,9 +471,8 @@ def item_buttons(
         # Nothing is continued, saved or closed there: it would be outside scans.
         return _names.index(scan) < _names.index(get_deed_record()["scans"][0])
 
-    # Text shows amount and description start, so the list doubles as a typo check.
     _tags = {
-        f"{tag} · {item['amount']} · {item['description'][:30]}": tag
+        item_label(tag, item): tag
         for tag, item in item_tags(get_deed_record())
     }
 
@@ -1089,7 +1087,6 @@ def debug_toggle(mo):
 @app.cell(hide_code=True)
 def status_line(
     book,
-    deed_path,
     get_deed_record,
     get_editing,
     get_editing_balance,
@@ -1099,21 +1096,23 @@ def status_line(
     page,
     page_i,
     pages,
+    status_text,
 ):
     # Its own cell, not in `layout`: a click reruns `layout` at once (it shows the buttons), with
     # the new state but the old elements. This cell reruns only with the rebuilt elements, so
     # the status line never says "no deed" while the old deed dropdown is still showing.
-    _open = get_deed_record()
-    _deed = (
-        f"editing {deed_path(book, _open['deed_id']).stem}"
-        if _open
-        else "no deed"
-    )
     status_line = mo.md(
-        f"`{book.name}/{page.name}` · {_deed} · page {page_i + 1}/{len(pages)} · pending {len(get_pending_boxes())}"
-        + (f" · editing {get_editing()}" if get_editing() else "")
-        + (" · editing header" if get_editing_header() else "")
-        + (" · editing balance" if get_editing_balance() else "")
+        status_text(
+            book,
+            page,
+            page_i,
+            len(pages),
+            get_deed_record(),
+            len(get_pending_boxes()),
+            get_editing(),
+            get_editing_header(),
+            get_editing_balance(),
+        )
     )
     return (status_line,)
 
@@ -1295,6 +1294,7 @@ def jump_strip(
     all_pages,
     book_pages,
     books,
+    folder_bar_html,
     get_book_page,
     get_deed_record,
     get_pending_boxes,
@@ -1317,40 +1317,15 @@ def jump_strip(
         on_click=lambda _: set_book_page(_target),
     )
 
-    # One segment per folder, sized by its page count (hover: name); solid = current page,
-    # dashed = slider position, both in the text colour so they show on any segment.
-    # Not pixel-aligned with the slider track (wishlist).
-    _n = len(all_pages)
-    # Okabe-Ito (colour-blind safe), without black, which vanishes in dark mode.
-    OKABE_ITO = [
-        "#E69F00",
-        "#56B4E9",
-        "#009E73",
-        "#F0E442",
-        "#0072B2",
-        "#D55E00",
-        "#CC79A7",
-    ]
-    _segments = "".join(
-        f'<div title="{_book.name}: {len(_pages)} pages" style="flex: {len(_pages)}; '
-        f"background: {OKABE_ITO[_k % len(OKABE_ITO)]}99; overflow: hidden; "
-        f'white-space: nowrap; text-overflow: ellipsis; font-size: 11px; padding: 0 4px">'
-        f"{_book.name}</div>"
-        for _k, (_book, _pages) in enumerate(zip(books, book_pages))
-    )
-
-    def _marker(j, css):
-        return f'<div style="position: absolute; top: 0; bottom: 0; left: {100 * (j + 0.5) / _n}%; {css}"></div>'
-
     folder_bar = mo.Html(
-        '<div style="position: relative; display: flex; height: 18px">'
-        + _segments
-        + _marker(
-            all_pages.index(_here) if _here in all_pages else _n - 1,
-            "border-left: 3px solid currentColor",
+        folder_bar_html(
+            books,
+            book_pages,
+            all_pages.index(_here)
+            if _here in all_pages
+            else len(all_pages) - 1,
+            _i,
         )
-        + _marker(_i, "border-left: 2px dashed currentColor")
-        + "</div>"
     )
 
     def _thumb(j):
