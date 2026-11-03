@@ -5,6 +5,7 @@
 import json
 import socket
 import subprocess
+import sys
 import time
 import urllib.request
 from contextlib import contextmanager
@@ -84,8 +85,8 @@ def serve(data_root, *args):
     port = get_free_port()
     proc = subprocess.Popen(
         [
-            "uv",
-            "run",
+            sys.executable,
+            "-m",
             "marimo",
             "run",
             "notebooks/deed_annotation.py",
@@ -104,7 +105,11 @@ def serve(data_root, *args):
         yield f"http://127.0.0.1:{port}"
     finally:
         proc.terminate()
-        proc.wait(10)
+        try:
+            proc.wait(10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 
 @pytest.fixture
