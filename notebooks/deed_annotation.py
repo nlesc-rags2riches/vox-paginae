@@ -9,7 +9,6 @@ def imports():
     from pathlib import Path
 
     import marimo as mo
-    import matplotlib.pyplot as plt
 
     from vox_paginae.annotation import (
         add_item,
@@ -37,7 +36,7 @@ def imports():
         single_overledene,
         split_tag,
     )
-    from vox_paginae.ui import crop, scan_for_display, thumbnail
+    from vox_paginae.ui import crop, draw_scan, scan_for_display, thumbnail
 
     return (
         Path,
@@ -49,6 +48,7 @@ def imports():
         deed_choices,
         deed_path,
         delete_item,
+        draw_scan,
         find_books,
         item_tags,
         list_pages,
@@ -58,7 +58,6 @@ def imports():
         move_deed_record,
         new_deed_record,
         next_page,
-        plt,
         replace_balance,
         replace_item,
         resume,
@@ -346,83 +345,42 @@ def _(fig_h_slider, page, quality_slider, scan_for_display):
 def _(
     book,
     deed_boxes,
+    draw_scan,
     fig_h_slider,
     get_deed_id,
     get_deed_record,
     get_pending_boxes,
     mo,
     page,
-    plt,
     png_dpi,
     saved_boxes,
     scan_pixels,
     scan_size,
 ):
     FIG_H = fig_h_slider.value  # inches, shown at 100 px each
-    DPI = png_dpi  # quality, unless capped
-    # By tag initial: header, balance, asset, liability.
-    TYPE_COLOURS = {
-        "H": "tab:green",
-        "B": "tab:purple",
-        "A": "tab:blue",
-        "L": "tab:orange",
-    }
-
-    _w, _h = scan_size
-    # Figure matches the scan's aspect and axes fill it; otherwise mo.ui.matplotlib maps
-    # the pointer across the whole canvas and every box comes back offset.
-    _fig, _ax = plt.subplots(figsize=(FIG_H * _w / _h, FIG_H), dpi=DPI)
-    _fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-    _ax.imshow(
-        scan_pixels,
-        extent=(0, _w, _h, 0),
-        cmap="gray",
-        vmin=0,  # fixed uint8 range: no contrast stretch, flat scans not black
-        vmax=255,
-    )
-    _ax.set_xlim(0, _w)
-    _ax.set_ylim(_h, 0)
-    _ax.set_axis_off()
-
-    def _draw(bbox, colour, tag=None, style="-", alpha=1.0):
-        _x0, _y0, _x1, _y1 = bbox
-        _ax.add_patch(
-            plt.Rectangle(
-                (_x0, _y0),
-                _x1 - _x0,
-                _y1 - _y0,
-                fill=False,
-                edgecolor=colour,
-                linewidth=2,
-                linestyle=style,
-                alpha=alpha,
-            )
-        )
-        if tag:
-            _ax.text(
-                _x0,
-                _y0,
-                tag,
-                color=colour,
-                va="bottom",
-                fontsize=14,
-                fontweight="bold",
-            )
 
     # Saved boxes of other deeds (and of a closed one), faded: shared pages, restarts.
     _editing = get_deed_id() if get_deed_record() is not None else None
-    for _tag, _bbox in saved_boxes(book, page.name, _editing):
-        _draw(_bbox, TYPE_COLOURS[_tag[0]], alpha=0.4)
-    for _tag, _box in deed_boxes(get_deed_record()):
-        if _box["scan"] == page.name:
-            _draw(_box["bbox"], TYPE_COLOURS[_tag[0]], _tag)
-    for _scan, _bbox in get_pending_boxes():
-        if _scan == page.name:
-            _draw(_bbox, "grey", style="--")
+    _ax = draw_scan(
+        scan_pixels,
+        scan_size,
+        FIG_H,
+        png_dpi,
+        saved=saved_boxes(book, page.name, _editing),
+        deed=[
+            (_tag, _box["bbox"])
+            for _tag, _box in deed_boxes(get_deed_record())
+            if _box["scan"] == page.name
+        ],
+        pending=[
+            _bbox for _scan, _bbox in get_pending_boxes() if _scan == page.name
+        ],
+    )
 
     page_sel = mo.ui.matplotlib(_ax, debounce=True)
     # mo.ui.matplotlib shows the PNG at its pixel size (capped at 100% width): this box
     # keeps the on-screen size at FIG_H * 100 px whatever the quality.
+    _w, _h = scan_size
     page_view = mo.Html(
         f'<div style="width: {round(100 * FIG_H * _w / _h)}px">{page_sel}</div>'
     )
