@@ -14,7 +14,7 @@ from vox_paginae.annotation import deed_path
 
 
 @functools.lru_cache(maxsize=512)
-def thumbnail(scan: Path, height: int = 120) -> bytes:
+def thumbnail(scan: Path, height: int) -> bytes:
     """``scan`` as a small grayscale JPEG, ``height`` px tall (cached: scans never change)."""
     im = Image.open(scan)
     im.draft("L", (1, height))

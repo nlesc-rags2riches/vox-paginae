@@ -10,6 +10,7 @@ def imports():
 
     import marimo as mo
 
+    from vox_paginae import marimo_ui
     from vox_paginae.annotation import (
         add_item,
         clear_balance,
@@ -37,23 +38,18 @@ def imports():
         split_tag,
     )
     from vox_paginae.ui import (
-        book_bar_html,
-        crop,
         draw_scan,
         item_option,
         scan_for_display,
         selection_box,
         status_text,
-        thumbnail,
     )
 
     return (
         Path,
         add_item,
-        book_bar_html,
         clear_balance,
         close_deed_record,
-        crop,
         deed_boxes,
         deed_choices,
         deed_path,
@@ -65,6 +61,7 @@ def imports():
         list_pages,
         load_deed_records,
         load_deeds,
+        marimo_ui,
         mo,
         move_deed_record,
         new_deed_record,
@@ -81,22 +78,14 @@ def imports():
         single_overledene,
         split_tag,
         status_text,
-        thumbnail,
     )
 
 
 @app.cell
-def _(Path, mo):
+def _(Path, marimo_ui, mo):
     # `marimo edit|run notebooks/deed_annotation.py -- --data-root <dir>` overrides the default.
-    default_root = Path(
-        mo.cli_args().get("data-root")
-        or Path.home()
-    )
-    root_picker = mo.ui.file_browser(
-        initial_path=default_root,
-        selection_mode="directory",
-        multiple=False,
-    )
+    default_root = Path(mo.cli_args().get("data-root") or Path.home())
+    root_picker = marimo_ui.root_picker(default_root)
     return default_root, root_picker
 
 
@@ -115,13 +104,9 @@ def annotator_state(mo):
 
 
 @app.cell(hide_code=True)
-def annotator_input(get_annotator, mo):
+def annotator_input(get_annotator, marimo_ui):
     _name, _locked = get_annotator()
-    # Read-only while locked: a stray keystroke cannot change who is recorded.
-    # debounce=False: lock enables while typing, as save does (no timed debounce: #11)
-    annotator_in = mo.ui.text(
-        label="annotator", value=_name, disabled=_locked, debounce=False
-    )
+    annotator_in = marimo_ui.annotator_input(_name, _locked)
     # A plain name for now: every write records it. "" until locked: nothing past the
     # book cell runs. From the state, not the input, so typing reruns nothing below.
     annotator_name = _name if _locked else ""
@@ -129,16 +114,10 @@ def annotator_input(get_annotator, mo):
 
 
 @app.cell(hide_code=True)
-def annotator_lock(annotator_in, get_annotator, mo, set_annotator):
-    _name, _locked = get_annotator()
-    lock_btn = mo.ui.button(
-        label="unlock" if _locked else "lock",
-        disabled=not (_locked or annotator_in.value.strip()),
-        on_click=lambda _: set_annotator(
-            (_name, False) if _locked else (annotator_in.value.strip(), True)
-        ),
+def annotator_lock(annotator_in, get_annotator, marimo_ui, set_annotator):
+    annotator_row = marimo_ui.annotator_row(
+        annotator_in, get_annotator, set_annotator
     )
-    annotator_row = mo.hstack([annotator_in, lock_btn], justify="start", align="end")
     return (annotator_row,)
 
 
@@ -335,14 +314,8 @@ def _(
 
 
 @app.cell(hide_code=True)
-def view_sliders(mo):
-    # The page is shown FIG_H * 100 px tall; quality = PNG pixels per inch of FIG_H, so
-    # 100 is 1:1 with the screen and higher is sharper (on HiDPI screens) but slower.
-    QUALITY_DPI = [100, 150, 200, 300]
-    quality_slider = mo.ui.slider(
-        steps=QUALITY_DPI, value=150, label="quality"
-    )
-    fig_h_slider = mo.ui.slider(4.0, 14.0, step=0.5, value=8.0, label="height")
+def view_sliders(marimo_ui):
+    quality_slider, fig_h_slider = marimo_ui.view_sliders()
     return fig_h_slider, quality_slider
 
 
@@ -363,7 +336,7 @@ def _(
     get_deed_id,
     get_deed_record,
     get_pending_boxes,
-    mo,
+    marimo_ui,
     page,
     png_dpi,
     saved_boxes,
@@ -390,13 +363,7 @@ def _(
         ],
     )
 
-    page_sel = mo.ui.matplotlib(_ax, debounce=True)
-    # mo.ui.matplotlib shows the PNG at its pixel size (capped at 100% width): this box
-    # keeps the on-screen size at FIG_H * 100 px whatever the quality.
-    _w, _h = scan_size
-    page_view = mo.Html(
-        f'<div style="width: {round(100 * FIG_H * _w / _h)}px">{page_sel}</div>'
-    )
+    page_sel, page_view = marimo_ui.page_view(_ax, scan_size, FIG_H)
     return page_sel, page_view
 
 
@@ -412,23 +379,9 @@ def _(get_pending_boxes, page, page_sel, selection_box):
 
 
 @app.cell(hide_code=True)
-def zooms(book, crop, layout_boxes, mo):
-    ZOOM_MAX = (
-        3  # upscale cap: past 3x the scan's pixels a crop only gets blurrier
-    )
+def zooms(book, layout_boxes, marimo_ui):
     # The unsaved item at full resolution, in draw order, to read while transcribing.
-    zooms = mo.vstack(
-        [
-            mo.image(
-                crop(book / _scan, _bbox),
-                style={
-                    "width": "100%",
-                    "max-width": f"{ZOOM_MAX * (_bbox[2] - _bbox[0])}px",
-                },
-            )
-            for _scan, _bbox in layout_boxes
-        ]
-    )
+    zooms = marimo_ui.zooms(book, layout_boxes)
     return (zooms,)
 
 
@@ -1292,18 +1245,16 @@ def jump_slider(annotator_name, book_pages, get_book_page, mo):
 @app.cell(hide_code=True)
 def jump_strip(
     all_pages,
-    book_bar_html,
     book_pages,
     books,
     get_book_page,
     get_deed_record,
     get_pending_boxes,
     jump_slider,
+    marimo_ui,
     mo,
     set_book_page,
-    thumbnail,
 ):
-    THUMB_SPAN = 4  # pages shown on each side of the slider position
     _i = jump_slider.value - 1
     _target = all_pages[_i]
     _here = get_book_page()
@@ -1316,31 +1267,6 @@ def jump_strip(
         or _target == _here,
         on_click=lambda _: set_book_page(_target),
     )
-
-    folder_bar = mo.Html(
-        book_bar_html(
-            books,
-            book_pages,
-            all_pages.index(_here)
-            if _here in all_pages
-            else len(all_pages) - 1,
-            _i,
-        )
-    )
-
-    def _thumb(j):
-        _b, _p = all_pages[j]
-        _style = (
-            {"outline": "3px solid currentColor"} if (_b, _p) == _here else {}
-        )
-        if j == _i:
-            _style = {**_style, "border": "3px dashed currentColor"}
-        return mo.image(
-            thumbnail(book_pages[_b][_p], 100),
-            height=100,
-            style=_style,
-            caption=f"{j + 1}" + (f" {books[_b].name}" if _p == 0 else ""),
-        )
 
     mo.vstack(
         [
@@ -1356,17 +1282,7 @@ def jump_strip(
                 align="center",
                 widths=[6, 3, 1],
             ),
-            folder_bar,
-            mo.hstack(
-                [
-                    _thumb(j)
-                    for j in range(
-                        max(0, _i - THUMB_SPAN),
-                        min(len(all_pages), _i + THUMB_SPAN + 1),
-                    )
-                ],
-                justify="start",
-            ),
+            marimo_ui.thumbnail_strip(books, book_pages, _here, _i),
         ]
     )
     return
