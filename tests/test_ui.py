@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image
 
-from vox_paginae.ui import crop, scan_for_display, thumbnail
+from vox_paginae.ui import MAX_DISPLAY_PX, crop, scan_for_display, thumbnail
 
 
 @pytest.fixture
@@ -24,8 +24,8 @@ def test_crop_is_a_grayscale_jpeg_of_the_box_at_full_resolution(scan):
     assert (im.format, im.mode, im.size) == ("JPEG", "L", (200, 50))
 
 
-def test_scan_for_display_keeps_original_size_and_shows_height_at_quality(scan):
-    pixels, size, dpi = scan_for_display(scan, height=4, quality=100)
+def test_scan_for_display_keeps_original_size_and_shows_height_at_dpi(scan):
+    pixels, size, dpi = scan_for_display(scan, height_in=4, dpi=100)
     assert size == (600, 800)  # boxes stay in original pixels
     assert pixels.shape == (400, 300)  # 4 in at 100 px/in, grayscale
     assert dpi == 100
@@ -34,8 +34,10 @@ def test_scan_for_display_keeps_original_size_and_shows_height_at_quality(scan):
 def test_scan_for_display_caps_resolution_on_a_large_scan(tmp_path):
     scan = tmp_path / "large.jpg"
     Image.new("RGB", (3000, 4000), "white").save(scan)
-    pixels, size, dpi = scan_for_display(scan, height=14, quality=300)
+    pixels, size, dpi = scan_for_display(scan, height_in=14, dpi=300)
     assert size == (3000, 4000)
-    assert dpi < 300
-    assert pixels.size <= 5_000_000  # 14 in at 300 px/in would be ~11 M
+    # 14 in tall at 3:4 is 147 sq in; at 300 dpi that is ~13 M px, 5 M allows ~184.4 dpi
+    assert MAX_DISPLAY_PX == 5_000_000
+    assert dpi == pytest.approx(184.4, abs=0.1)
+    assert pixels.size <= MAX_DISPLAY_PX
     assert pixels.shape[0] == round(14 * dpi)

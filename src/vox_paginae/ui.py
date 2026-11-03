@@ -36,18 +36,18 @@ MAX_DISPLAY_PX = 5_000_000
 
 
 def scan_for_display(
-    scan: Path, height: float, quality: float
+    scan: Path, height_in: float, dpi: float
 ) -> tuple[np.ndarray, tuple[int, int], float]:
-    """``scan`` as grayscale pixels ``height`` inches tall at ``quality`` px per inch.
+    """``scan`` as grayscale pixels ``height_in`` inches tall at ``dpi`` px per inch.
 
     Returns the pixels, the scan's original size (boxes stay in original pixels) and the
-    px per inch used: ``quality``, unless capped at ``MAX_DISPLAY_PX`` pixels.
+    dpi used: ``dpi``, unless capped at ``MAX_DISPLAY_PX`` pixels.
     """
     im = Image.open(scan)
     size = im.size
-    area = height**2 * size[0] / size[1]  # square inches
-    dpi = min(quality, (MAX_DISPLAY_PX / area) ** 0.5)
-    px = round(height * dpi)
+    area = height_in**2 * size[0] / size[1]  # square inches
+    dpi = min(dpi, (MAX_DISPLAY_PX / area) ** 0.5)
+    px = round(height_in * dpi)
     # Decode at reduced scale (fast), then Lanczos down to exactly px tall (sharp).
     im.draft("L", (1, px))
     im = im.convert("L")

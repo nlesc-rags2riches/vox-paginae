@@ -336,10 +336,10 @@ def view_sliders(mo):
 
 @app.cell(hide_code=True)
 def _(fig_h_slider, page, quality_slider, scan_for_display):
-    page_img, page_size, png_dpi = scan_for_display(
+    scan_pixels, scan_size, png_dpi = scan_for_display(
         page, fig_h_slider.value, quality_slider.value
     )
-    return page_img, page_size, png_dpi
+    return png_dpi, scan_pixels, scan_size
 
 
 @app.cell(hide_code=True, expand_output=True)
@@ -352,11 +352,11 @@ def _(
     get_pending_boxes,
     mo,
     page,
-    page_img,
-    page_size,
     plt,
     png_dpi,
     saved_boxes,
+    scan_pixels,
+    scan_size,
 ):
     FIG_H = fig_h_slider.value  # inches, shown at 100 px each
     DPI = png_dpi  # quality, unless capped
@@ -368,16 +368,16 @@ def _(
         "L": "tab:orange",
     }
 
-    _w, _h = page_size
-    # Figure matches the page aspect and axes fill it; otherwise mo.ui.matplotlib maps
+    _w, _h = scan_size
+    # Figure matches the scan's aspect and axes fill it; otherwise mo.ui.matplotlib maps
     # the pointer across the whole canvas and every box comes back offset.
     _fig, _ax = plt.subplots(figsize=(FIG_H * _w / _h, FIG_H), dpi=DPI)
     _fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
     _ax.imshow(
-        page_img,
+        scan_pixels,
         extent=(0, _w, _h, 0),
         cmap="gray",
-        vmin=0,  # fixed uint8 range: no contrast stretch, flat pages not black
+        vmin=0,  # fixed uint8 range: no contrast stretch, flat scans not black
         vmax=255,
     )
     _ax.set_xlim(0, _w)
