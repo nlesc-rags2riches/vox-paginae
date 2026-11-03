@@ -661,7 +661,7 @@ def deed_open(
         if deed_path(book, openable_deed["deed_id"]).exists():
             mo.status.toast("this deed already has a file: reopen it instead")
             return
-        # This page is its first page; its header boxes are saved after.
+        # This scan is its first scan; its header boxes are saved after.
         _deed_record = new_deed_record(
             openable_deed["deed_id"],
             copied_deed_person_data(openable_deed),
@@ -708,7 +708,7 @@ def header_buttons(
     save_open_deed,
     set_deed_record,
 ):
-    # Header boxes go in one at a time, like the balance, on the deed's first page or a
+    # Header boxes go in one at a time, like the balance, on the deed's first scan or a
     # later one: before it they would be outside scans. Each has its own tag: H1, H2…
     _open = get_deed_record()
     _names = [p.name for p in pages]
@@ -998,7 +998,7 @@ def balance_buttons(
     _names = [p.name for p in pages]
     save_balance_btn = mo.ui.button(
         label="save box as balance",
-        # At most one: clear or edit balance box first. Not before the first page:
+        # At most one: clear or edit balance box first. Not before the first scan:
         # outside scans.
         disabled=_open is None
         or (bool(_balance) and not _editing)

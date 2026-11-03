@@ -42,7 +42,7 @@ def test_next_page_crosses_books_and_stops_when_done():
 COPIED = {"aktenummer": "93", "plaats": "Westdorp", "naam_volledig": "Jan Modaal"}
 
 
-def test_new_deed_record_copies_the_deed_data_and_starts_on_its_first_page():
+def test_new_deed_record_copies_the_deed_data_and_starts_on_its_first_scan():
     assert new_deed_record("d1", COPIED, "p2.jpg") == {
         "deed_id": "d1",
         "copied_deed_person_data": {
@@ -186,7 +186,7 @@ def test_replace_item_keeps_position_unless_type_changes():
         replace_item(p, "A1", "assets", "", "", "", box)
 
 
-def test_header_boxes_are_added_one_by_one_on_any_page_each_with_its_tag():
+def test_header_boxes_are_added_one_by_one_on_any_scan_each_with_its_tag():
     p = new_deed_record("d1", COPIED, "p2.jpg")
     q = add_header_box(p, "p4.jpg", [1, 2.6, 30, 40])  # the main one can be missing
     q = add_header_box(q, "p2.jpg", [0, 0, 5, 5])
@@ -205,7 +205,7 @@ def test_header_boxes_are_added_one_by_one_on_any_page_each_with_its_tag():
         },
     ]
     assert [tag for tag, _ in deed_boxes(q)] == ["H1", "H2"]
-    assert q["scans"] == ["p2.jpg"]  # the first page stays the page it was opened on
+    assert q["scans"] == ["p2.jpg"]  # the first scan stays the scan it was opened on
     assert p["annotation"]["header"] == []  # original untouched
     # Deleted, the later ones move up: H2 is H1 now.
     r = delete_header_box(q, "H1")
@@ -225,13 +225,13 @@ def test_close_refuses_a_deed_with_no_header_box_and_says_why():
     )
     with pytest.raises(ValueError, match="no header box"):
         close_deed_record(p, page_names, "p2.jpg")
-    with_header = add_header_box(p, "p2.jpg", [0] * 4)  # on any page: a later one too
+    with_header = add_header_box(p, "p2.jpg", [0] * 4)  # on any scan: a later one too
     assert close_deed_record(with_header, page_names, "p2.jpg")["scans"] == page_names
     with pytest.raises(ValueError, match="no header box"):  # deleted again
         close_deed_record(delete_header_box(with_header, "H1"), page_names, "p2.jpg")
 
 
-def test_close_fills_scans_from_the_first_page_to_the_close_page():
+def test_close_fills_scans_from_the_first_scan_to_the_close_scan():
     page_names = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg", "p5.jpg"]
     p = add_header_box(new_deed_record("d1", COPIED, "p2.jpg"), "p2.jpg", [0] * 4)
     p = add_item(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
@@ -243,12 +243,12 @@ def test_close_fills_scans_from_the_first_page_to_the_close_page():
     ]
     assert close_deed_record(p, page_names, "p2.jpg")["scans"] == ["p2.jpg"]
     assert p["scans"] == ["p2.jpg"]  # original untouched
-    # Reopened and closed again: the range starts from the first page, not the old end.
+    # Reopened and closed again: the range starts from the first scan, not the old end.
     q = close_deed_record(
         close_deed_record(p, page_names, "p5.jpg"), page_names, "p3.jpg"
     )
     assert q["scans"] == ["p2.jpg", "p3.jpg"]
-    with pytest.raises(ValueError):  # before the first page
+    with pytest.raises(ValueError):  # before the first scan
         close_deed_record(p, page_names, "p1.jpg")
     # Closed before an item's last page (e.g. right after reopen): the range reaches it.
     p = add_item(p, "assets", "", "2,-", "", [("p3.jpg", [0] * 4), ("p4.jpg", [0] * 4)])
