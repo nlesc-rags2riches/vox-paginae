@@ -37,10 +37,10 @@ def imports():
         split_tag,
     )
     from vox_paginae.ui import (
+        book_bar_html,
         crop,
         draw_scan,
-        folder_bar_html,
-        item_label,
+        item_option,
         scan_for_display,
         selection_box,
         status_text,
@@ -50,6 +50,7 @@ def imports():
     return (
         Path,
         add_item,
+        book_bar_html,
         clear_balance,
         close_deed_record,
         crop,
@@ -59,8 +60,7 @@ def imports():
         delete_item,
         draw_scan,
         find_books,
-        folder_bar_html,
-        item_label,
+        item_option,
         item_tags,
         list_pages,
         load_deed_records,
@@ -448,7 +448,7 @@ def item_buttons(
     get_editing_balance,
     get_editing_header,
     get_pending_boxes,
-    item_label,
+    item_option,
     item_tags,
     layout_boxes,
     mo,
@@ -472,7 +472,7 @@ def item_buttons(
         return _names.index(scan) < _names.index(get_deed_record()["scans"][0])
 
     _tags = {
-        item_label(tag, item): tag
+        item_option(tag, item): tag
         for tag, item in item_tags(get_deed_record())
     }
 
@@ -1292,9 +1292,9 @@ def jump_slider(annotator_name, book_pages, get_book_page, mo):
 @app.cell(hide_code=True)
 def jump_strip(
     all_pages,
+    book_bar_html,
     book_pages,
     books,
-    folder_bar_html,
     get_book_page,
     get_deed_record,
     get_pending_boxes,
@@ -1318,7 +1318,7 @@ def jump_strip(
     )
 
     folder_bar = mo.Html(
-        folder_bar_html(
+        book_bar_html(
             books,
             book_pages,
             all_pages.index(_here)
