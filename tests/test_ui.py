@@ -6,6 +6,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from matplotlib.colors import to_rgba
+from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 from PIL import Image
 
 from vox_paginae.ui import (
@@ -62,6 +64,7 @@ def test_draw_scan_fills_a_figure_of_the_scans_aspect():
     pixels = np.zeros((400, 300), np.uint8)
     ax = draw_scan(pixels, (600, 800), height_in=4, dpi=150)
     fig = ax.figure
+    assert isinstance(fig, Figure)
     assert tuple(fig.get_size_inches()) == (3, 4)
     assert fig.dpi == 150
     # axes fill the figure and span the scan in original pixels, y down
@@ -85,9 +88,9 @@ def test_draw_scan_draws_saved_faded_deed_tagged_and_pending_dashed():
         ],
         pending=[[100, 100, 120, 130]],
     )
-    drawn = [
-        (p.get_bbox().bounds, p.get_edgecolor(), p.get_linestyle()) for p in ax.patches
-    ]
+    rects = [p for p in ax.patches if isinstance(p, Rectangle)]
+    assert len(rects) == len(ax.patches)
+    drawn = [(p.get_bbox().bounds, p.get_edgecolor(), p.get_linestyle()) for p in rects]
     assert drawn == [
         ((0, 0, 10, 10), to_rgba("tab:green", 0.4), "-"),  # other deeds' saved
         ((5, 5, 10, 10), to_rgba("tab:purple"), "-"),  # open deed: balance
@@ -134,7 +137,7 @@ def test_status_line_with_no_deed_open():
 
 def test_status_line_names_the_open_deed_and_what_is_being_edited():
     deed_record = {"deed_id": "d7"}
-    status = {
+    status: dict = {
         "book": Path("b1"),
         "scan": Path("b1/s003.jpg"),
         "scan_i": 2,

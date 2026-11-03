@@ -4,6 +4,7 @@
 
 import copy
 import json
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
@@ -32,7 +33,7 @@ TYPES = ("assets", "liabilities")
 FORMAT_VERSION = "0.1.0"
 
 
-def new_box(scan: str, bbox: list[int]) -> dict:
+def new_box(scan: str, bbox: Sequence[float]) -> dict:
     """A BOX: ``bbox`` on ``scan``, in whole pixels, with no PageXML match computed."""
     return {
         "scan": scan,
@@ -46,7 +47,7 @@ def new_deed_record(
     deed_id: str,
     copied_deed_person_data: dict,
     header_scan: str,
-    header_bbox: list[int],
+    header_bbox: Sequence[float],
 ) -> dict:
     """A blank deed record for deed ``deed_id``, opened on its header box.
 
@@ -71,11 +72,11 @@ def new_deed_record(
 
 def add_item(
     deed_record: dict,
-    type_: str,
+    type_: str | None,
     category: str,
     amount: str,
     description: str,
-    layout_boxes: list[tuple[str, list[int]]],
+    layout_boxes: Sequence[tuple[str, Sequence[float]]],
 ) -> dict:
     """Return a copy of ``deed_record`` with a new ``type_`` item.
 
@@ -106,7 +107,7 @@ def add_item(
 def set_balance(
     deed_record: dict,
     scan: str,
-    bbox: list[int],
+    bbox: Sequence[float],
     total_assets: str,
     total_liabilities: str,
     total: str,
@@ -143,7 +144,7 @@ def clear_balance(deed_record: dict) -> dict:
 def replace_balance(
     deed_record: dict,
     scan: str,
-    bbox: list[int],
+    bbox: Sequence[float],
     total_assets: str,
     total_liabilities: str,
     total: str,
@@ -155,7 +156,7 @@ def replace_balance(
 
 
 def set_header(
-    deed_record: dict, page_names: list[str], scan: str, bbox: list[int]
+    deed_record: dict, page_names: list[str], scan: str, bbox: Sequence[float]
 ) -> dict:
     """Return a copy of ``deed_record`` with its header: ``bbox`` on ``scan``.
 
@@ -229,11 +230,11 @@ def delete_item(deed_record: dict, tag: str) -> dict:
 def replace_item(
     deed_record: dict,
     tag: str,
-    type_: str,
+    type_: str | None,
     category: str,
     amount: str,
     description: str,
-    layout_boxes: list[tuple[str, list[int]]],
+    layout_boxes: Sequence[tuple[str, Sequence[float]]],
 ) -> dict:
     """``add_item`` in place of the item called ``tag``, with the same checks.
 
