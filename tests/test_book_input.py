@@ -4,7 +4,7 @@ import pytest
 
 from vox_paginae.annotation import deed_path, new_deed_record, save_deed_record
 from vox_paginae.book_input import (
-    copied_deed_data,
+    copied_deed_person_data,
     deed_choices,
     load_deeds,
     single_overledene,
@@ -26,8 +26,8 @@ DEED = {
 }
 
 
-def test_copied_deed_data_is_the_deed_and_its_overledene_flat_without_rol():
-    assert copied_deed_data(DEED) == {
+def test_copied_deed_person_data_is_the_deed_and_its_overledene_flat_without_rol():
+    assert copied_deed_person_data(DEED) == {
         "aktenummer": "93",
         "plaats": "Westdorp",
         "person_id": "p1",
@@ -36,7 +36,7 @@ def test_copied_deed_data_is_the_deed_and_its_overledene_flat_without_rol():
         "plaats_overlijden": "Oostdorp",
     }
     with pytest.raises(ValueError, match="2 deed persons"):
-        copied_deed_data({**DEED, "personen": DEED["personen"] * 2})
+        copied_deed_person_data({**DEED, "personen": DEED["personen"] * 2})
 
 
 def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):

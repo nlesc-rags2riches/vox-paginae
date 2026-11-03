@@ -74,7 +74,7 @@ def single_overledene(deed: dict) -> dict:
     return deed_persons[0]
 
 
-def copied_deed_data(deed: dict) -> dict:
+def copied_deed_person_data(deed: dict) -> dict:
     """The deed's ``aktenummer``, ``plaats`` and its overledene's fields, flat, for its
     deed record's ``copied_deed_person_data``.
 

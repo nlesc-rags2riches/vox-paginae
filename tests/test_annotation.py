@@ -359,7 +359,14 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     save_deed_record(deed_path(tmp_path, "d1"), p, "Ann")
 
     d1, d2 = deed_path(tmp_path, "d1"), deed_path(tmp_path, "d2")
-    moved = move_deed_record(p, d1, d2, "d2", other, "Bob")
+    moved = move_deed_record(
+        p,
+        old_path=d1,
+        new_path=d2,
+        deed_id="d2",
+        copied_deed_person_data=other,
+        annotator_name="Bob",
+    )
     assert moved["deed_id"] == "d2"
     assert moved["copied_deed_person_data"] == other
     # The annotation stays as it is.
@@ -376,7 +383,14 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     # A deed that has a file leaves both files alone.
     save_deed_record(d1, p, "Ann")
     with pytest.raises(ValueError, match="already has a file"):
-        move_deed_record(moved, d2, d1, "d1", COPIED, "Bob")
+        move_deed_record(
+            moved,
+            old_path=d2,
+            new_path=d1,
+            deed_id="d1",
+            copied_deed_person_data=COPIED,
+            annotator_name="Bob",
+        )
     assert sorted(f.name for f in tmp_path.iterdir()) == [
         "deed-annotation-d1.json",
         "deed-annotation-d2.json",

@@ -34,7 +34,7 @@ def imports():
         split_tag,
     )
     from vox_paginae.book_input import (
-        copied_deed_data,
+        copied_deed_person_data,
         deed_choices,
         find_books,
         load_deeds,
@@ -53,7 +53,7 @@ def imports():
         add_item,
         clear_balance,
         close_deed_record,
-        copied_deed_data,
+        copied_deed_person_data,
         deed_boxes,
         deed_choices,
         deed_path,
@@ -179,11 +179,8 @@ def session_state(find_books, list_pages, mo, resume, root):
 
 @app.cell(hide_code=True)
 def page_buttons(
-    annotator_name,
-    book,
     book_pages,
     close_deed_record,
-    deed_path,
     get_deed_record,
     get_editing,
     get_editing_balance,
@@ -194,7 +191,7 @@ def page_buttons(
     page,
     page_i,
     pages,
-    save_deed_record,
+    save_open_deed,
     set_book_page,
     set_deed_record,
     set_type,
@@ -206,12 +203,10 @@ def page_buttons(
             _last_page
         ):  # a deed never crosses books: close the open one, if any
             if get_deed_record() is not None:
-                _path = save_deed_record(
-                    deed_path(book, get_deed_record()["deed_id"]),
+                _path = save_open_deed(
                     close_deed_record(
                         get_deed_record(), [p.name for p in pages], page.name
-                    ),
-                    annotator_name,
+                    )
                 )
                 mo.status.toast(f"saved {_path.name}, deed closed")
             set_deed_record(None)
@@ -319,6 +314,19 @@ def _(
 
 
 @app.cell(hide_code=True)
+def deed_save(annotator_name, book, deed_path, save_deed_record):
+    # Every write goes to the open deed's own file, by the locked annotator.
+    def save_open_deed(deed_record):
+        return save_deed_record(
+            deed_path(book, deed_record["deed_id"]),
+            deed_record,
+            annotator_name,
+        )
+
+    return (save_open_deed,)
+
+
+@app.cell(hide_code=True)
 def view_sliders(marimo_ui):
     quality_slider, fig_h_slider = marimo_ui.view_sliders()
     return fig_h_slider, quality_slider
@@ -394,11 +402,8 @@ def zooms(book, layout_boxes, marimo_ui):
 def item_buttons(
     add_item,
     amount_in,
-    annotator_name,
-    book,
     category_in,
     close_deed_record,
-    deed_path,
     delete_item,
     desc_in,
     drawn_box,
@@ -414,7 +419,7 @@ def item_buttons(
     page,
     pages,
     replace_item,
-    save_deed_record,
+    save_open_deed,
     set_deed_record,
     set_editing,
     set_pending_boxes,
@@ -449,11 +454,7 @@ def item_buttons(
             _deed_record = replace_item(
                 get_deed_record(), get_editing(), *_fields
             )
-        _path = save_deed_record(
-            deed_path(book, _deed_record["deed_id"]),
-            _deed_record,
-            annotator_name,
-        )
+        _path = save_open_deed(_deed_record)
         set_deed_record(_deed_record)
         set_pending_boxes([])
         set_editing(None)
@@ -475,19 +476,13 @@ def item_buttons(
     def _delete(_):
         if item_dd.value:
             _deed_record = delete_item(get_deed_record(), item_dd.value)
-            _path = save_deed_record(
-                deed_path(book, _deed_record["deed_id"]),
-                _deed_record,
-                annotator_name,
-            )
+            _path = save_open_deed(_deed_record)
             set_deed_record(_deed_record)
             mo.status.toast(f"saved {_path.name}")
 
     def _close_deed(_):
-        _path = save_deed_record(
-            deed_path(book, get_deed_record()["deed_id"]),
-            close_deed_record(get_deed_record(), _names, page.name),
-            annotator_name,
+        _path = save_open_deed(
+            close_deed_record(get_deed_record(), _names, page.name)
         )
         set_deed_record(None)  # no deed open until the next open
         set_type(None)
@@ -645,9 +640,8 @@ def deed_info(
 
 @app.cell(hide_code=True)
 def deed_open(
-    annotator_name,
     book,
-    copied_deed_data,
+    copied_deed_person_data,
     deed_path,
     drawn_box,
     get_deed_record,
@@ -656,7 +650,7 @@ def deed_open(
     new_deed_record,
     openable_deed,
     page,
-    save_deed_record,
+    save_open_deed,
     set_deed_id,
     set_deed_record,
 ):
@@ -670,15 +664,11 @@ def deed_open(
         # The box drawn now is the header: kept in the file, the redraw drops it.
         _deed_record = new_deed_record(
             openable_deed["deed_id"],
-            copied_deed_data(openable_deed),
+            copied_deed_person_data(openable_deed),
             page.name,
             drawn_box,
         )
-        _path = save_deed_record(
-            deed_path(book, _deed_record["deed_id"]),
-            _deed_record,
-            annotator_name,
-        )  # at once: one file per deed
+        _path = save_open_deed(_deed_record)  # at once: one file per deed
         set_deed_id(_deed_record["deed_id"])
         set_deed_record(_deed_record)
         mo.status.toast(f"saved {_path.name}, deed open")
@@ -705,9 +695,6 @@ def deed_open(
 
 @app.cell(hide_code=True)
 def header_buttons(
-    annotator_name,
-    book,
-    deed_path,
     drawn_box,
     get_deed_record,
     get_editing,
@@ -717,7 +704,7 @@ def header_buttons(
     mo,
     page,
     pages,
-    save_deed_record,
+    save_open_deed,
     set_deed_record,
     set_editing_header,
     set_header,
@@ -736,11 +723,7 @@ def header_buttons(
             pass  # a saved box before this page: save header stays disabled
 
     def _save_header(_):
-        _path = save_deed_record(
-            deed_path(book, _deed_record["deed_id"]),
-            _deed_record,
-            annotator_name,
-        )
+        _path = save_open_deed(_deed_record)
         set_deed_record(_deed_record)
         set_editing_header(False)
         mo.status.toast(f"saved {_path.name}")
@@ -883,7 +866,7 @@ def deed_move_picker(
 def deed_move(
     annotator_name,
     book,
-    copied_deed_data,
+    copied_deed_person_data,
     deed_path,
     deeds,
     get_deed_record,
@@ -905,11 +888,11 @@ def deed_move(
             _deed = deeds[move_dd.value]
             _deed_record = move_deed_record(
                 get_deed_record(),
-                deed_path(book, get_deed_record()["deed_id"]),
-                deed_path(book, _deed["deed_id"]),
-                _deed["deed_id"],
-                copied_deed_data(_deed),
-                annotator_name,
+                old_path=deed_path(book, get_deed_record()["deed_id"]),
+                new_path=deed_path(book, _deed["deed_id"]),
+                deed_id=_deed["deed_id"],
+                copied_deed_person_data=copied_deed_person_data(_deed),
+                annotator_name=annotator_name,
             )
         # The deed cannot be used, or another tab opened it meanwhile.
         except ValueError as _e:
@@ -961,10 +944,7 @@ def balance_inputs(get_deed_record, get_editing_balance, mo):
 
 @app.cell(hide_code=True)
 def balance_buttons(
-    annotator_name,
-    book,
     clear_balance,
-    deed_path,
     drawn_box,
     get_deed_record,
     get_editing,
@@ -975,7 +955,7 @@ def balance_buttons(
     page,
     pages,
     replace_balance,
-    save_deed_record,
+    save_open_deed,
     set_balance,
     set_deed_record,
     set_editing_balance,
@@ -1003,22 +983,14 @@ def balance_buttons(
             total_liabilities_in.value,
             total_in.value,
         )
-        _path = save_deed_record(
-            deed_path(book, _deed_record["deed_id"]),
-            _deed_record,
-            annotator_name,
-        )
+        _path = save_open_deed(_deed_record)
         set_deed_record(_deed_record)
         set_editing_balance(False)
         mo.status.toast(f"saved {_path.name}")
 
     def _clear_balance(_):
         _deed_record = clear_balance(get_deed_record())
-        _path = save_deed_record(
-            deed_path(book, _deed_record["deed_id"]),
-            _deed_record,
-            annotator_name,
-        )
+        _path = save_open_deed(_deed_record)
         set_deed_record(_deed_record)
         mo.status.toast(f"saved {_path.name}")
 

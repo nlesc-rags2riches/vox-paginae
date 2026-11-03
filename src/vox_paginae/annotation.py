@@ -306,6 +306,7 @@ def save_deed_record(path: Path, deed_record: dict, annotator_name: str) -> Path
 
 def move_deed_record(
     deed_record: dict,
+    *,
     old_path: Path,
     new_path: Path,
     deed_id: str,
