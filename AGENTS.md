@@ -29,6 +29,7 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
 ### Issue tracker
 
 GitHub Issues on `nlesc-rags2riches/vox-paginae`, via `gh`. See `agents/issue-tracker.md`.
+Work on a `<issue>-<slug>` branch: prek refuses commits on `main`.
 
 ### Triage labels
 
