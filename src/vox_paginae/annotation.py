@@ -28,6 +28,7 @@ def next_page(book_page: tuple[int, int], page_counts: list[int]) -> tuple[int, 
 
 
 TYPES = ("assets", "liabilities")
+HEADER_FIELDS = ("full_name", "date_of_death", "place_of_residence")
 # The version of the deed annotation file's format (Semantic Versioning 2.0.0), written
 # into every file. The reference's Format versions section says when it changes.
 FORMAT_VERSION = "0.1.0"
@@ -59,7 +60,13 @@ def new_deed_record(
         # Filled in by every write.
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
-            "header": [],  # one or more boxes, from add_header_box
+            # Fields from set_header_fields, one or more boxes from add_header_box.
+            "header": {
+                "full_name": "",
+                "date_of_death": "",
+                "place_of_residence": "",
+                "layout": [],
+            },
             # Totals from set_balance_totals, boxes from add_balance_box: both optional.
             "balance": {
                 "total_assets": "",
@@ -123,6 +130,23 @@ def set_balance_totals(
     return deed_record
 
 
+def set_header_fields(
+    deed_record: dict, full_name: str, date_of_death: str, place_of_residence: str
+) -> dict:
+    """Return a copy of ``deed_record`` with its header's fields replaced.
+
+    They are stored as typed, stripped; empty ones stop the deed from closing (see
+    ``close_deed_record``). The boxes stay.
+    """
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation"]["header"].update(
+        full_name=full_name.strip(),
+        date_of_death=date_of_death.strip(),
+        place_of_residence=place_of_residence.strip(),
+    )
+    return deed_record
+
+
 def add_header_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
     """Return a copy of ``deed_record`` with ``bbox`` on ``scan`` as its last header box.
 
@@ -130,14 +154,14 @@ def add_header_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
     position.
     """
     deed_record = copy.deepcopy(deed_record)
-    deed_record["annotation"]["header"].append(new_box(scan, bbox))
+    deed_record["annotation"]["header"]["layout"].append(new_box(scan, bbox))
     return deed_record
 
 
 def delete_header_box(deed_record: dict, tag: str) -> dict:
     """Return a copy of ``deed_record`` without the header box called ``tag`` (``"H2"``)."""
     deed_record = copy.deepcopy(deed_record)
-    del deed_record["annotation"]["header"][int(tag[1:]) - 1]
+    del deed_record["annotation"]["header"]["layout"][int(tag[1:]) - 1]
     return deed_record
 
 
@@ -183,7 +207,10 @@ def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
         return []
     annotation = deed_record["annotation"]
     return (
-        [(f"H{i}", box) for i, box in enumerate(annotation["header"], start=1)]
+        [
+            (f"H{i}", box)
+            for i, box in enumerate(annotation["header"]["layout"], start=1)
+        ]
         + [
             (f"B{i}", box)
             for i, box in enumerate(annotation["balance"]["layout"], start=1)
@@ -242,10 +269,17 @@ def close_deed_record(
     ``scans`` becomes every scan in ``page_names`` (the book's, in order) from the
     first scan (``scans[0]``) to ``close_scan`` or the last scan a box reaches,
     whichever is later, both included, with or without items. Closing a deed with no
-    header box, or before its first scan, raises ``ValueError`` saying why.
+    header box, an empty header field, or before its first scan, raises ``ValueError``
+    saying why.
     """
-    if not deed_record["annotation"]["header"]:
+    header = deed_record["annotation"]["header"]
+    if not header["layout"]:
         raise ValueError("this deed has no header box: save one before closing")
+    empty = [f.replace("_", " ") for f in HEADER_FIELDS if not header[f]]
+    if empty:
+        raise ValueError(
+            f"empty header fields: {', '.join(empty)}. Save them before closing"
+        )
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
     if end < start:

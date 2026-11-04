@@ -26,6 +26,7 @@ from vox_paginae.annotation import (
     save_deed_record,
     saved_boxes,
     set_balance_totals,
+    set_header_fields,
 )
 from vox_paginae.book_input import find_books
 
@@ -40,6 +41,8 @@ def test_next_page_crosses_books_and_stops_when_done():
 
 # The copied deed data, as the notebook supplies it.
 COPIED = {"aktenummer": "93", "plaats": "Westdorp", "naam_volledig": "Jan Modaal"}
+# Full name, date of death, place of residence: a deed closes only with all three.
+HEADER_VALUES = ("Jan Modaal", "1880-01-02", "Oostdorp")
 
 
 def test_new_deed_record_copies_the_deed_data_and_starts_on_its_first_scan():
@@ -53,7 +56,13 @@ def test_new_deed_record_copies_the_deed_data_and_starts_on_its_first_scan():
         "scans": ["p2.jpg"],
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
-            "header": [],  # its boxes are added after opening
+            # Blank fields until saved; its boxes are added after opening.
+            "header": {
+                "full_name": "",
+                "date_of_death": "",
+                "place_of_residence": "",
+                "layout": [],
+            },
             # Never null: blank totals and no box until they are saved.
             "balance": {
                 "total_assets": "",
@@ -182,7 +191,7 @@ def test_header_boxes_are_added_one_by_one_on_any_scan_each_with_its_tag():
     p = new_deed_record("d1", COPIED, "p2.jpg")
     q = add_header_box(p, "p4.jpg", [1, 2.6, 30, 40])  # the main one can be missing
     q = add_header_box(q, "p2.jpg", [0, 0, 5, 5])
-    assert q["annotation"]["header"] == [
+    assert q["annotation"]["header"]["layout"] == [
         {
             "scan": "p4.jpg",
             "bbox": [1, 2, 30, 40],
@@ -198,14 +207,27 @@ def test_header_boxes_are_added_one_by_one_on_any_scan_each_with_its_tag():
     ]
     assert [tag for tag, _ in deed_boxes(q)] == ["H1", "H2"]
     assert q["scans"] == ["p2.jpg"]  # the first scan stays the scan it was opened on
-    assert p["annotation"]["header"] == []  # original untouched
+    assert p["annotation"]["header"]["layout"] == []  # original untouched
     # Deleted, the later ones move up: H2 is H1 now.
     r = delete_header_box(q, "H1")
     assert [(tag, box["scan"]) for tag, box in deed_boxes(r)] == [("H1", "p2.jpg")]
-    assert len(q["annotation"]["header"]) == 2  # original untouched
+    assert len(q["annotation"]["header"]["layout"]) == 2  # original untouched
 
 
-def test_close_refuses_a_deed_with_no_header_box_and_says_why():
+def test_header_fields_are_stored_stripped_and_replaced_on_every_save():
+    p = add_header_box(new_deed_record("d1", COPIED, "p2.jpg"), "p2.jpg", [0] * 4)
+    q = set_header_fields(p, " Jan  Modaal ", "2 jan. 1880\t", " ")
+    assert q["annotation"]["header"] == {
+        "full_name": "Jan  Modaal",
+        "date_of_death": "2 jan. 1880",
+        "place_of_residence": "",
+        "layout": p["annotation"]["header"]["layout"],  # the boxes stay
+    }
+    assert p["annotation"]["header"]["full_name"] == ""  # original untouched
+    assert set_header_fields(q, "", "", "") == p
+
+
+def test_close_refuses_a_deed_with_no_header_box_or_an_empty_field_and_says_why():
     page_names = ["p1.jpg", "p2.jpg"]
     p = add_item(
         new_deed_record("d1", COPIED, "p1.jpg"),
@@ -215,10 +237,17 @@ def test_close_refuses_a_deed_with_no_header_box_and_says_why():
         "",
         [("p1.jpg", [0] * 4)],
     )
+    p = set_header_fields(p, *HEADER_VALUES)
     with pytest.raises(ValueError, match="no header box"):
         close_deed_record(p, page_names, "p2.jpg")
     with_header = add_header_box(p, "p2.jpg", [0] * 4)  # on any scan: a later one too
     assert close_deed_record(with_header, page_names, "p2.jpg")["scans"] == page_names
+    # Every header field is needed, and the message names the empty ones.
+    empty = set_header_fields(with_header, "Jan Modaal", " ", "")
+    with pytest.raises(
+        ValueError, match="empty header fields: date of death, place of residence"
+    ):
+        close_deed_record(empty, page_names, "p2.jpg")
     with pytest.raises(ValueError, match="no header box"):  # deleted again
         close_deed_record(delete_header_box(with_header, "H1"), page_names, "p2.jpg")
 
@@ -226,6 +255,7 @@ def test_close_refuses_a_deed_with_no_header_box_and_says_why():
 def test_close_fills_scans_from_the_first_scan_to_the_close_scan():
     page_names = ["p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg", "p5.jpg"]
     p = add_header_box(new_deed_record("d1", COPIED, "p2.jpg"), "p2.jpg", [0] * 4)
+    p = set_header_fields(p, *HEADER_VALUES)
     p = add_item(p, "assets", "", "1,-", "", [("p2.jpg", [0, 0, 5, 5])])
     # p3 has no items: still in the range.
     assert close_deed_record(p, page_names, "p4.jpg")["scans"] == [
@@ -421,6 +451,7 @@ def test_resume_lands_on_the_latest_page_of_the_last_book_with_files(tmp_path):
     assert resume(books) == (1, 1)
     # Closed: on its close page.
     record = add_header_box(load_deed_records(b)["d1"], "b2.jpg", [0] * 4)
+    record = set_header_fields(record, *HEADER_VALUES)
     save_deed_record(
         deed_path(b, "d1"),
         close_deed_record(record, [p.name for p in list_pages(b)], "b3.jpg"),

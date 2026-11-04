@@ -138,9 +138,14 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     # Written at once, before any item: the current page is the first page.
     record = deed_record(data_root)
     assert record.pop("annotation_metadata")["annotator_name"] == "Ann"
-    assert [box["scan"] for box in record["annotation"].pop("header")] == [
-        "page_02.jpg"
-    ]
+    header = record["annotation"].pop("header")
+    assert [box["scan"] for box in header.pop("layout")] == ["page_02.jpg"]
+    # Pre-filled from the deed's copied data.
+    assert header == {
+        "full_name": "Jan Modaal",
+        "date_of_death": "1880-01-02",
+        "place_of_residence": "Oostdorp",
+    }
     assert record == {
         "format_version": FORMAT_VERSION,
         "deed_id": "deed-3",
@@ -208,7 +213,10 @@ def test_open_needs_no_box_and_close_needs_a_header_box(
     expect(status(page, "editing deed-annotation-deed-3 · page 2/3")).to_be_visible()
     expect(hint).to_be_visible()
     record = deed_record(data_root)
-    assert (record["annotation"]["header"], record["scans"]) == ([], ["page_02.jpg"])
+    assert (record["annotation"]["header"]["layout"], record["scans"]) == (
+        [],
+        ["page_02.jpg"],
+    )
 
     # No header box: neither close deed nor the end of the book closes it, and says why.
     why = page.get_by_text("this deed has no header box")
@@ -234,7 +242,7 @@ def test_open_needs_no_box_and_close_needs_a_header_box(
     click("prev page")
     expect(status(page, "page 2/3")).to_be_visible()
     save_box(page, click, HEADER, "H2 · page 2")
-    header = deed_record(data_root)["annotation"]["header"]
+    header = deed_record(data_root)["annotation"]["header"]["layout"]
     assert [box["scan"] for box in header] == ["page_03.jpg", "page_02.jpg"]
     assert fractions(header[1]["bbox"]) == pytest.approx(HEADER, abs=0.01)
     # In green, tagged: not an item's blue or orange.
@@ -246,7 +254,7 @@ def test_open_needs_no_box_and_close_needs_a_header_box(
     click("delete header box")
     expect(page.locator("option", has_text="H1 · page 2")).to_have_count(1)
     expect(page.locator("option", has_text="H2")).to_have_count(0)
-    (box,) = deed_record(data_root)["annotation"]["header"]
+    (box,) = deed_record(data_root)["annotation"]["header"]["layout"]
     assert box["scan"] == "page_02.jpg"
     click("close deed")
     expect(status(page, "no deed · page 2/3")).to_be_visible()
@@ -254,6 +262,50 @@ def test_open_needs_no_box_and_close_needs_a_header_box(
 
 
 NEW_HEADER = (0.1, 0.2, 0.9, 0.3)
+
+
+def test_header_fields_are_prefilled_corrected_and_needed_to_close(
+    marimo_server, data_root, page, click
+):
+    open_app(page, marimo_server)
+    expect(text_input(page, "full name")).to_be_disabled()  # no deed open
+    open_deed(page, click)
+    for label, value in [
+        ("full name", "Jan Modaal"),
+        ("date of death", "1880-01-02"),
+        ("place of residence", "Oostdorp"),
+    ]:
+        expect(text_input(page, label)).to_have_value(value)
+    fill(page, "full name", " Jan Modaal Jr. ")
+    fill(page, "place of residence", " ")
+    click("save header fields")
+    # Re-created from the saved record: stripped.
+    expect(text_input(page, "full name")).to_have_value("Jan Modaal Jr.")
+    record = deed_record(data_root)
+    header = record["annotation"]["header"]
+    assert [
+        header[f] for f in ["full_name", "date_of_death", "place_of_residence"]
+    ] == [
+        "Jan Modaal Jr.",
+        "1880-01-02",
+        "",
+    ]
+    # The originals stay.
+    assert record["copied_deed_person_data"]["naam_volledig"] == "Jan Modaal"
+
+    # An empty field: close refuses, and says which.
+    click("close deed")
+    expect(
+        page.get_by_text("empty header fields: place of residence").first
+    ).to_be_visible()
+    expect(status(page, "editing deed-annotation-deed-3")).to_be_visible()
+    fill(page, "place of residence", "Oostdorp")
+    click("save header fields")
+    click("close deed")
+    expect(status(page, "no deed")).to_be_visible()
+    assert deed_record(data_root)["annotation"]["header"]["place_of_residence"] == (
+        "Oostdorp"
+    )
 
 
 BALANCE = (0.2, 0.6, 0.8, 0.8)

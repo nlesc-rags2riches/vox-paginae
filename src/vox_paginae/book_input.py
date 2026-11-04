@@ -83,3 +83,17 @@ def copied_deed_person_data(deed: dict) -> dict:
     """
     overledene = {k: v for k, v in single_overledene(deed).items() if k != "rol"}
     return {"aktenummer": deed["aktenummer"], "plaats": deed["plaats"], **overledene}
+
+
+def header_fields(copied_deed_person_data: dict) -> dict[str, str]:
+    """The header's fields, pre-filled from a deed's ``copied_deed_person_data``.
+
+    A field missing or ``null`` there is blank. The place of residence is the
+    overledene's ``plaats_overlijden`` (see issue #115).
+    """
+    copied = copied_deed_person_data
+    return {
+        "full_name": copied.get("naam_volledig") or "",
+        "date_of_death": copied.get("datum_overlijden") or "",
+        "place_of_residence": copied.get("plaats_overlijden") or "",
+    }
