@@ -36,13 +36,13 @@ changes only on purpose, and never describes internals.
 - While it is open, **save box as header** saves a drawn box as one of its header
   boxes. A header has one or more boxes. **delete header box** removes one.
 - A deed with no header box cannot be closed. Closing it shows why, and it stays open.
-- While a deed is open, a drawn box can be saved as its **balance**, with three
-  totals, at least one filled in. A deed has at most one balance, or none: clear it to
-  save another.
-  **edit balance box** lets you change the saved balance. Its totals can be retyped.
-  A new box drawn on the page replaces its box; without one, the old box stays. Until
-  **save box as balance** or **cancel balance edit**, the header and items cannot be
-  changed.
+- A deed's **balance** is optional. Its three totals can be left empty and it can have
+  no box. In the file it is then empty totals and an empty `layout`.
+- While a deed is open, its totals can be typed at any time. **save balance totals**
+  saves them. Any of them can be left empty. Totals typed but not saved are dropped by
+  any other write.
+- While it is open, **save box as balance** saves a drawn box as one of its balance
+  boxes. **delete balance box** removes one.
 - The file holds:
   - `format_version`: the version of the file's format (see Format versions)
   - `deed_id`: as in `deeds.json`
@@ -59,9 +59,9 @@ changes only on purpose, and never describes internals.
     - `header`: a list of the header boxes, each shaped like an item's `layout` entry
       (`scan`, `bbox`, `pagexml_link`, `pagexml_baseline_ids`); `[]` until one is
       saved
-    - `balance`: `null` without one; otherwise `layout` (a single box, shaped like a
-      `header` entry), and `total_assets`, `total_liabilities` and `total`, strings
-      (`""` when left empty)
+    - `balance`: `total_assets`, `total_liabilities` and `total`, strings (`""` when
+      left empty), then `layout`, a list of the balance boxes, each shaped like a
+      `header` entry; `[]` until one is saved. It is never `null`.
     - then `assets` and `liabilities`, each a list of items
 - An item's **type** (asset or liability) is the list it's in. There is no separate
   field for it. Each item has:
@@ -80,8 +80,8 @@ changes only on purpose, and never describes internals.
 - Each write replaces the whole file, and an interrupted write leaves the previous
   version. An interrupted write can also leave a `deed-annotation-<deed_id>.json.tmp`.
   Opening, moving the annotation, every added, changed or deleted
-  item, saving, editing or clearing the balance, and saving or deleting a header box,
-  is in the file at once.
+  item, saving the balance totals, and saving or deleting a header or balance box, is
+  in the file at once.
   Closing rewrites `scans`.
   Every write rewrites `format_version`, `annotator_name` and `annotation_date`.
 - Moving past a book's last page closes the open deed there. A deed with no header box
@@ -122,9 +122,10 @@ changes only on purpose, and never describes internals.
       {"scan": "page_01.jpg", "bbox": [300, 120, 2400, 520],
        "pagexml_link": null, "pagexml_baseline_ids": null}],
     "balance": {
-      "layout": {"scan": "page_02.jpg", "bbox": [400, 2600, 2300, 3000],
-                 "pagexml_link": null, "pagexml_baseline_ids": null},
-      "total_assets": "900,-", "total_liabilities": "", "total": "900,-"},
+      "total_assets": "900,-", "total_liabilities": "", "total": "900,-",
+      "layout": [
+        {"scan": "page_02.jpg", "bbox": [400, 2600, 2300, 3000],
+         "pagexml_link": null, "pagexml_baseline_ids": null}]},
     "assets": [
       {"layout": [
          {"scan": "page_01.jpg", "bbox": [412, 1880, 2310, 2240],
@@ -149,7 +150,7 @@ changes only on purpose, and never describes internals.
   starts on the same page). Its first page does not move after opening.
 - `copied_deed_person_data`: copied when the deed is opened or moved; a later
   change to `deeds.json` does not reach an existing file.
-- Tags (`H1`, `A1`, `L2`) are computed from list positions and never stored.
+- Tags (`H1`, `B1`, `A1`, `L2`) are computed from list positions and never stored.
 
 ## Format versions
 

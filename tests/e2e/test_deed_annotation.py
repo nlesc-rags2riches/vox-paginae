@@ -96,14 +96,15 @@ def open_deed(page, click, search="Jan Modaal", header=True):
     if header:
         # Shown once open has redrawn the page: a box drawn before that is dropped.
         expect(page.get_by_text(HEADER_HINT)).to_be_visible()
-        save_header_box(page, click, HEADER, "H1 · page")
+        save_box(page, click, HEADER, "H1 · page")
 
 
-def save_header_box(page, click, box, option):
-    """Draw ``box``, save it as a header box and wait for ``option`` in the header
-    dropdown: the page has been redrawn by then, so the next box drawn is kept."""
+def save_box(page, click, box, option, kind="header"):
+    """Draw ``box``, save it as a ``kind`` (header or balance) box and wait for
+    ``option`` in its dropdown: the page has been redrawn by then, so the next box drawn
+    is kept."""
     drag_box(page, *box)
-    click("save box as header")
+    click(f"save box as {kind}")
     expect(page.locator("option", has_text=option)).to_have_count(1)
 
 
@@ -151,8 +152,17 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
             "plaats_overlijden": "Oostdorp",
         },
         "scans": ["page_02.jpg"],
-        # No balance: optional.
-        "annotation": {"balance": None, "assets": [], "liabilities": []},
+        # Blank totals and no box: both optional.
+        "annotation": {
+            "balance": {
+                "total_assets": "",
+                "total_liabilities": "",
+                "total": "",
+                "layout": [],
+            },
+            "assets": [],
+            "liabilities": [],
+        },
     }
     # While open, the deed row is text: the one deed dropdown is the move annotation target.
     expect(page.get_by_test_id("marimo-plugin-searchable-dropdown")).to_have_count(1)
@@ -219,11 +229,11 @@ def test_open_needs_no_box_and_close_needs_a_header_box(
     expect(status(page, "editing deed-annotation-deed-3 · page 3/3")).to_be_visible()
 
     # One box per click, on any of the deed's pages: here a complementary one first.
-    save_header_box(page, click, NEW_HEADER, "H1 · page 3")
+    save_box(page, click, NEW_HEADER, "H1 · page 3")
     expect(hint).to_have_count(0)
     click("prev page")
     expect(status(page, "page 2/3")).to_be_visible()
-    save_header_box(page, click, HEADER, "H2 · page 2")
+    save_box(page, click, HEADER, "H2 · page 2")
     header = deed_record(data_root)["annotation"]["header"]
     assert [box["scan"] for box in header] == ["page_03.jpg", "page_02.jpg"]
     assert fractions(header[1]["bbox"]) == pytest.approx(HEADER, abs=0.01)
@@ -249,7 +259,7 @@ NEW_HEADER = (0.1, 0.2, 0.9, 0.3)
 BALANCE = (0.2, 0.6, 0.8, 0.8)
 
 
-def test_balance_box_is_saved_once_cleared_and_saved_again(
+def test_balance_totals_and_boxes_are_saved_apart(
     marimo_server, data_root, page, click
 ):
     open_app(page, marimo_server)
@@ -263,101 +273,47 @@ def test_balance_box_is_saved_once_cleared_and_saved_again(
         y["close deed"] < y["save box as header"] < y["save box as balance"] < y["save"]
     )
 
-    drag_box(page, *BALANCE)
-    expect(button(page, "save box as balance")).to_be_disabled()  # no total yet
+    # The totals, with no box: saved stripped, shown again and still editable.
     fill(page, "total assets", " 1.000,- ")
     fill(page, "total", "f 900")
-    click("save box as balance")
-    # Read only, showing what was saved; one balance at most.
-    expect(text_input(page, "total assets")).to_be_disabled()
+    click("save balance totals")
     expect(text_input(page, "total assets")).to_have_value("1.000,-")
-    expect(button(page, "save box as balance")).to_be_disabled()
-    drag_box(page, *BALANCE)
-    expect(button(page, "save box as balance")).to_be_disabled()
-
-    balance = deed_record(data_root)["annotation"]["balance"]
-    assert balance.pop("layout")["scan"] == "page_01.jpg"
-    assert balance == {
+    expect(text_input(page, "total assets")).to_be_enabled()
+    assert deed_record(data_root)["annotation"]["balance"] == {
         "total_assets": "1.000,-",
         "total_liabilities": "",
         "total": "f 900",
+        "layout": [],
     }
+
+    # One box per click, on any of the deed's pages: the totals stay.
+    save_box(page, click, BALANCE, "B1 · page 1", kind="balance")
+    expect(text_input(page, "total")).to_have_value("f 900")
     r, g, b = colour_near(page, 0.5, BALANCE[1])  # in purple
     assert min(r, b) > g
-
-    # Cleared: gone from the file, and a new one goes on any page of the deed.
-    click("clear balance box")
-    expect(text_input(page, "total assets")).to_have_value("")
-    assert deed_record(data_root)["annotation"]["balance"] is None
     click("next page")
     expect(status(page, "page 2/3")).to_be_visible()
-    drag_box(page, *BALANCE)
-    fill(page, "total liabilities", "50")
-    click("save box as balance")
-    expect(text_input(page, "total liabilities")).to_be_disabled()
+    save_box(page, click, BALANCE, "B2 · page 2", kind="balance")
     balance = deed_record(data_root)["annotation"]["balance"]
-    assert balance["layout"]["scan"] == "page_02.jpg"
-    assert fractions(balance["layout"]["bbox"]) == pytest.approx(BALANCE, abs=0.01)
-    assert balance["total_liabilities"] == "50"
+    assert [box["scan"] for box in balance["layout"]] == ["page_01.jpg", "page_02.jpg"]
+    assert fractions(balance["layout"][1]["bbox"]) == pytest.approx(BALANCE, abs=0.01)
+    assert balance["total"] == "f 900"
 
+    # Deleted: the later one moves up.
+    choose(page, "B1 · page 1")
+    click("delete balance box")
+    expect(page.locator("option", has_text="B1 · page 2")).to_have_count(1)
+    expect(page.locator("option", has_text="B2")).to_have_count(0)
 
-def test_edit_balance_rewrites_it_in_place(marimo_server, data_root, page, click):
-    open_app(page, marimo_server)
-    open_deed(page, click)
-    # An item, so only the edit can disable edit and delete below.
-    page.get_by_role("radio", name="assets").check()
-    drag_box(page, 0.2, 0.35, 0.8, 0.45)
-    fill(page, "amount", "1,-")
-    save(page, click)
-    drag_box(page, *BALANCE)
-    fill(page, "total assets", "1")
-    click("save box as balance")
-    expect(text_input(page, "total assets")).to_be_disabled()
-
-    # Cancelled: the saved totals come back, read only.
-    click("edit balance box")
-    expect(status(page, "· editing balance")).to_be_visible()
-    fill(page, "total assets", "2")
-    click("cancel balance edit")
-    expect(status(page, "· editing balance")).to_have_count(0)
-    expect(text_input(page, "total assets")).to_have_value("1")
-    expect(text_input(page, "total assets")).to_be_disabled()
-
-    # Only the totals change: no box drawn keeps the saved one.
-    click("edit balance box")
-    fill(page, "total", "3")
-    click("save box as balance")
-    expect(text_input(page, "total")).to_be_disabled()
+    # Totals all blank, with a box: allowed, and close refuses nothing about it.
+    fill(page, "total assets", "")
+    fill(page, "total", "")
+    click("save balance totals")
+    click("close deed")
+    expect(status(page, "no deed · page 2/3")).to_be_visible()
     balance = deed_record(data_root)["annotation"]["balance"]
-    assert balance["layout"]["scan"] == "page_01.jpg"
-    assert fractions(balance["layout"]["bbox"]) == pytest.approx(BALANCE, abs=0.01)
-    assert (balance["total_assets"], balance["total"]) == ("1", "3")
-
-    # A box drawn replaces it, on another page too.
-    click("edit balance box")
-    click("next page")
-    expect(status(page, "page 2/3 · pending 0 · editing balance")).to_be_visible()
-    # Locked, as if closed: with an item, a type, an amount and a drawn box, nothing else
-    # would disable these.
-    drag_box(page, *NEW_HEADER)
-    fill(page, "amount", "1,-")
-    for label in [
-        "save",
-        "continue",
-        "edit",
-        "delete",
-        "close deed",
-        "save box as header",
-        "delete header box",
-        "clear balance box",
-    ]:
-        expect(button(page, label)).to_be_disabled()
-    click("save box as balance")
-    expect(status(page, "· editing balance")).to_have_count(0)
-    balance = deed_record(data_root)["annotation"]["balance"]
-    assert balance["layout"]["scan"] == "page_02.jpg"
-    assert fractions(balance["layout"]["bbox"]) == pytest.approx(NEW_HEADER, abs=0.01)
-    assert (balance["total_assets"], balance["total"]) == ("1", "3")
+    assert [box["scan"] for box in balance.pop("layout")] == ["page_02.jpg"]
+    assert balance == {"total_assets": "", "total_liabilities": "", "total": ""}
 
 
 def test_annotator_name_is_locked_first_and_every_write_records_it(
@@ -760,6 +716,8 @@ def test_edit_replaces_item_in_place(marimo_server, data_root, page, click):
         fill(page, "amount", amount)
         save(page, click)
     expect(button(page, "cancel edit")).to_be_disabled()
+    # A balance box, so only the edit can disable delete balance box below.
+    save_box(page, click, BALANCE, "B1 · page 1", kind="balance")
 
     choose(page, "A1 · 1,- ·")
     click("edit")
@@ -773,6 +731,8 @@ def test_edit_replaces_item_in_place(marimo_server, data_root, page, click):
     expect(button(page, "delete")).to_be_disabled()
     expect(button(page, "close deed")).to_be_disabled()
     expect(button(page, "delete header box")).to_be_disabled()  # H1 is saved
+    expect(button(page, "delete balance box")).to_be_disabled()  # B1 is saved
+    expect(button(page, "save box as balance")).to_be_disabled()
 
     fill(page, "amount", "10,-")
     fill(page, "description", "Een huis")

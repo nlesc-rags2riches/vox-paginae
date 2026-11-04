@@ -103,8 +103,9 @@ scan.
 _UI_: first page
 
 **Balance**:
-A deed's totals (assets, liabilities, total), marked by one box on any of the deed's
-scans. A deed has at most one balance, or none.
+A deed's totals (assets, liabilities, total), marked by zero or more boxes on any of the
+deed's scans. Each box is another written version of the same totals. It is optional:
+the totals can be left empty and the balance can have no box.
 
 **Item**:
 One asset or liability of a deed: its type, an optional category, an amount or a
@@ -120,8 +121,8 @@ An item's value as written in the deed.
 _Avoid_: value
 
 **Tag**:
-The short name shown on a box: `H1, H2…` for the header's boxes, `B` for the balance,
-`A1, A2…` for assets and `L1, L2…` for liabilities, by position.
+The short name shown on a box: `H1, H2…` for the header's boxes, `B1, B2…` for the
+balance's, `A1, A2…` for assets and `L1, L2…` for liabilities, by position.
 _Avoid_: label
 
 ## Relationships
