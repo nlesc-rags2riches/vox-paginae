@@ -32,7 +32,8 @@ box** with `H1` saved.
 word. Short sentences, one fact each, no nested clauses. Each fact has one place: a
 bullet adds to the ones above it, and a field note adds to the rule it annotates.
 
-Example: for the balance edit, "changes the saved balance's totals and, if a new box is
-drawn on the header page or a later page, its box" became "Its totals can be retyped. A
-new box drawn on the page replaces its box"; where a balance box can go was already in
-the bullet above.
+Example: for the optional balance, "A deed has one balance: three totals and zero or
+more boxes" and "Nothing about the balance stops a deed from closing" became "A deed's
+balance is optional. Its three totals can be left empty and it can have no box." The
+first read as if the balance had to be filled in. The second dropped out: "optional"
+already says it.
