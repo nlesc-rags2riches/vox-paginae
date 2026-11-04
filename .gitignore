@@ -17,3 +17,6 @@ test-results/
 __marimo__/
 .claude/
 .DS_Store
+
+# Scratch folder
+.scratch
