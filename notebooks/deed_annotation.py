@@ -32,12 +32,14 @@ def imports():
         save_deed_record,
         saved_boxes,
         set_balance_totals,
+        set_header_fields,
         split_tag,
     )
     from vox_paginae.book_input import (
         copied_deed_person_data,
         deed_choices,
         find_books,
+        header_fields,
         load_deeds,
         single_overledene,
     )
@@ -64,6 +66,7 @@ def imports():
         delete_item,
         draw_scan,
         find_books,
+        header_fields,
         item_option,
         item_tags,
         list_pages,
@@ -81,6 +84,7 @@ def imports():
         scan_for_display,
         selection_box,
         set_balance_totals,
+        set_header_fields,
         single_overledene,
         split_tag,
         status_text,
@@ -194,7 +198,9 @@ def page_buttons(
                     _deed_record = close_deed_record(
                         get_deed_record(), [p.name for p in pages], page.name
                     )
-                except ValueError as _e:  # no header box: it stays open, here
+                except (
+                    ValueError
+                ) as _e:  # no header box or a blank field: it stays open, here
                     mo.status.toast(str(_e))
                     return
                 _path = save_open_deed(_deed_record)
@@ -466,7 +472,9 @@ def item_buttons(
             _deed_record = close_deed_record(
                 get_deed_record(), _names, page.name
             )
-        except ValueError as _e:  # no header box: it stays open
+        except (
+            ValueError
+        ) as _e:  # no header box or a blank field: it stays open
             mo.status.toast(str(_e))
             return
         _path = save_open_deed(_deed_record)
@@ -625,6 +633,7 @@ def deed_open(
     deed_path,
     drawn_box,
     get_deed_record,
+    header_fields,
     mo,
     new_deed_record,
     openable_deed,
@@ -632,6 +641,7 @@ def deed_open(
     save_open_deed,
     set_deed_id,
     set_deed_record,
+    set_header_fields,
 ):
     # Its own cell, after the deed row: the click sets the deed, and a cell does not
     # rerun on state it sets itself. This one reruns through `openable_deed`.
@@ -640,11 +650,12 @@ def deed_open(
         if deed_path(book, openable_deed["deed_id"]).exists():
             mo.status.toast("this deed already has a file: reopen it instead")
             return
-        # This scan is its first scan; its header boxes are saved after.
-        _deed_record = new_deed_record(
-            openable_deed["deed_id"],
-            copied_deed_person_data(openable_deed),
-            page.name,
+        # This scan is its first scan; its header boxes are saved after. Its header
+        # fields start as the deed's copied data.
+        _copied = copied_deed_person_data(openable_deed)
+        _deed_record = set_header_fields(
+            new_deed_record(openable_deed["deed_id"], _copied, page.name),
+            **header_fields(_copied),
         )
         _path = save_open_deed(_deed_record)  # at once: one file per deed
         set_deed_id(_deed_record["deed_id"])
@@ -664,7 +675,7 @@ def deed_open(
     open_hint = mo.md(
         "Draw a box around the header and click **save box as header**"
         if _record is not None
-        and not _record["annotation"]["header"]
+        and not _record["annotation"]["header"]["layout"]
         and drawn_box is None
         else ""
     )
@@ -672,19 +683,44 @@ def deed_open(
 
 
 @app.cell(hide_code=True)
+def header_inputs(get_deed_record, mo):
+    # The header's fields, editable while a deed is open and showing its saved values:
+    # pre-filled on open from the deed's copied data. Re-created on every open, write and
+    # close: fields typed but not saved are then gone.
+    _open = get_deed_record()
+    _header = _open["annotation"]["header"] if _open else {}
+    # debounce=False: the value is in before a click on save header fields, as for the
+    # balance totals
+    full_name_in, date_of_death_in, place_of_residence_in = (
+        mo.ui.text(
+            label=_field.replace("_", " "),
+            value=_header.get(_field, ""),
+            disabled=_open is None,
+            debounce=False,
+        )
+        for _field in ["full_name", "date_of_death", "place_of_residence"]
+    )
+    return date_of_death_in, full_name_in, place_of_residence_in
+
+
+@app.cell(hide_code=True)
 def header_buttons(
     add_header_box,
+    date_of_death_in,
     deed_boxes,
     delete_header_box,
     drawn_box,
+    full_name_in,
     get_deed_record,
     get_editing,
     get_pending_boxes,
     mo,
     page,
     pages,
+    place_of_residence_in,
     save_open_deed,
     set_deed_record,
+    set_header_fields,
 ):
     # Header boxes go in one at a time, like the balance's, on the deed's first scan or a
     # later one: before it they would be outside scans. Each has its own tag: H1, H2…
@@ -704,6 +740,17 @@ def header_buttons(
         set_deed_record(_deed_record)
         mo.status.toast(f"saved {_path.name}")
 
+    def _save_header_fields(_):
+        _deed_record = set_header_fields(
+            get_deed_record(),
+            full_name_in.value,
+            date_of_death_in.value,
+            place_of_residence_in.value,
+        )
+        _path = save_open_deed(_deed_record)
+        set_deed_record(_deed_record)
+        mo.status.toast(f"saved {_path.name}")
+
     def _delete_header_box(_):
         if header_dd.value:
             _deed_record = delete_header_box(
@@ -713,6 +760,12 @@ def header_buttons(
             set_deed_record(_deed_record)
             mo.status.toast(f"saved {_path.name}")
 
+    # Blank ones are saved too: close then says which.
+    save_fields_btn = mo.ui.button(
+        label="save header fields",
+        disabled=_open is None,
+        on_click=_save_header_fields,
+    )
     save_header_btn = mo.ui.button(
         label="save box as header",
         # Not with pending boxes: the drawn box is then the item's next one.
@@ -730,7 +783,7 @@ def header_buttons(
         disabled=not _tags or _locked,
         on_click=_delete_header_box,
     )
-    return delete_header_btn, header_dd, save_header_btn
+    return delete_header_btn, header_dd, save_fields_btn, save_header_btn
 
 
 @app.cell(hide_code=True)
@@ -1048,6 +1101,7 @@ def layout(
     clear_pending_btn,
     close_deed_btn,
     continue_btn,
+    date_of_death_in,
     debug_switch,
     deed_details,
     deed_path,
@@ -1059,6 +1113,7 @@ def layout(
     desc_in,
     edit_btn,
     fig_h_slider,
+    full_name_in,
     get_deed_id,
     go_to_btn,
     header_dd,
@@ -1069,11 +1124,13 @@ def layout(
     open_btn,
     open_hint,
     page_view,
+    place_of_residence_in,
     prev_page_btn,
     quality_slider,
     reopen_btn,
     save_balance_btn,
     save_btn,
+    save_fields_btn,
     save_header_btn,
     save_totals_btn,
     status_line,
@@ -1114,6 +1171,16 @@ def layout(
                 justify="start",
             ),
             mo.md("---"),
+            mo.hstack(
+                [
+                    full_name_in,
+                    date_of_death_in,
+                    place_of_residence_in,
+                    save_fields_btn,
+                ],
+                justify="start",
+                align="end",
+            ),
             mo.hstack(
                 [save_header_btn, header_dd, delete_header_btn],
                 justify="start",

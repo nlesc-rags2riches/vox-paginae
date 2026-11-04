@@ -6,6 +6,7 @@ from vox_paginae.annotation import deed_path, new_deed_record, save_deed_record
 from vox_paginae.book_input import (
     copied_deed_person_data,
     deed_choices,
+    header_fields,
     load_deeds,
     single_overledene,
 )
@@ -37,6 +38,20 @@ def test_copied_deed_person_data_is_the_deed_and_its_overledene_flat_without_rol
     }
     with pytest.raises(ValueError, match="2 deed persons"):
         copied_deed_person_data({**DEED, "personen": DEED["personen"] * 2})
+
+
+def test_header_fields_are_prefilled_from_the_overledene_blank_when_missing():
+    assert header_fields(copied_deed_person_data(DEED)) == {
+        "full_name": "Jan Modaal",
+        "date_of_death": "1880-01-02",
+        "place_of_residence": "Oostdorp",  # plaats_overlijden: see #115
+    }
+    copied = {"naam_volledig": "Jan Modaal", "datum_overlijden": None}
+    assert header_fields(copied) == {
+        "full_name": "Jan Modaal",
+        "date_of_death": "",
+        "place_of_residence": "",
+    }
 
 
 def test_deed_choices_sort_by_aktenummer_then_place_files_last(tmp_path):

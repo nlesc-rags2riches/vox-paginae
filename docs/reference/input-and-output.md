@@ -35,7 +35,13 @@ changes only on purpose, and never describes internals.
   or a later page. It can be closed only there too.
 - While it is open, **save box as header** saves a drawn box as one of its header
   boxes. A header has one or more boxes. **delete header box** removes one.
-- A deed with no header box cannot be closed. Closing it shows why, and it stays open.
+- While a deed is open, its **header fields** can be typed at any time: full name, date
+  of death and place of residence. **save header fields** saves them. Fields typed but
+  not saved are dropped by any other write.
+- Opening fills them in from the overledene's `naam_volledig`, `datum_overlijden` and
+  `plaats_overlijden`. A field the overledene doesn't have starts empty.
+- A deed with no header box, or with an empty header field, cannot be closed. Closing
+  it shows why, and it stays open.
 - A deed's **balance** is optional. Its three totals can be left empty and it can have
   no box. In the file it is then empty totals and an empty `layout`.
 - While a deed is open, its totals can be typed at any time. **save balance totals**
@@ -56,12 +62,13 @@ changes only on purpose, and never describes internals.
     - `annotation_date`: the time of the latest write, with its timezone (ISO 8601,
       e.g. `2026-10-27T14:03:12.123456+01:00`)
   - `annotation`:
-    - `header`: a list of the header boxes, each shaped like an item's `layout` entry
-      (`scan`, `bbox`, `pagexml_link`, `pagexml_baseline_ids`); `[]` until one is
-      saved
+    - `header`: `full_name`, `date_of_death` and `place_of_residence`, strings (`""`
+      when left empty), then `layout`, a list of the header boxes, each shaped like an
+      item's `layout` entry (`scan`, `bbox`, `pagexml_link`, `pagexml_baseline_ids`);
+      `[]` until one is saved
     - `balance`: `total_assets`, `total_liabilities` and `total`, strings (`""` when
       left empty), then `layout`, a list of the balance boxes, each shaped like a
-      `header` entry; `[]` until one is saved. It is never `null`.
+      header box; `[]` until one is saved. It is never `null`.
     - then `assets` and `liabilities`, each a list of items
 - An item's **type** (asset or liability) is the list it's in. There is no separate
   field for it. Each item has:
@@ -80,12 +87,12 @@ changes only on purpose, and never describes internals.
 - Each write replaces the whole file, and an interrupted write leaves the previous
   version. An interrupted write can also leave a `deed-annotation-<deed_id>.json.tmp`.
   Opening, moving the annotation, every added, changed or deleted
-  item, saving the balance totals, and saving or deleting a header or balance box, is
-  in the file at once.
+  item, saving the header fields or the balance totals, and saving or deleting a header
+  or balance box, is in the file at once.
   Closing rewrites `scans`.
   Every write rewrites `format_version`, `annotator_name` and `annotation_date`.
-- Moving past a book's last page closes the open deed there. A deed with no header box
-  is not closed: it shows why, and the page stays.
+- Moving past a book's last page closes the open deed there. A deed that cannot be
+  closed is not closed: it shows why, and the page stays.
 - A closed deed can be reopened: it is open again, and the next writes rewrite the
   same file. `scans` stays as it was until the next close.
 - A deed's file can be deleted, after a confirmation. The deed can then be opened
@@ -93,9 +100,9 @@ changes only on purpose, and never describes internals.
 - While a deed is open, **move annotation** moves its annotation to another deed
   without a file. The file is then that deed's `deed-annotation-<deed_id>.json`. The old
   file is gone. `deed_id` and `copied_deed_person_data` come from the new deed; the
-  header, balance, items and `scans` are kept. The new deed is open. The old deed can
-  then be opened anew. An interrupted move can leave both files, with the same
-  annotation.
+  header with its fields, the balance, the items and `scans` are kept. The new deed is
+  open. The old deed can then be opened anew. An interrupted move can leave both files,
+  with the same annotation.
 - These files are read back as they are on disk; no other state is kept between
   runs. A deed open when the tool stopped is not open after a restart.
 
@@ -118,9 +125,12 @@ changes only on purpose, and never describes internals.
     "annotation_date": "2026-10-27T14:03:12.123456+01:00"
   },
   "annotation": {
-    "header": [
-      {"scan": "page_01.jpg", "bbox": [300, 120, 2400, 520],
-       "pagexml_link": null, "pagexml_baseline_ids": null}],
+    "header": {
+      "full_name": "Jan Modaal Sr.", "date_of_death": "2 januari 1880",
+      "place_of_residence": "Oostdorp",
+      "layout": [
+        {"scan": "page_01.jpg", "bbox": [300, 120, 2400, 520],
+         "pagexml_link": null, "pagexml_baseline_ids": null}]},
     "balance": {
       "total_assets": "900,-", "total_liabilities": "", "total": "900,-",
       "layout": [
@@ -150,6 +160,8 @@ changes only on purpose, and never describes internals.
   starts on the same page). Its first page does not move after opening.
 - `copied_deed_person_data`: copied when the deed is opened or moved; a later
   change to `deeds.json` does not reach an existing file.
+- `full_name`, `date_of_death`, `place_of_residence`: as the annotator saved them;
+  `copied_deed_person_data` keeps what `deeds.json` said.
 - Tags (`H1`, `B1`, `A1`, `L2`) are computed from list positions and never stored.
 
 ## Format versions

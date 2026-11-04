@@ -95,7 +95,7 @@ _Avoid_: pending block
 **Header**:
 The heading where a deed starts, marked by one or more boxes on any of the deed's
 scans. The main one can be missing; a complementary one often turns up later in the
-deed.
+deed. Its fields are the overledene's full name, date of death and place of residence.
 
 **First scan**:
 The scan a deed was opened on: the first of its scans. Its boxes go on it or a later
