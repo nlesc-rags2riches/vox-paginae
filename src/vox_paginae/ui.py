@@ -159,7 +159,6 @@ def status_text(
     deed_record: dict | None,
     n_pending: int,
     editing: str | None = None,
-    editing_balance: bool = False,
 ) -> str:
     """The status line, as Markdown: where the annotator is and what is being edited.
 
@@ -173,9 +172,7 @@ def status_text(
     )
     return (
         f"`{book.name}/{scan.name}` · {deed} · page {scan_i + 1}/{n_scans}"
-        f" · pending {n_pending}"
-        + (f" · editing {editing}" if editing else "")
-        + (" · editing balance" if editing_balance else "")
+        f" · pending {n_pending}" + (f" · editing {editing}" if editing else "")
     )
 
 

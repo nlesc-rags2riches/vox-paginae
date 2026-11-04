@@ -60,7 +60,13 @@ def new_deed_record(
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
             "header": [],  # one or more boxes, from add_header_box
-            "balance": None,  # optional: see set_balance
+            # Totals from set_balance_totals, boxes from add_balance_box: both optional.
+            "balance": {
+                "total_assets": "",
+                "total_liabilities": "",
+                "total": "",
+                "layout": [],
+            },
             "assets": [],
             "liabilities": [],
         },
@@ -101,55 +107,20 @@ def add_item(
     return deed_record
 
 
-def set_balance(
-    deed_record: dict,
-    scan: str,
-    bbox: Sequence[float],
-    total_assets: str,
-    total_liabilities: str,
-    total: str,
+def set_balance_totals(
+    deed_record: dict, total_assets: str, total_liabilities: str, total: str
 ) -> dict:
-    """Return a copy of ``deed_record`` with its balance: ``bbox`` on ``scan``.
+    """Return a copy of ``deed_record`` with its balance's totals replaced.
 
-    The totals are stored as typed, stripped; at least one must be non-blank. A deed has
-    at most one balance: a second raises ``ValueError``; ``clear_balance`` first.
+    They are stored as typed, stripped; any or all may be blank. The boxes stay.
     """
-    if deed_record["annotation"]["balance"] is not None:
-        raise ValueError("a deed has at most one balance")
-    total_assets, total_liabilities, total = (
-        t.strip() for t in (total_assets, total_liabilities, total)
-    )
-    if not any((total_assets, total_liabilities, total)):
-        raise ValueError("a balance needs at least one total")
     deed_record = copy.deepcopy(deed_record)
-    deed_record["annotation"]["balance"] = {
-        "layout": new_box(scan, bbox),
-        "total_assets": total_assets,
-        "total_liabilities": total_liabilities,
-        "total": total,
-    }
-    return deed_record
-
-
-def clear_balance(deed_record: dict) -> dict:
-    """Return a copy of ``deed_record`` without a balance."""
-    deed_record = copy.deepcopy(deed_record)
-    deed_record["annotation"]["balance"] = None
-    return deed_record
-
-
-def replace_balance(
-    deed_record: dict,
-    scan: str,
-    bbox: Sequence[float],
-    total_assets: str,
-    total_liabilities: str,
-    total: str,
-) -> dict:
-    """``set_balance`` in place of the saved balance, with the same checks."""
-    return set_balance(
-        clear_balance(deed_record), scan, bbox, total_assets, total_liabilities, total
+    deed_record["annotation"]["balance"].update(
+        total_assets=total_assets.strip(),
+        total_liabilities=total_liabilities.strip(),
+        total=total.strip(),
     )
+    return deed_record
 
 
 def add_header_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
@@ -170,6 +141,24 @@ def delete_header_box(deed_record: dict, tag: str) -> dict:
     return deed_record
 
 
+def add_balance_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
+    """Return a copy of ``deed_record`` with ``bbox`` on ``scan`` as its last balance box.
+
+    A balance has zero or more boxes, on any of the deed's scans, tagged ``B1, B2…`` by
+    position. Each is another written version of the same totals.
+    """
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation"]["balance"]["layout"].append(new_box(scan, bbox))
+    return deed_record
+
+
+def delete_balance_box(deed_record: dict, tag: str) -> dict:
+    """Return a copy of ``deed_record`` without the balance box called ``tag`` (``"B2"``)."""
+    deed_record = copy.deepcopy(deed_record)
+    del deed_record["annotation"]["balance"]["layout"][int(tag[1:]) - 1]
+    return deed_record
+
+
 def item_tags(deed_record: dict | None) -> list[tuple[str, dict]]:
     """``(tag, item)`` for every item: ``A1, A2…`` for assets, then ``L1, L2…``.
 
@@ -185,20 +174,20 @@ def item_tags(deed_record: dict | None) -> list[tuple[str, dict]]:
 
 
 def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
-    """``(tag, BOX)`` for every box: the header's (``H1, H2…``), ``("B", balance)`` if
-    any, then each item's, by tag.
+    """``(tag, BOX)`` for every box: the header's (``H1, H2…``), the balance's
+    (``B1, B2…``), then each item's, by tag.
 
     ``None`` (no open deed) has none.
     """
     if deed_record is None:
         return []
-    balance = deed_record["annotation"]["balance"]
+    annotation = deed_record["annotation"]
     return (
-        [
-            (f"H{i}", box)
-            for i, box in enumerate(deed_record["annotation"]["header"], start=1)
+        [(f"H{i}", box) for i, box in enumerate(annotation["header"], start=1)]
+        + [
+            (f"B{i}", box)
+            for i, box in enumerate(annotation["balance"]["layout"], start=1)
         ]
-        + ([("B", balance["layout"])] if balance else [])
         + [(tag, box) for tag, item in item_tags(deed_record) for box in item["layout"]]
     )
 
@@ -342,7 +331,8 @@ def saved_boxes(
 ) -> list[tuple[str, list[int]]]:
     """``(tag, bbox)`` of every box on ``scan`` in ``book``'s deed annotation files, by deed.
 
-    Tags as in ``deed_boxes``: ``H1, H2…`` for the header, ``B`` for a balance.
+    Tags as in ``deed_boxes``: ``H1, H2…`` for the header, ``B1, B2…`` for the
+    balance.
 
     ``skip_deed_id`` is the open deed: it is drawn from memory, tagged, not
     faded.

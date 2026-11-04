@@ -12,12 +12,13 @@ def imports():
 
     from vox_paginae import marimo_ui
     from vox_paginae.annotation import (
+        add_balance_box,
         add_header_box,
         add_item,
-        clear_balance,
         close_deed_record,
         deed_boxes,
         deed_path,
+        delete_balance_box,
         delete_header_box,
         delete_item,
         item_tags,
@@ -26,12 +27,11 @@ def imports():
         move_deed_record,
         new_deed_record,
         next_page,
-        replace_balance,
         replace_item,
         resume,
         save_deed_record,
         saved_boxes,
-        set_balance,
+        set_balance_totals,
         split_tag,
     )
     from vox_paginae.book_input import (
@@ -51,14 +51,15 @@ def imports():
 
     return (
         Path,
+        add_balance_box,
         add_header_box,
         add_item,
-        clear_balance,
         close_deed_record,
         copied_deed_person_data,
         deed_boxes,
         deed_choices,
         deed_path,
+        delete_balance_box,
         delete_header_box,
         delete_item,
         draw_scan,
@@ -73,14 +74,13 @@ def imports():
         move_deed_record,
         new_deed_record,
         next_page,
-        replace_balance,
         replace_item,
         resume,
         save_deed_record,
         saved_boxes,
         scan_for_display,
         selection_box,
-        set_balance,
+        set_balance_totals,
         single_overledene,
         split_tag,
         status_text,
@@ -148,11 +148,6 @@ def session_state(find_books, list_pages, mo, resume, root):
     # Type to prefill the radio with. Set only on edit and close, so a save keeps the last
     # type used without rebuilding the radio.
     get_type, set_type = mo.state(None)
-    # True while the saved balance is edited: the header and items are locked. Self
-    # loops: the balance buttons cell both reads and sets it.
-    get_editing_balance, set_editing_balance = mo.state(
-        False, allow_self_loops=True
-    )
     return (
         book_pages,
         books,
@@ -160,14 +155,12 @@ def session_state(find_books, list_pages, mo, resume, root):
         get_deed_id,
         get_deed_record,
         get_editing,
-        get_editing_balance,
         get_pending_boxes,
         get_type,
         set_book_page,
         set_deed_id,
         set_deed_record,
         set_editing,
-        set_editing_balance,
         set_pending_boxes,
         set_type,
     )
@@ -179,7 +172,6 @@ def page_buttons(
     close_deed_record,
     get_deed_record,
     get_editing,
-    get_editing_balance,
     get_pending_boxes,
     mo,
     next_page,
@@ -219,11 +211,7 @@ def page_buttons(
         label="next page",
         # On the last page it closes the open deed: same rules as close deed.
         disabled=_last_page
-        and (
-            bool(get_pending_boxes())
-            or get_editing() is not None
-            or get_editing_balance()
-        ),
+        and (bool(get_pending_boxes()) or get_editing() is not None),
         on_click=_next_page,
     )
     # Stays inside the current book: a deed never crosses books.
@@ -406,7 +394,6 @@ def item_buttons(
     drawn_box,
     get_deed_record,
     get_editing,
-    get_editing_balance,
     get_pending_boxes,
     item_option,
     item_tags,
@@ -424,8 +411,6 @@ def item_buttons(
     type_radio,
 ):
     _names = [p.name for p in pages]
-    # Editing the balance locks the items, as if closed.
-    _locked = get_editing_balance()
 
     def _before_first_scan(scan):
         # Nothing is continued, saved or closed there: it would be outside scans.
@@ -492,7 +477,6 @@ def item_buttons(
     continue_btn = mo.ui.button(
         label="continue",
         disabled=drawn_box is None
-        or _locked
         or (get_deed_record() is not None and _before_first_scan(page.name)),
         on_click=lambda _: set_pending_boxes(
             lambda p: p + [(page.name, drawn_box)]
@@ -507,7 +491,6 @@ def item_buttons(
     save_btn = mo.ui.button(
         label="save",
         disabled=get_deed_record() is None
-        or _locked
         or not layout_boxes
         or type_radio.value is None
         or not (amount_in.value.strip() or desc_in.value.strip())
@@ -520,8 +503,7 @@ def item_buttons(
         label="edit",
         disabled=not _tags
         or bool(get_pending_boxes())
-        or get_editing() is not None
-        or _locked,
+        or get_editing() is not None,
         on_click=_edit,
     )
     cancel_edit_btn = mo.ui.button(
@@ -531,9 +513,7 @@ def item_buttons(
     )
     delete_btn = mo.ui.button(
         label="delete",
-        disabled=not _tags
-        or get_editing() is not None  # tags would shift
-        or _locked,
+        disabled=not _tags or get_editing() is not None,  # tags would shift
         on_click=_delete,
     )
     close_deed_btn = mo.ui.button(
@@ -541,7 +521,6 @@ def item_buttons(
         disabled=get_deed_record() is None
         or bool(get_pending_boxes())
         or get_editing() is not None
-        or _locked
         or _before_first_scan(page.name),
         on_click=_close_deed,
     )
@@ -700,7 +679,6 @@ def header_buttons(
     drawn_box,
     get_deed_record,
     get_editing,
-    get_editing_balance,
     get_pending_boxes,
     mo,
     page,
@@ -708,7 +686,7 @@ def header_buttons(
     save_open_deed,
     set_deed_record,
 ):
-    # Header boxes go in one at a time, like the balance, on the deed's first scan or a
+    # Header boxes go in one at a time, like the balance's, on the deed's first scan or a
     # later one: before it they would be outside scans. Each has its own tag: H1, H2…
     _open = get_deed_record()
     _names = [p.name for p in pages]
@@ -717,8 +695,8 @@ def header_buttons(
         for _tag, _box in deed_boxes(_open)
         if _tag[0] == "H"
     }
-    # Editing an item or the balance locks the header, as if closed.
-    _locked = get_editing() is not None or get_editing_balance()
+    # Editing an item locks the header, as if closed.
+    _locked = get_editing() is not None
 
     def _save_header_box(_):
         _deed_record = add_header_box(get_deed_record(), page.name, drawn_box)
@@ -875,7 +853,6 @@ def deed_move(
     deeds,
     get_deed_record,
     get_editing,
-    get_editing_balance,
     get_pending_boxes,
     mo,
     move_dd,
@@ -911,8 +888,7 @@ def deed_move(
         label="move annotation",
         disabled=move_dd.value is None
         or bool(get_pending_boxes())
-        or get_editing() is not None
-        or get_editing_balance(),
+        or get_editing() is not None,
         on_click=_move,
     )
     # Only while a deed is open: there is no annotation to move otherwise.
@@ -925,18 +901,19 @@ def deed_move(
 
 
 @app.cell(hide_code=True)
-def balance_inputs(get_deed_record, get_editing_balance, mo):
-    # The balance's totals: its saved values, read only, while it has one (a typo check),
-    # unless it is edited. Re-created on every open, write, close and balance edit or cancel;
-    # clear balance box empties them again.
+def balance_inputs(get_deed_record, mo):
+    # The balance's totals, editable while a deed is open and showing its saved values (a
+    # typo check). Re-created on every open, write and close: totals typed but not saved
+    # are then gone.
     _open = get_deed_record()
-    _balance = (_open and _open["annotation"]["balance"]) or {}
-    # debounce=False: save box as balance enables while typing, as for the item amount
+    _balance = _open["annotation"]["balance"] if _open else {}
+    # debounce=False: the value is in before a click on save balance totals, as for the
+    # item amount
     total_assets_in, total_liabilities_in, total_in = (
         mo.ui.text(
             label=_field.replace("_", " "),
             value=_balance.get(_field, ""),
-            disabled=bool(_balance) and not get_editing_balance(),
+            disabled=_open is None,
             debounce=False,
         )
         for _field in ["total_assets", "total_liabilities", "total"]
@@ -946,98 +923,77 @@ def balance_inputs(get_deed_record, get_editing_balance, mo):
 
 @app.cell(hide_code=True)
 def balance_buttons(
-    clear_balance,
+    add_balance_box,
+    deed_boxes,
+    delete_balance_box,
     drawn_box,
     get_deed_record,
     get_editing,
-    get_editing_balance,
     get_pending_boxes,
     mo,
     page,
     pages,
-    replace_balance,
     save_open_deed,
-    set_balance,
+    set_balance_totals,
     set_deed_record,
-    set_editing_balance,
     total_assets_in,
     total_in,
     total_liabilities_in,
 ):
+    # The totals and the boxes are saved apart, and either may be blank or none: close
+    # checks neither. Boxes go in one at a time, like the header's, on the deed's first scan
+    # or a later one: before it they would be outside scans. Each has its own tag: B1, B2…
     _open = get_deed_record()
-    _balance = _open and _open["annotation"]["balance"]
-    _editing = get_editing_balance()
-    # The drawn box; while editing, with none drawn, the saved one is kept.
-    _box = (
-        (page.name, drawn_box)
-        if drawn_box is not None
-        else (_balance["layout"]["scan"], _balance["layout"]["bbox"])
-        if _editing
-        else None
-    )
-
-    def _save_balance(_):
-        _deed_record = (replace_balance if _editing else set_balance)(
-            get_deed_record(),
-            *_box,
-            total_assets_in.value,
-            total_liabilities_in.value,
-            total_in.value,
-        )
-        _path = save_open_deed(_deed_record)
-        set_deed_record(_deed_record)
-        set_editing_balance(False)
-        mo.status.toast(f"saved {_path.name}")
-
-    def _clear_balance(_):
-        _deed_record = clear_balance(get_deed_record())
-        _path = save_open_deed(_deed_record)
-        set_deed_record(_deed_record)
-        mo.status.toast(f"saved {_path.name}")
-
     _names = [p.name for p in pages]
+    _tags = {
+        f"{_tag} · page {_names.index(_box['scan']) + 1}": _tag
+        for _tag, _box in deed_boxes(_open)
+        if _tag[0] == "B"
+    }
+    # Editing an item locks the boxes, as for the header.
+    _locked = get_editing() is not None
+
+    def _write(_deed_record):
+        _path = save_open_deed(_deed_record)
+        set_deed_record(_deed_record)
+        mo.status.toast(f"saved {_path.name}")
+
+    def _delete_balance_box(_):
+        if balance_dd.value:
+            _write(delete_balance_box(get_deed_record(), balance_dd.value))
+
+    save_totals_btn = mo.ui.button(
+        label="save balance totals",
+        disabled=_open is None,
+        on_click=lambda _: _write(
+            set_balance_totals(
+                get_deed_record(),
+                total_assets_in.value,
+                total_liabilities_in.value,
+                total_in.value,
+            )
+        ),
+    )
     save_balance_btn = mo.ui.button(
         label="save box as balance",
-        # At most one: clear or edit balance box first. Not before the first scan:
-        # outside scans.
+        # Not with pending boxes: the drawn box is then the item's next one.
         disabled=_open is None
-        or (bool(_balance) and not _editing)
-        or _box is None
-        or _names.index(_box[0]) < _names.index(_open["scans"][0])
-        or not any(
-            _in.value.strip()
-            for _in in [total_assets_in, total_liabilities_in, total_in]
-        ),
-        on_click=_save_balance,
-    )
-    # Removes the balance, box and totals: then a new box can be saved as balance.
-    clear_balance_btn = mo.ui.button(
-        label="clear balance box",
-        disabled=not _balance or _editing,
-        on_click=_clear_balance,
-    )
-    # Unlocks the totals; save box as balance then rewrites the balance. Locks the header
-    # and items.
-    edit_balance_btn = mo.ui.button(
-        label="edit balance box",
-        disabled=not _balance
+        or _locked
+        or drawn_box is None
         or bool(get_pending_boxes())
-        or get_editing() is not None
-        or _editing,
-        on_click=lambda _: set_editing_balance(True),
+        or _names.index(page.name) < _names.index(_open["scans"][0]),
+        on_click=lambda _: _write(
+            add_balance_box(get_deed_record(), page.name, drawn_box)
+        ),
     )
-    # Keeps the saved balance.
-    cancel_balance_btn = mo.ui.button(
-        label="cancel balance edit",
-        disabled=not _editing,
-        on_click=lambda _: set_editing_balance(False),
+    balance_dd = mo.ui.dropdown(options=_tags)
+    # The later ones move up: B2 becomes B1.
+    delete_balance_btn = mo.ui.button(
+        label="delete balance box",
+        disabled=not _tags or _locked,
+        on_click=_delete_balance_box,
     )
-    return (
-        cancel_balance_btn,
-        clear_balance_btn,
-        edit_balance_btn,
-        save_balance_btn,
-    )
+    return balance_dd, delete_balance_btn, save_balance_btn, save_totals_btn
 
 
 @app.cell(hide_code=True)
@@ -1056,7 +1012,6 @@ def status_line(
     book,
     get_deed_record,
     get_editing,
-    get_editing_balance,
     get_pending_boxes,
     mo,
     page,
@@ -1076,7 +1031,6 @@ def status_line(
             get_deed_record(),
             len(get_pending_boxes()),
             get_editing(),
-            get_editing_balance(),
         )
     )
     return (status_line,)
@@ -1086,12 +1040,11 @@ def status_line(
 def layout(
     amount_in,
     annotator_row,
+    balance_dd,
     book,
     book_dd,
-    cancel_balance_btn,
     cancel_edit_btn,
     category_in,
-    clear_balance_btn,
     clear_pending_btn,
     close_deed_btn,
     continue_btn,
@@ -1099,11 +1052,11 @@ def layout(
     deed_details,
     deed_path,
     deed_row,
+    delete_balance_btn,
     delete_btn,
     delete_file_ui,
     delete_header_btn,
     desc_in,
-    edit_balance_btn,
     edit_btn,
     fig_h_slider,
     get_deed_id,
@@ -1122,6 +1075,7 @@ def layout(
     save_balance_btn,
     save_btn,
     save_header_btn,
+    save_totals_btn,
     status_line,
     total_assets_in,
     total_in,
@@ -1166,16 +1120,17 @@ def layout(
             ),
             mo.md("---"),
             mo.hstack(
-                [total_assets_in, total_liabilities_in, total_in],
+                [
+                    total_assets_in,
+                    total_liabilities_in,
+                    total_in,
+                    save_totals_btn,
+                ],
                 justify="start",
+                align="end",
             ),
             mo.hstack(
-                [
-                    save_balance_btn,
-                    edit_balance_btn,
-                    cancel_balance_btn,
-                    clear_balance_btn,
-                ],
+                [save_balance_btn, balance_dd, delete_balance_btn],
                 justify="start",
             ),
             mo.md("---"),

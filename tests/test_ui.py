@@ -82,7 +82,7 @@ def test_draw_scan_draws_saved_faded_deed_tagged_and_pending_dashed():
         dpi=100,
         saved=[("H", [0, 0, 10, 10])],
         deed=[
-            ("B", [5, 5, 15, 15]),
+            ("B1", [5, 5, 15, 15]),
             ("A2", [10, 10, 30, 40]),
             ("L1", [50, 50, 60, 60]),
         ],
@@ -101,7 +101,7 @@ def test_draw_scan_draws_saved_faded_deed_tagged_and_pending_dashed():
     # only the open deed's boxes carry their tag, at the box's top-left, in its colour
     tags = [(t.get_text(), t.get_position(), t.get_color()) for t in ax.texts]
     assert tags == [
-        ("B", (5, 5), "tab:purple"),
+        ("B1", (5, 5), "tab:purple"),
         ("A2", (10, 10), "tab:blue"),
         ("L1", (50, 50), "tab:orange"),
     ]
@@ -149,7 +149,6 @@ def test_status_line_names_the_open_deed_and_what_is_being_edited():
         "`b1/s003.jpg` · editing deed-annotation-d7 · page 3/40 · pending 1"
         " · editing A2"
     )
-    assert status_text(**status, editing_balance=True).endswith(" · editing balance")
 
 
 def test_book_bar_has_a_segment_per_book_and_marks_here_and_the_slider():

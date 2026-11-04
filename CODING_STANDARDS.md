@@ -12,16 +12,17 @@ skill sets the rules.
 
 ### A disabled-button check must be able to fail
 
-Some features lock buttons while they run: while you edit the balance, **save**,
-**edit**, **delete**, **close deed** and **move annotation** are disabled. A browser test
-checks this with `expect(button(...)).to_be_disabled()`.
+Some features lock buttons while they run: while you edit an item, **delete**, **close
+deed**, **move annotation** and the header and balance box buttons are disabled. A
+browser test checks this with `expect(button(...)).to_be_disabled()`.
 
-That check only proves something if nothing else could disable the button. **edit** is
-also disabled when the deed has no items, so a check made then passes even if the
-lock is broken.
+That check only proves something if nothing else could disable the button. **delete
+header box** is also disabled when the deed has no header box, so a check made then
+passes even if the lock is broken.
 
-Before the check, set up everything the button needs to be enabled: an item, a type, an
-amount, a drawn box. Example: `test_edit_balance_rewrites_it_in_place` saves an item first.
+Before the check, set up everything the button needs to be enabled: a saved box, an
+item, a drawn box. Example: `test_edit_replaces_item_in_place` checks **delete header
+box** with `H1` saved.
 
 ## Docs
 

@@ -6,12 +6,13 @@ import pytest
 # TODO: Together with the `src` correspondent, split and human-review
 from vox_paginae.annotation import (
     FORMAT_VERSION,
+    add_balance_box,
     add_header_box,
     add_item,
-    clear_balance,
     close_deed_record,
     deed_boxes,
     deed_path,
+    delete_balance_box,
     delete_header_box,
     delete_item,
     item_tags,
@@ -20,12 +21,11 @@ from vox_paginae.annotation import (
     move_deed_record,
     new_deed_record,
     next_page,
-    replace_balance,
     replace_item,
     resume,
     save_deed_record,
     saved_boxes,
-    set_balance,
+    set_balance_totals,
 )
 from vox_paginae.book_input import find_books
 
@@ -54,7 +54,13 @@ def test_new_deed_record_copies_the_deed_data_and_starts_on_its_first_scan():
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
             "header": [],  # its boxes are added after opening
-            "balance": None,  # optional: none until one is saved
+            # Never null: blank totals and no box until they are saved.
+            "balance": {
+                "total_assets": "",
+                "total_liabilities": "",
+                "total": "",
+                "layout": [],
+            },
             "assets": [],
             "liabilities": [],
         },
@@ -115,58 +121,44 @@ def test_item_text_is_stripped_and_a_blank_category_is_none():
     assert (a2["category"], a2["description"]) == (None, "")
 
 
-def test_balance_is_one_optional_box_with_three_stripped_totals():
+def test_balance_totals_are_stripped_and_may_all_be_blank():
     p = new_deed_record("d1", COPIED, "p2.jpg")
-    q = set_balance(p, "p3.jpg", [1, 2.6, 30, 40], " 1.000,- ", " ", "f 900\t")
+    q = set_balance_totals(p, " 1.000,- ", " ", "f 900\t")
     assert q["annotation"]["balance"] == {
-        "layout": {
-            "scan": "p3.jpg",
-            "bbox": [1, 2, 30, 40],
-            "pagexml_link": None,
-            "pagexml_baseline_ids": None,
-        },
         "total_assets": "1.000,-",
         "total_liabilities": "",
         "total": "f 900",
+        "layout": [],
     }
-    assert [tag for tag, _ in deed_boxes(add_header_box(q, "p2.jpg", [0] * 4))] == [
-        "H1",
-        "B",
+    assert p["annotation"]["balance"]["total"] == ""  # original untouched
+    # Saved again, they are replaced: blank is allowed.
+    assert set_balance_totals(q, "", " ", "") == p
+
+
+def test_balance_boxes_go_in_one_at_a_time_tagged_by_position():
+    p = set_balance_totals(new_deed_record("d1", COPIED, "p2.jpg"), "1", "", "")
+    q = add_balance_box(p, "p3.jpg", [1, 2.6, 30, 40])
+    q = add_balance_box(q, "p2.jpg", [0, 0, 5, 5])
+    q = add_header_box(q, "p2.jpg", [0] * 4)
+    assert q["annotation"]["balance"]["layout"][0] == {
+        "scan": "p3.jpg",
+        "bbox": [1, 2, 30, 40],
+        "pagexml_link": None,
+        "pagexml_baseline_ids": None,
+    }
+    assert [(tag, box["scan"]) for tag, box in deed_boxes(q)] == [
+        ("H1", "p2.jpg"),
+        ("B1", "p3.jpg"),
+        ("B2", "p2.jpg"),
     ]
-    assert p["annotation"]["balance"] is None  # original untouched
-    with pytest.raises(ValueError):  # at most one
-        set_balance(q, "p2.jpg", [0, 0, 5, 5], "1", "", "")
-    with pytest.raises(ValueError):  # at least one total
-        set_balance(p, "p2.jpg", [0, 0, 5, 5], " ", "", "")
-    # Cleared, it can be saved again.
-    assert clear_balance(q) == p
-    assert set_balance(clear_balance(q), "p2.jpg", [0, 0, 5, 5], "1", "", "")
-
-
-def test_replace_balance_rewrites_box_and_totals_in_place():
-    p = set_balance(
-        new_deed_record("d1", COPIED, "p2.jpg"),
-        "p2.jpg",
-        [0, 0, 5, 5],
-        "1",
-        "",
-        "",
-    )
-    q = replace_balance(p, "p3.jpg", [1, 2, 3, 4], "", "2", "3")
-    assert q["annotation"]["balance"] == {
-        "layout": {
-            "scan": "p3.jpg",
-            "bbox": [1, 2, 3, 4],
-            "pagexml_link": None,
-            "pagexml_baseline_ids": None,
-        },
-        "total_assets": "",
-        "total_liabilities": "2",
-        "total": "3",
-    }
-    assert p["annotation"]["balance"]["total_assets"] == "1"  # original untouched
-    with pytest.raises(ValueError):  # at least one total, as for set_balance
-        replace_balance(p, "p2.jpg", [0, 0, 5, 5], " ", "", "")
+    assert p["annotation"]["balance"]["layout"] == []  # original untouched
+    # Deleted: the later one moves up, and the totals stay.
+    r = delete_balance_box(q, "B1")
+    assert [(tag, box["scan"]) for tag, box in deed_boxes(r)] == [
+        ("H1", "p2.jpg"),
+        ("B1", "p2.jpg"),
+    ]
+    assert r["annotation"]["balance"]["total_assets"] == "1"
 
 
 def test_replace_item_keeps_position_unless_type_changes():
@@ -258,7 +250,7 @@ def test_close_fills_scans_from_the_first_scan_to_the_close_scan():
         "p4.jpg",
     ]
     # So does the balance's.
-    p = set_balance(p, "p5.jpg", [0] * 4, "1", "", "")
+    p = add_balance_box(p, "p5.jpg", [0] * 4)
     assert close_deed_record(p, page_names, "p2.jpg")["scans"][-1] == "p5.jpg"
 
 
@@ -358,7 +350,7 @@ def test_a_file_without_format_version_opens_and_its_next_write_adds_it(tmp_path
 
 def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
     other = {"aktenummer": "7", "plaats": "Oostdorp", "naam_volledig": "Piet Smit"}
-    p = set_balance(
+    p = add_balance_box(
         add_item(
             new_deed_record("d1", COPIED, "a.jpg"),
             "assets",
@@ -369,9 +361,6 @@ def test_move_deed_record_rewrites_the_deed_and_renames_the_file(tmp_path):
         ),
         "b.jpg",
         [0, 0, 9, 9],
-        "1,-",
-        "",
-        "",
     )
     p["scans"] = ["a.jpg", "b.jpg"]
     save_deed_record(deed_path(tmp_path, "d1"), p, "Ann")
