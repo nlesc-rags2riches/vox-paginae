@@ -12,7 +12,10 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   The `marimo-library` skill governs the split. Edit the notebook only through
   `marimo-pair`, including when the server runs with `--watch`: the running kernel is
   the source of truth. To test an older notebook, use `git worktree add`: the watched
-  file stays as the kernel wrote it.
+  file stays as the kernel wrote it. No server running: `uv run python
+  scripts/demo_data.py <dir>`, then `uv run marimo edit notebooks/deed_annotation.py
+  --no-token --watch -- --data-root <dir>`; lock an annotator name before cells past
+  the book cell run (`set_annotator((name, True))` from the scratchpad).
 - Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
   working run the affected ones with `-k`, and the whole suite once at the end. Known flake:
   `test_restart_resumes_on_last_page_with_no_open_deed`.
