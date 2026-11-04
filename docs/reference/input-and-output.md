@@ -166,5 +166,7 @@ changes only on purpose, and never describes internals.
   in the format's description.
 - While MAJOR is `0`, a change that can break a reader bumps MINOR, and any other
   change bumps PATCH.
+- Until the first release, the format stays `0.1.0`, even after a change
+  that can break a reader. Older files are not converted.
 - A file without `format_version` opens as usual. Its next write adds it. Its other
   fields stay as they were written.
