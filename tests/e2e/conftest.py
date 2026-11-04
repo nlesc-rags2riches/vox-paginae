@@ -61,10 +61,8 @@ DEED_12 = deed("deed-12", "12", "Oostdorp", "Kees Bakker", "1880-07-08")
 DEED_12["personen"].append({**DEED_12["personen"][0], "naam_volledig": "Klaas Bakker"})
 
 
-@pytest.fixture
-def data_root(tmp_path):
-    """`<tmp>/data/book1/` with three grayscale pages and a `deeds.json`."""
-    book = tmp_path / "data" / "book1"
+def write_book(book):
+    """Write three grayscale scans and a `deeds.json` into the new folder `book`."""
     book.mkdir(parents=True)
     page = np.full((PAGE_H, PAGE_W), 230, np.uint8)
     # Dark "text lines": a constant page renders black (imshow autoscales vmin == vmax).
@@ -76,6 +74,12 @@ def data_root(tmp_path):
     (book / "deeds.json").write_text(
         json.dumps([DEED_7_WEST, DEED_12, DEED_3, DEED_7_OOST]), encoding="utf-8"
     )
+
+
+@pytest.fixture
+def data_root(tmp_path):
+    """`<tmp>/data/book1/`, written by `write_book`."""
+    write_book(tmp_path / "data" / "book1")
     return tmp_path / "data"
 
 
