@@ -82,7 +82,11 @@ def close_deed_dropdown(page):
 
 def drag_box_on_page(page, x0, y0, x1, y1):
     """Drag a box on the page image; coordinates are fractions of the image."""
-    b = page.locator("canvas").first.bounding_box()
+    canvas = page.locator("canvas").first
+    # A click can leave the canvas partly out of view. Pressing on it then scrolls the
+    # page (marimo focuses it), so the position read here would no longer hold.
+    canvas.scroll_into_view_if_needed()
+    b = canvas.bounding_box()
     page.mouse.move(b["x"] + x0 * b["width"], b["y"] + y0 * b["height"])
     page.mouse.down()
     page.mouse.move(b["x"] + x1 * b["width"], b["y"] + y1 * b["height"], steps=10)
