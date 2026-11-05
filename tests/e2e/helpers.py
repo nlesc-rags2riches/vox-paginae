@@ -26,29 +26,29 @@ def status(page, text):
     return page.get_by_text(text)
 
 
-def visit(page, url):
+def load_app_page(page, url):
     page.set_viewport_size({"width": 1600, "height": 1200})
     page.goto(url)
 
 
-def click(page, label):
+def click_button(page, label):
     """Click a button by its label."""
     button(page, label).click()
 
 
-def fill(page, label, text):
+def fill_text_input(page, label, text):
     """Type into a text input and leave it, so marimo sends the value."""
     box = text_input(page, label)
     box.fill(text)
     box.blur()
 
 
-def type_keys(page, label, text):
+def type_in_text_input_key_by_key(page, label, text):
     """Type into a text input key by key, and stay in it."""
     text_input(page, label).press_sequentially(text, delay=50)
 
 
-def choose(page, label):
+def pick_in_dropdown(page, label):
     """Pick ``label`` in whichever dropdown offers it (item or book)."""
     page.locator("select", has=page.locator("option", has_text=label)).select_option(
         label=label
@@ -60,7 +60,7 @@ def pick_item_type(page, item_type):
     page.get_by_role("radio", name=item_type).check()
 
 
-def deed_options(page, search="", label="deed"):
+def search_deed_dropdown(page, search="", label="deed"):
     """The entries matching ``search`` in the searchable dropdown labeled ``label``;
     leaves it open."""
     # Unlike text inputs (see text_input), its <label for=…> names the button.
@@ -69,18 +69,18 @@ def deed_options(page, search="", label="deed"):
     return page.get_by_role("dialog").get_by_role("option")
 
 
-def pick_deed(page, search, label="deed"):
+def pick_in_deed_dropdown(page, search, label="deed"):
     """Pick the one deed matching ``search`` in the searchable dropdown labeled
     ``label``."""
-    deed_options(page, search, label).click()
+    search_deed_dropdown(page, search, label).click()
 
 
-def close_dropdown(page):
+def close_deed_dropdown(page):
     """Close a searchable dropdown left open, without picking."""
     page.keyboard.press("Escape")
 
 
-def drag_box(page, x0, y0, x1, y1):
+def drag_box_on_page(page, x0, y0, x1, y1):
     """Drag a box on the page image; coordinates are fractions of the image."""
     b = page.locator("canvas").first.bounding_box()
     page.mouse.move(b["x"] + x0 * b["width"], b["y"] + y0 * b["height"])
@@ -89,7 +89,7 @@ def drag_box(page, x0, y0, x1, y1):
     page.mouse.up()
 
 
-def jump_to(page, n):
+def jump_to_overall_page(page, n):
     """Type ``n`` into the "all pages" slider's number box (overall page, from 1)."""
     box = page.locator("marimo-slider", has=page.get_by_text("all pages")).locator(
         "input"
@@ -98,22 +98,22 @@ def jump_to(page, n):
     box.press("Enter")
 
 
-def max_quality(page):
+def set_quality_to_highest(page):
     """Move the quality slider to its highest value."""
     quality = page.get_by_role("slider").first
     quality.focus()
     quality.press("End")
 
 
-def toggle_debug(page):
+def toggle_debug_panel(page):
     """Click the switch that shows or hides the debug panel."""
     page.get_by_role("switch").click()
 
 
-def save(page):
+def save_item(page):
     """Click save, then wait until the item inputs are re-created empty: typing the
     next item before that lands in the old inputs, and the kernel never sees it."""
-    click(page, "save")
+    click_button(page, "save")
     for label in ["amount", "description"]:
         expect(text_input(page, label)).to_have_value("")
 
@@ -121,32 +121,32 @@ def save(page):
 def lock_annotator(page, name="Ann"):
     """Give the annotator name and lock it: the form needs that first."""
     expect(text_input(page, "annotator")).to_be_visible(timeout=60_000)
-    fill(page, "annotator", name)
-    click(page, "lock")
+    fill_text_input(page, "annotator", name)
+    click_button(page, "lock")
 
 
-def open_app(page, url):
-    visit(page, url)
+def load_app_and_lock_annotator(page, url):
+    load_app_page(page, url)
     lock_annotator(page)
     expect(status(page, "no deed")).to_be_visible(timeout=60_000)
 
 
-def save_box(page, box, option, kind="header"):
+def save_header_or_balance_box(page, box, option, kind="header"):
     """Draw ``box``, save it as a ``kind`` (header or balance) box and wait for
     ``option`` in its dropdown: the page has been redrawn by then, so the next box drawn
     is kept."""
-    drag_box(page, *box)
-    click(page, f"save box as {kind}")
+    drag_box_on_page(page, *box)
+    click_button(page, f"save box as {kind}")
     expect(page.locator("option", has_text=option)).to_have_count(1)
 
 
 def open_deed(page, search="Jan Modaal", header=True):
     """Pick the deed matching ``search``, open it on the current page and, with
     ``header``, save ``HEADER`` there as its header box."""
-    pick_deed(page, search)
-    click(page, "open")
+    pick_in_deed_dropdown(page, search)
+    click_button(page, "open")
     expect(status(page, "editing deed-annotation-")).to_be_visible()
     if header:
         # Shown once open has redrawn the page: a box drawn before that is dropped.
         expect(page.get_by_text(HEADER_HINT)).to_be_visible()
-        save_box(page, HEADER, "H1 · page")
+        save_header_or_balance_box(page, HEADER, "H1 · page")
