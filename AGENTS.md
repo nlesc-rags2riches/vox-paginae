@@ -18,7 +18,8 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   the book cell run (`set_annotator((name, True))` from the scratchpad).
 - Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
   working run the affected ones with `-k`, and the whole suite once at the end. Known flake:
-  `test_restart_resumes_on_last_page_with_no_open_deed`.
+  `test_restart_resumes_on_last_page_with_no_open_deed`. A browser test that fails once:
+  rerun it once alone, then report it to Abel.
 - Docs follow Diátaxis, built with Zensical. Keep them in step with the code:
   a read/write change updates `docs/reference/input-and-output.md` (draft it to
   `CODING_STANDARDS.md` › Docs, then confirm the wording with the user: it is a promise
