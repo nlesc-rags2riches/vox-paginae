@@ -8,6 +8,15 @@ Code that belongs in the library (reused, tested, or read just to work on someth
 downstream) lives in `src/vox_paginae/`, not in a notebook cell. The `marimo-library`
 skill sets the rules.
 
+## Names
+
+### A name says what the thing does, even when long
+
+A reader should know what a function does without opening it. Prefer the descriptive
+name to the short one.
+
+Example: `save_item`, not `save`: the app also saves header and balance boxes.
+
 ## Tests
 
 ### A disabled-button check must be able to fail
