@@ -147,22 +147,36 @@ def set_header_fields(
     return deed_record
 
 
+def _add_tagged_box(
+    deed_record: dict, section: str, scan: str, bbox: Sequence[float]
+) -> dict:
+    """Return a copy of ``deed_record`` with ``bbox`` on ``scan`` as the last box of
+    ``section``: ``"header"`` or ``"balance"``.
+    """
+    deed_record = copy.deepcopy(deed_record)
+    deed_record["annotation"][section]["layout"].append(new_box(scan, bbox))
+    return deed_record
+
+
+def _delete_tagged_box(deed_record: dict, section: str, tag: str) -> dict:
+    """Return a copy of ``deed_record`` without the box of ``section`` called ``tag``."""
+    deed_record = copy.deepcopy(deed_record)
+    del deed_record["annotation"][section]["layout"][int(tag[1:]) - 1]
+    return deed_record
+
+
 def add_header_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
     """Return a copy of ``deed_record`` with ``bbox`` on ``scan`` as its last header box.
 
     A header has one or more boxes, on any of the deed's scans, tagged ``H1, H2…`` by
     position.
     """
-    deed_record = copy.deepcopy(deed_record)
-    deed_record["annotation"]["header"]["layout"].append(new_box(scan, bbox))
-    return deed_record
+    return _add_tagged_box(deed_record, "header", scan, bbox)
 
 
 def delete_header_box(deed_record: dict, tag: str) -> dict:
     """Return a copy of ``deed_record`` without the header box called ``tag`` (``"H2"``)."""
-    deed_record = copy.deepcopy(deed_record)
-    del deed_record["annotation"]["header"]["layout"][int(tag[1:]) - 1]
-    return deed_record
+    return _delete_tagged_box(deed_record, "header", tag)
 
 
 def add_balance_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
@@ -171,16 +185,12 @@ def add_balance_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict
     A balance has zero or more boxes, on any of the deed's scans, tagged ``B1, B2…`` by
     position. Each is another written version of the same totals.
     """
-    deed_record = copy.deepcopy(deed_record)
-    deed_record["annotation"]["balance"]["layout"].append(new_box(scan, bbox))
-    return deed_record
+    return _add_tagged_box(deed_record, "balance", scan, bbox)
 
 
 def delete_balance_box(deed_record: dict, tag: str) -> dict:
     """Return a copy of ``deed_record`` without the balance box called ``tag`` (``"B2"``)."""
-    deed_record = copy.deepcopy(deed_record)
-    del deed_record["annotation"]["balance"]["layout"][int(tag[1:]) - 1]
-    return deed_record
+    return _delete_tagged_box(deed_record, "balance", tag)
 
 
 def item_tags(deed_record: dict | None) -> list[tuple[str, dict]]:
@@ -197,24 +207,31 @@ def item_tags(deed_record: dict | None) -> list[tuple[str, dict]]:
     ]
 
 
+def tagged_section_boxes(
+    deed_record: dict | None, section: str
+) -> list[tuple[str, dict]]:
+    """``(tag, BOX)`` for every box of ``section``: ``H1, H2…`` for ``"header"``,
+    ``B1, B2…`` for ``"balance"``.
+
+    ``None`` (no open deed) has none.
+    """
+    if deed_record is None:
+        return []
+    return [
+        (f"{section[0].upper()}{i}", box)
+        for i, box in enumerate(deed_record["annotation"][section]["layout"], start=1)
+    ]
+
+
 def deed_boxes(deed_record: dict | None) -> list[tuple[str, dict]]:
     """``(tag, BOX)`` for every box: the header's (``H1, H2…``), the balance's
     (``B1, B2…``), then each item's, by tag.
 
     ``None`` (no open deed) has none.
     """
-    if deed_record is None:
-        return []
-    annotation = deed_record["annotation"]
     return (
-        [
-            (f"H{i}", box)
-            for i, box in enumerate(annotation["header"]["layout"], start=1)
-        ]
-        + [
-            (f"B{i}", box)
-            for i, box in enumerate(annotation["balance"]["layout"], start=1)
-        ]
+        tagged_section_boxes(deed_record, "header")
+        + tagged_section_boxes(deed_record, "balance")
         + [(tag, box) for tag, item in item_tags(deed_record) for box in item["layout"]]
     )
 

@@ -6,6 +6,7 @@ from pathlib import Path
 import marimo as mo
 from matplotlib.axes import Axes
 
+from vox_paginae.annotation import tagged_section_boxes
 from vox_paginae.ui import book_bar_html, crop, thumbnail
 
 
@@ -41,6 +42,57 @@ def annotator_row(
         ),
     )
     return mo.hstack([annotator_in, lock_btn], justify="start", align="end")
+
+
+def tagged_box_list_buttons(
+    section: str,
+    *,
+    add_box: Callable[..., dict],
+    delete_box: Callable[..., dict],
+    get_deed_record: Callable[[], dict | None],
+    save_and_show_open_deed: Callable[[dict], None],
+    scan_names: list[str],
+    scan_name: str,
+    drawn_box: list[int] | None,
+    has_pending_boxes: bool,
+    editing_item: bool,
+) -> tuple[mo.ui.button, mo.ui.dropdown, mo.ui.button]:
+    """The save box button, tag dropdown and delete box button of ``section``.
+
+    ``section`` is ``"header"`` or ``"balance"``. Boxes go in one at a time, on the
+    deed's first scan or a later one: before it they would be outside scans. Editing an
+    item locks them.
+    """
+    open_deed = get_deed_record()
+    tag_by_option = {
+        f"{tag} · page {scan_names.index(box['scan']) + 1}": tag
+        for tag, box in tagged_section_boxes(open_deed, section)
+    }
+    tag_dropdown = mo.ui.dropdown(options=tag_by_option)
+
+    def delete_picked_box(_):
+        if tag_dropdown.value:
+            save_and_show_open_deed(delete_box(get_deed_record(), tag_dropdown.value))
+
+    save_box_btn = mo.ui.button(
+        label=f"save box as {section}",
+        # Not with pending boxes: the drawn box is then the item's next one.
+        disabled=open_deed is None
+        or editing_item
+        or drawn_box is None
+        or has_pending_boxes
+        or scan_names.index(scan_name) < scan_names.index(open_deed["scans"][0]),
+        on_click=lambda _: save_and_show_open_deed(
+            add_box(get_deed_record(), scan_name, drawn_box)
+        ),
+    )
+    # The later ones move up: the second box becomes the first.
+    delete_box_btn = mo.ui.button(
+        label=f"delete {section} box",
+        disabled=not tag_by_option or editing_item,
+        on_click=delete_picked_box,
+    )
+    return save_box_btn, tag_dropdown, delete_box_btn
 
 
 # Quality = PNG pixels per inch of the page height: 100 is 1:1 with the screen, higher

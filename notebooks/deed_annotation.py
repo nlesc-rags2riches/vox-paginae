@@ -305,7 +305,14 @@ def _(
 
 
 @app.cell(hide_code=True)
-def deed_save(annotator_name, book, deed_path, save_deed_record):
+def deed_save(
+    annotator_name,
+    book,
+    deed_path,
+    mo,
+    save_deed_record,
+    set_deed_record,
+):
     # Every write goes to the open deed's own file, by the locked annotator.
     def save_open_deed(deed_record):
         return save_deed_record(
@@ -314,7 +321,12 @@ def deed_save(annotator_name, book, deed_path, save_deed_record):
             annotator_name,
         )
 
-    return (save_open_deed,)
+    def save_and_show_open_deed(deed_record):
+        path = save_open_deed(deed_record)
+        set_deed_record(deed_record)
+        mo.status.toast(f"saved {path.name}")
+
+    return save_and_show_open_deed, save_open_deed
 
 
 @app.cell(hide_code=True)
@@ -707,81 +719,49 @@ def header_inputs(get_deed_record, mo):
 def header_buttons(
     add_header_box,
     date_of_death_in,
-    deed_boxes,
     delete_header_box,
     drawn_box,
     full_name_in,
     get_deed_record,
     get_editing,
     get_pending_boxes,
+    marimo_ui,
     mo,
     page,
     pages,
     place_of_residence_in,
-    save_open_deed,
-    set_deed_record,
+    save_and_show_open_deed,
     set_header_fields,
 ):
-    # Header boxes go in one at a time, like the balance's, on the deed's first scan or a
-    # later one: before it they would be outside scans. Each has its own tag: H1, H2…
-    _open = get_deed_record()
-    _names = [p.name for p in pages]
-    _tags = {
-        f"{_tag} · page {_names.index(_box['scan']) + 1}": _tag
-        for _tag, _box in deed_boxes(_open)
-        if _tag[0] == "H"
-    }
-    # Editing an item locks the header, as if closed.
-    _locked = get_editing() is not None
-
-    def _save_header_box(_):
-        _deed_record = add_header_box(get_deed_record(), page.name, drawn_box)
-        _path = save_open_deed(_deed_record)
-        set_deed_record(_deed_record)
-        mo.status.toast(f"saved {_path.name}")
-
     def _save_header_fields(_):
-        _deed_record = set_header_fields(
-            get_deed_record(),
-            full_name_in.value,
-            date_of_death_in.value,
-            place_of_residence_in.value,
-        )
-        _path = save_open_deed(_deed_record)
-        set_deed_record(_deed_record)
-        mo.status.toast(f"saved {_path.name}")
-
-    def _delete_header_box(_):
-        if header_dd.value:
-            _deed_record = delete_header_box(
-                get_deed_record(), header_dd.value
+        save_and_show_open_deed(
+            set_header_fields(
+                get_deed_record(),
+                full_name_in.value,
+                date_of_death_in.value,
+                place_of_residence_in.value,
             )
-            _path = save_open_deed(_deed_record)
-            set_deed_record(_deed_record)
-            mo.status.toast(f"saved {_path.name}")
+        )
 
     # Blank ones are saved too: close then says which.
     save_fields_btn = mo.ui.button(
         label="save header fields",
-        disabled=_open is None,
+        disabled=get_deed_record() is None,
         on_click=_save_header_fields,
     )
-    save_header_btn = mo.ui.button(
-        label="save box as header",
-        # Not with pending boxes: the drawn box is then the item's next one.
-        disabled=_open is None
-        or _locked
-        or drawn_box is None
-        or bool(get_pending_boxes())
-        or _names.index(page.name) < _names.index(_open["scans"][0]),
-        on_click=_save_header_box,
-    )
-    header_dd = mo.ui.dropdown(options=_tags)
-    # The later ones move up: H2 becomes H1.
-    delete_header_btn = mo.ui.button(
-        label="delete header box",
-        disabled=not _tags or _locked,
-        on_click=_delete_header_box,
+    save_header_btn, header_dd, delete_header_btn = (
+        marimo_ui.tagged_box_list_buttons(
+            "header",
+            add_box=add_header_box,
+            delete_box=delete_header_box,
+            get_deed_record=get_deed_record,
+            save_and_show_open_deed=save_and_show_open_deed,
+            scan_names=[p.name for p in pages],
+            scan_name=page.name,
+            drawn_box=drawn_box,
+            has_pending_boxes=bool(get_pending_boxes()),
+            editing_item=get_editing() is not None,
+        )
     )
     return delete_header_btn, header_dd, save_fields_btn, save_header_btn
 
@@ -977,48 +957,27 @@ def balance_inputs(get_deed_record, mo):
 @app.cell(hide_code=True)
 def balance_buttons(
     add_balance_box,
-    deed_boxes,
     delete_balance_box,
     drawn_box,
     get_deed_record,
     get_editing,
     get_pending_boxes,
+    marimo_ui,
     mo,
     page,
     pages,
-    save_open_deed,
+    save_and_show_open_deed,
     set_balance_totals,
-    set_deed_record,
     total_assets_in,
     total_in,
     total_liabilities_in,
 ):
     # The totals and the boxes are saved apart, and either may be blank or none: close
-    # checks neither. Boxes go in one at a time, like the header's, on the deed's first scan
-    # or a later one: before it they would be outside scans. Each has its own tag: B1, B2…
-    _open = get_deed_record()
-    _names = [p.name for p in pages]
-    _tags = {
-        f"{_tag} · page {_names.index(_box['scan']) + 1}": _tag
-        for _tag, _box in deed_boxes(_open)
-        if _tag[0] == "B"
-    }
-    # Editing an item locks the boxes, as for the header.
-    _locked = get_editing() is not None
-
-    def _write(_deed_record):
-        _path = save_open_deed(_deed_record)
-        set_deed_record(_deed_record)
-        mo.status.toast(f"saved {_path.name}")
-
-    def _delete_balance_box(_):
-        if balance_dd.value:
-            _write(delete_balance_box(get_deed_record(), balance_dd.value))
-
+    # checks neither.
     save_totals_btn = mo.ui.button(
         label="save balance totals",
-        disabled=_open is None,
-        on_click=lambda _: _write(
+        disabled=get_deed_record() is None,
+        on_click=lambda _: save_and_show_open_deed(
             set_balance_totals(
                 get_deed_record(),
                 total_assets_in.value,
@@ -1027,24 +986,19 @@ def balance_buttons(
             )
         ),
     )
-    save_balance_btn = mo.ui.button(
-        label="save box as balance",
-        # Not with pending boxes: the drawn box is then the item's next one.
-        disabled=_open is None
-        or _locked
-        or drawn_box is None
-        or bool(get_pending_boxes())
-        or _names.index(page.name) < _names.index(_open["scans"][0]),
-        on_click=lambda _: _write(
-            add_balance_box(get_deed_record(), page.name, drawn_box)
-        ),
-    )
-    balance_dd = mo.ui.dropdown(options=_tags)
-    # The later ones move up: B2 becomes B1.
-    delete_balance_btn = mo.ui.button(
-        label="delete balance box",
-        disabled=not _tags or _locked,
-        on_click=_delete_balance_box,
+    save_balance_btn, balance_dd, delete_balance_btn = (
+        marimo_ui.tagged_box_list_buttons(
+            "balance",
+            add_box=add_balance_box,
+            delete_box=delete_balance_box,
+            get_deed_record=get_deed_record,
+            save_and_show_open_deed=save_and_show_open_deed,
+            scan_names=[p.name for p in pages],
+            scan_name=page.name,
+            drawn_box=drawn_box,
+            has_pending_boxes=bool(get_pending_boxes()),
+            editing_item=get_editing() is not None,
+        )
     )
     return balance_dd, delete_balance_btn, save_balance_btn, save_totals_btn
 
