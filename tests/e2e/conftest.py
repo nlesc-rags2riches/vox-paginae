@@ -122,17 +122,6 @@ def marimo_server(data_root):
         yield url
 
 
-@pytest.fixture
-def click(page):
-    """Click a button by its label. Every e2e click goes through here, so a flow
-    recorder can hook in later (user-flow diagram, see the backlog)."""
-
-    def _click(label):
-        page.get_by_role("button", name=label, exact=True).click()
-
-    return _click
-
-
 # Playwright draws no pointer, so in --headed runs show one: a dot that follows the
 # mouse and turns red while the button is down.
 CURSOR_JS = """
