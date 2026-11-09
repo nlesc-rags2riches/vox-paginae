@@ -14,6 +14,16 @@ def list_pages(book: Path) -> list[Path]:
     return sorted(Path(book).glob("*.jpg"), key=lambda p: p.name)
 
 
+def scans_label(book: Path, scans: list[str]) -> str:
+    """``"page 3"`` or ``"pages 2-4"``: where ``scans`` of ``book`` are, counted from 1
+    as in the status line.
+    """
+    page_number = {p.name: i + 1 for i, p in enumerate(list_pages(book))}
+    numbers = [page_number[s] for s in scans]
+    first, last = min(numbers), max(numbers)
+    return f"page {first}" if first == last else f"pages {first}-{last}"
+
+
 def next_page(book_page: tuple[int, int], page_counts: list[int]) -> tuple[int, int]:
     """Advance ``(book, page)``; past a book's last page go to the next book's first.
 
