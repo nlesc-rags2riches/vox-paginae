@@ -14,6 +14,7 @@ def imports():
     from vox_paginae.annotation import (
         add_balance_box,
         add_header_box,
+        close_deed_record,
         deed_boxes,
         deed_path,
         delete_balance_box,
@@ -21,19 +22,17 @@ def imports():
         item_tags,
         list_pages,
         load_deed_records,
-        new_deed_record,
         save_deed_record,
         saved_boxes,
         set_balance_totals,
         set_header_fields,
     )
     from vox_paginae.single_deed_input import (
-        copied_deed_person_data,
         deed_choices,
         find_single_deed_folders,
-        header_fields,
         input_item_choices,
         load_single_deed_input,
+        new_deed_record_from_input,
     )
     from vox_paginae.ui import (
         draw_scan,
@@ -46,7 +45,7 @@ def imports():
         Path,
         add_balance_box,
         add_header_box,
-        copied_deed_person_data,
+        close_deed_record,
         deed_boxes,
         deed_choices,
         deed_path,
@@ -54,7 +53,6 @@ def imports():
         delete_header_box,
         draw_scan,
         find_single_deed_folders,
-        header_fields,
         input_item_choices,
         item_tags,
         list_pages,
@@ -62,7 +60,7 @@ def imports():
         load_single_deed_input,
         marimo_ui,
         mo,
-        new_deed_record,
+        new_deed_record_from_input,
         save_deed_record,
         saved_boxes,
         scan_for_display,
@@ -263,8 +261,10 @@ def deed_save(
     deed_path,
     folder,
     mo,
+    new_deed_record_from_input,
     save_deed_record,
     set_deed_record,
+    set_open_deed_input,
 ):
     # Every write goes to the open deed's own file, by the locked annotator.
     def save_open_deed(deed_record):
@@ -279,16 +279,91 @@ def deed_save(
         set_deed_record(deed_record)
         mo.status.toast(f"saved {path.name}")
 
-    return save_and_show_open_deed, save_open_deed
+    def open_new_deed(deed_folder, single_deed_input, first_scan):
+        # Its file is written at once: one file per deed.
+        deed_record = new_deed_record_from_input(single_deed_input, first_scan)
+        path = save_deed_record(
+            deed_path(deed_folder, deed_record["deed_id"]),
+            deed_record,
+            annotator_name,
+        )
+        set_deed_record(deed_record)
+        set_open_deed_input(single_deed_input)
+        return path
+
+    return open_new_deed, save_and_show_open_deed, save_open_deed
 
 
 @app.cell(hide_code=True)
-def page_buttons(folder, mo, scan_i, scans, set_folder_scan):
-    # Inside the deed's folder. Past its last scan comes with #86.
+def page_buttons(
+    close_deed_record,
+    deed_path,
+    folder,
+    folders,
+    get_deed_record,
+    get_editing,
+    get_pending_boxes,
+    list_pages,
+    load_single_deed_input,
+    mo,
+    open_new_deed,
+    save_open_deed,
+    scan,
+    scan_i,
+    scans,
+    set_deed_record,
+    set_folder_scan,
+    set_type,
+):
+    _last_scan = scan_i == len(scans) - 1
+    # The deed after this one, in the deed dropdown's order; None on the last deed.
+    _next_folder = next(iter(folders[folders.index(folder) + 1 :]), None)
+
+    def _next_page(_):
+        if not _last_scan:
+            set_folder_scan((folder, scan_i + 1))
+            return
+        # Past the last scan: the open deed, if any, closes, and the next deed opens on
+        # its first scan. A next deed with a file is only picked, as is any next deed
+        # when no deed is open.
+        if get_deed_record() is not None:
+            # Read before the close: an error here leaves the deed open.
+            next_input = load_single_deed_input(_next_folder)
+            next_scans = list_pages(_next_folder)
+            try:
+                closed = close_deed_record(
+                    get_deed_record(), [p.name for p in scans], scan.name
+                )
+            except ValueError as e:
+                # No header box or a blank field: it stays open, here.
+                mo.status.toast(str(e))
+                return
+            path = save_open_deed(closed)
+            set_deed_record(None)
+            set_type(None)
+            mo.status.toast(f"saved {path.name}, deed closed")
+            # Checked at click, as in open: another tab may have written it meanwhile.
+            if (
+                next_scans
+                and not deed_path(_next_folder, next_input["ref_reg"]).exists()
+            ):
+                path = open_new_deed(
+                    _next_folder, next_input, next_scans[0].name
+                )
+                mo.status.toast(f"saved {path.name}, deed open")
+        set_folder_scan((_next_folder, 0))
+
     next_page_btn = mo.ui.button(
         label="next page",
-        disabled=scan_i == len(scans) - 1,
-        on_click=lambda _: set_folder_scan((folder, scan_i + 1)),
+        # Not past the last deed. Pending boxes and an item being edited belong to this
+        # deed: they stop it here, as they stop close deed.
+        disabled=_last_scan
+        and (
+            _next_folder is None
+            or bool(get_pending_boxes())
+            or get_editing() is not None
+        ),
+        on_click=_next_page,
     )
     prev_page_btn = mo.ui.button(
         label="prev page",
@@ -466,22 +541,18 @@ def item_buttons(
 
 @app.cell(hide_code=True)
 def deed_open(
-    copied_deed_person_data,
     deed_path,
     drawn_box,
     folder,
     get_deed_record,
     get_pending_boxes,
-    header_fields,
     load_deed_records,
     mo,
-    new_deed_record,
-    save_open_deed,
+    open_new_deed,
     scan,
     scans,
     set_deed_record,
     set_folder_scan,
-    set_header_fields,
     set_open_deed_input,
     set_type,
     single_deed_input,
@@ -504,15 +575,8 @@ def deed_open(
                 )
             )
             return
-        # This scan is its first scan. Its header fields start as the deed's copied data.
-        _copied = copied_deed_person_data(single_deed_input)
-        _deed_record = set_header_fields(
-            new_deed_record(_ref_reg, _copied, scan.name),
-            **header_fields(_copied),
-        )
-        _path = save_open_deed(_deed_record)  # at once: one file per deed
-        set_deed_record(_deed_record)
-        set_open_deed_input(single_deed_input)
+        # This scan is its first scan.
+        _path = open_new_deed(folder, single_deed_input, scan.name)
         mo.status.toast(f"saved {_path.name}, deed open")
 
     # Opens the picked deed, or reopens it if it has a file. Not with pending boxes: a
