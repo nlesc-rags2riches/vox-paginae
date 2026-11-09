@@ -36,6 +36,8 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
 
 GitHub Issues on `nlesc-rags2riches/vox-paginae`, via `gh`. See `agents/issue-tracker.md`.
 Work on a `<issue>-<slug>` branch: prek refuses commits on `main`.
+A refactor found in review and left out of the PR: suggest adding it to #52, the
+running list of refactor opportunities.
 
 ### Triage labels
 
