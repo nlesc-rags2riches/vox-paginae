@@ -25,7 +25,9 @@ exclude-newer = "1 week"
 
 [tool.pytest.ini_options]
 markers = ["e2e: browser tests (Playwright); run with `pytest -m e2e`"]
-addopts = "-m 'not e2e'"
+# A failed browser test leaves a trace and a screenshot in test-results/.
+# Open the trace with `uv run playwright show-trace <trace.zip>`.
+addopts = "-m 'not e2e' --tracing retain-on-failure --screenshot only-on-failure"
 # With PYTHONWARNDEFAULTENCODING=1 (CI sets it), a file opened without `encoding=`
 # fails on every OS, not only where the default is not UTF-8.
 # matplotlib writes its font cache that way on first import (fresh CI runner): not ours.

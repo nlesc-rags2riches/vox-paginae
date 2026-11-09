@@ -55,3 +55,10 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
       - run: uv run --locked playwright install --with-deps chromium
       - run: uv run --locked pytest -m e2e
+      # Traces and screenshots of failed browser tests (see pyproject.toml).
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: e2e-test-results
+          path: test-results/
+          if-no-files-found: ignore
