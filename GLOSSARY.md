@@ -51,7 +51,8 @@ _Avoid_: deceased person, person
 
 **Vox Paginae**:
 The tool.
-_Code_: `notebooks/deed_annotation.py`
+_Code_: `notebooks/deed_annotation.py` (books), `notebooks/single_deed_annotation.py`
+(single deed folders)
 _Avoid_: labeler, item-block labeler, annotator
 
 **Annotator**:

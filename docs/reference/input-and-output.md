@@ -3,6 +3,10 @@
 Exactly what the tool reads and writes. This is a promise to the annotator: it
 changes only on purpose, and never describes internals.
 
+Vox Paginae has two notebooks. `notebooks/deed_annotation.py` annotates books: In and
+Out describe it. `notebooks/single_deed_annotation.py` annotates single deed folders:
+see Single deed folders.
+
 ## In
 
 - You give your name as the **annotator** and lock it. Until it is locked, only the
@@ -105,6 +109,39 @@ changes only on purpose, and never describes internals.
   with the same annotation.
 - These files are read back as they are on disk; no other state is kept between
   runs. A deed open when the tool stopped is not open after a restart.
+
+## Single deed folders
+
+`notebooks/single_deed_annotation.py` follows In and Out, except where this section
+says otherwise.
+
+- You pick a root folder. Every folder under it that has an `input.json` is a
+  **single deed folder**. It holds one deed.
+- The deeds are listed in the order a file browser shows their folders. Numbers in a
+  name count as numbers, so `6-1` comes before `10-1`.
+- A deed is listed by its `ref_reg` and the deceased's `full_name`. Once it has a
+  file, its pages are listed too. The list can be searched.
+- A deed's pages are the `*.jpg` files in its folder, sorted by filename. All of them
+  are shown, not only those in `metadata.scans`.
+- Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office` and
+  `deceased`. It is read as UTF-8.
+- An `input.json` without `metadata.ref_reg` shows an error naming it. No deed can
+  then be picked.
+- Picking a deed shows its first page. It writes nothing.
+- **open** opens the picked deed on the current page. A deed with a file is reopened
+  instead, on its first page.
+- The deed list is locked while a deed is open.
+- The deed annotation file is `<folder>/deed-annotation-<ref_reg>.json`, next to the
+  jpgs. `ref_reg` is as written in `input.json`, `#` included.
+- In the file:
+  - `deed_id`: the `ref_reg`
+  - `copied_deed_person_data`: `ref_reg`, `aktenummer` and `tax_office`, and every
+    field of `deceased`, side by side, copied as they are in `input.json`.
+    `assets`, `liabilities`, `scans` and `total` are not copied.
+- Opening fills the header fields in from the deceased's `full_name`,
+  `date_of_death` and `place_of_residence`.
+- **next page** stops at the deed's last page.
+- There is no **move annotation**, **go to deed** or **delete deed**.
 
 ## Example
 
