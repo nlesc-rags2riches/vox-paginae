@@ -14,26 +14,22 @@ def imports():
     from vox_paginae.annotation import (
         add_balance_box,
         add_header_box,
-        add_item,
         close_deed_record,
         deed_boxes,
         deed_path,
         delete_balance_box,
         delete_header_box,
-        delete_item,
         item_tags,
         list_pages,
         load_deed_records,
         move_deed_record,
         new_deed_record,
         next_page,
-        replace_item,
         resume,
         save_deed_record,
         saved_boxes,
         set_balance_totals,
         set_header_fields,
-        split_tag,
     )
     from vox_paginae.book_input import (
         copied_deed_person_data,
@@ -45,7 +41,6 @@ def imports():
     )
     from vox_paginae.ui import (
         draw_scan,
-        item_option,
         scan_for_display,
         selection_box,
         status_text,
@@ -55,7 +50,6 @@ def imports():
         Path,
         add_balance_box,
         add_header_box,
-        add_item,
         close_deed_record,
         copied_deed_person_data,
         deed_boxes,
@@ -63,11 +57,9 @@ def imports():
         deed_path,
         delete_balance_box,
         delete_header_box,
-        delete_item,
         draw_scan,
         find_books,
         header_fields,
-        item_option,
         item_tags,
         list_pages,
         load_deed_records,
@@ -77,7 +69,6 @@ def imports():
         move_deed_record,
         new_deed_record,
         next_page,
-        replace_item,
         resume,
         save_deed_record,
         saved_boxes,
@@ -86,7 +77,6 @@ def imports():
         set_balance_totals,
         set_header_fields,
         single_overledene,
-        split_tag,
         status_text,
     )
 
@@ -402,147 +392,59 @@ def zooms(book, layout_boxes, marimo_ui):
 
 
 @app.cell(hide_code=True)
+def item_dropdown(get_deed_record, marimo_ui):
+    # Apart from the item inputs: typing there would rebuild it and lose the pick (#60).
+    item_dd = marimo_ui.item_dropdown(get_deed_record())
+    return (item_dd,)
+
+
+@app.cell(hide_code=True)
 def item_buttons(
-    add_item,
     amount_in,
     category_in,
-    close_deed_record,
-    delete_item,
     desc_in,
     drawn_box,
     get_deed_record,
     get_editing,
     get_pending_boxes,
-    item_option,
-    item_tags,
+    item_dd,
     layout_boxes,
-    mo,
+    marimo_ui,
     page,
     pages,
-    replace_item,
     save_open_deed,
     set_deed_record,
     set_editing,
     set_pending_boxes,
     set_type,
-    split_tag,
     type_radio,
 ):
-    _names = [p.name for p in pages]
-
-    def _before_first_scan(scan):
-        # Nothing is continued, saved or closed there: it would be outside scans.
-        return _names.index(scan) < _names.index(get_deed_record()["scans"][0])
-
-    _tags = {
-        item_option(tag, item): tag
-        for tag, item in item_tags(get_deed_record())
-    }
-
-    def _save(_):
-        _fields = (
-            type_radio.value,
-            category_in.value,
-            amount_in.value,
-            desc_in.value,
-            layout_boxes,
-        )
-        if get_editing() is None:
-            _deed_record = add_item(get_deed_record(), *_fields)
-        else:
-            _deed_record = replace_item(
-                get_deed_record(), get_editing(), *_fields
-            )
-        _path = save_open_deed(_deed_record)
-        set_deed_record(_deed_record)
-        set_pending_boxes([])
-        set_editing(None)
-        mo.status.toast(f"saved {_path.name}")
-
-    def _edit(_):
-        if item_dd.value:
-            _item = dict(item_tags(get_deed_record()))[item_dd.value]
-            set_pending_boxes(
-                [(_box["scan"], _box["bbox"]) for _box in _item["layout"]]
-            )
-            set_type(split_tag(item_dd.value)[0])
-            set_editing(item_dd.value)
-
-    def _cancel_edit(_):
-        set_editing(None)
-        set_pending_boxes([])
-
-    def _delete(_):
-        if item_dd.value:
-            _deed_record = delete_item(get_deed_record(), item_dd.value)
-            _path = save_open_deed(_deed_record)
-            set_deed_record(_deed_record)
-            mo.status.toast(f"saved {_path.name}")
-
-    def _close_deed(_):
-        try:
-            _deed_record = close_deed_record(
-                get_deed_record(), _names, page.name
-            )
-        except (
-            ValueError
-        ) as _e:  # no header box or a blank field: it stays open
-            mo.status.toast(str(_e))
-            return
-        _path = save_open_deed(_deed_record)
-        set_deed_record(None)  # no deed open until the next open
-        set_type(None)
-        mo.status.toast(f"saved {_path.name}, deed closed")
-
-    continue_btn = mo.ui.button(
-        label="continue",
-        disabled=drawn_box is None
-        or (get_deed_record() is not None and _before_first_scan(page.name)),
-        on_click=lambda _: set_pending_boxes(
-            lambda p: p + [(page.name, drawn_box)]
-        ),
-    )
-    # Discards a stray continue: needs no deed or type, unlike save.
-    clear_pending_btn = mo.ui.button(
-        label="clear pending",
-        disabled=not get_pending_boxes(),
-        on_click=lambda _: set_pending_boxes([]),
-    )
-    save_btn = mo.ui.button(
-        label="save",
-        disabled=get_deed_record() is None
-        or not layout_boxes
-        or type_radio.value is None
-        or not (amount_in.value.strip() or desc_in.value.strip())
-        or any(_before_first_scan(_scan) for _scan, _ in layout_boxes),
-        on_click=_save,
-    )
-    item_dd = mo.ui.dropdown(options=_tags)
-    # Edit loads the item into the inputs and its boxes into pending; save replaces it.
-    edit_btn = mo.ui.button(
-        label="edit",
-        disabled=not _tags
-        or bool(get_pending_boxes())
-        or get_editing() is not None,
-        on_click=_edit,
-    )
-    cancel_edit_btn = mo.ui.button(
-        label="cancel edit",
-        disabled=get_editing() is None,
-        on_click=_cancel_edit,
-    )
-    delete_btn = mo.ui.button(
-        label="delete",
-        disabled=not _tags or get_editing() is not None,  # tags would shift
-        on_click=_delete,
-    )
-    close_deed_btn = mo.ui.button(
-        label="close deed",
-        disabled=get_deed_record() is None
-        or bool(get_pending_boxes())
-        or get_editing() is not None
-        or _before_first_scan(page.name),
-        on_click=_close_deed,
+    (
+        continue_btn,
+        clear_pending_btn,
+        save_btn,
+        edit_btn,
+        cancel_edit_btn,
+        delete_btn,
+        close_deed_btn,
+    ) = marimo_ui.item_buttons(
+        item_dd,
+        type_radio=type_radio,
+        category_in=category_in,
+        amount_in=amount_in,
+        desc_in=desc_in,
+        get_deed_record=get_deed_record,
+        set_deed_record=set_deed_record,
+        save_open_deed=save_open_deed,
+        get_pending_boxes=get_pending_boxes,
+        set_pending_boxes=set_pending_boxes,
+        get_editing=get_editing,
+        set_editing=set_editing,
+        set_type=set_type,
+        scan_names=[p.name for p in pages],
+        scan_name=page.name,
+        drawn_box=drawn_box,
+        layout_boxes=layout_boxes,
     )
     return (
         cancel_edit_btn,
@@ -551,7 +453,6 @@ def item_buttons(
         continue_btn,
         delete_btn,
         edit_btn,
-        item_dd,
         save_btn,
     )
 
