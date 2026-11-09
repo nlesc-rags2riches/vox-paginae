@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from vox_paginae.annotation import list_pages, load_deed_records
+from vox_paginae.annotation import load_deed_records, scans_label
 
 
 def find_books(root: Path) -> list[Path]:
@@ -30,7 +30,6 @@ def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
     ``deeds.json`` itself is not in page order.
     """
     deed_records = load_deed_records(book)
-    page_number = {p.name: i + 1 for i, p in enumerate(list_pages(book))}
 
     def label(d):
         parts = [
@@ -39,9 +38,7 @@ def deed_choices(deeds: dict[str, dict], book: Path) -> dict[str, str]:
             *(p["naam_volledig"] for p in d["personen"]),
         ]
         if d["deed_id"] in deed_records:
-            numbers = [page_number[s] for s in deed_records[d["deed_id"]]["scans"]]
-            first, last = min(numbers), max(numbers)
-            parts.append(f"page {first}" if first == last else f"pages {first}-{last}")
+            parts.append(scans_label(book, deed_records[d["deed_id"]]["scans"]))
         return " · ".join(parts)
 
     def order(d):
