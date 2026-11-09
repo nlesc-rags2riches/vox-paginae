@@ -148,7 +148,14 @@ says otherwise.
 - Nothing in the file links an item to its input item. An input item counts as saved
   when an item of its type has its amount or its description.
 - An input item that is never picked does not stop the deed from closing.
-- **next page** stops at the deed's last scan.
+- On a deed's last scan, **next page** closes the open deed. It then opens the deed
+  below it in the deed list, on its first scan.
+- If that next deed already has a file, it is not opened. Its first scan is shown, as
+  if you picked it in the deed list.
+- If the open deed cannot be closed, **next page** does nothing.
+- With no deed open, **next page** on the last scan shows the next deed's first scan.
+  It writes nothing.
+- On the last deed's last scan, **next page** is disabled.
 - There is no **move annotation**, **go to deed** or **delete deed**.
 
 ## Example

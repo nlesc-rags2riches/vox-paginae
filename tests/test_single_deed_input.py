@@ -15,6 +15,7 @@ from vox_paginae.single_deed_input import (
     header_fields,
     input_item_choices,
     load_single_deed_input,
+    new_deed_record_from_input,
 )
 
 METADATA = {
@@ -85,6 +86,20 @@ def test_copied_deed_person_data_is_the_deed_and_its_deceased_flat(tmp_path):
         "date_of_death": "",
         "place_of_residence": "",
     }
+
+
+def test_a_new_deed_record_from_input_is_its_ref_reg_with_the_header_pre_filled():
+    deed_record = new_deed_record_from_input(METADATA, "scan-2.jpg")
+    assert deed_record["deed_id"] == "10#1399"
+    assert deed_record["scans"] == ["scan-2.jpg"]
+    assert deed_record["copied_deed_person_data"]["tax_office"] == "Westdorp"
+    assert deed_record["annotation"]["header"] == {
+        "full_name": "Jan Modaal",
+        "date_of_death": "2 januari 1880",
+        "place_of_residence": "Oostdorp",
+        "layout": [],  # the header box is the annotator's to draw
+    }
+    assert deed_record["annotation"]["assets"] == []  # input items are only offered
 
 
 def test_an_input_without_ref_reg_names_its_folder(tmp_path):

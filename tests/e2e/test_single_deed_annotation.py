@@ -7,6 +7,7 @@ from .conftest import PAGE_H, PAGE_W
 from .helpers import (
     HEADER,
     HEADER_HINT,
+    button,
     click_button,
     close_deed_dropdown,
     drag_box_on_page,
@@ -175,3 +176,77 @@ def test_pick_an_input_item_correct_it_and_save(
     assert [box["scan"] for box in item["layout"]] == ["scan-1.jpg", "scan-2.jpg"]
     click_button(page, "close deed")
     expect(status(page, "no deed · page 2/3")).to_be_visible()
+
+
+def click_next_page_to_last(page):
+    """From page 1 of a deed's 3 scans, click next page to page 3."""
+    for n in [2, 3]:
+        click_button(page, "next page")
+        expect(status(page, f"page {n}/3")).to_be_visible()
+
+
+def test_next_page_past_the_last_page_closes_the_deed_and_opens_the_next(
+    single_deed_server, single_deed_root, page
+):
+    load_app_and_lock_annotator(page, single_deed_server)
+    pick_in_deed_dropdown(page, "6#1")
+    click_button(page, "open")
+    expect(status(page, "editing deed-annotation-6#1 · page 1/3")).to_be_visible()
+    click_next_page_to_last(page)
+    # No header box: the close is refused, says why, and the deed stays open here.
+    click_button(page, "next page")
+    expect(page.get_by_text("this deed has no header box").first).to_be_visible()
+    expect(status(page, "editing deed-annotation-6#1 · page 3/3")).to_be_visible()
+
+    save_header_or_balance_box(page, HEADER, "H1 · page 3")
+    click_button(page, "next page")
+    # The next deed, in the dropdown's order, is open on its first page.
+    expect(
+        status(page, "10-1/scan-1.jpg · editing deed-annotation-10#1 · page 1/3")
+    ).to_be_visible()
+    expect(text_input(page, "full name")).to_have_value("Piet Smit")
+    assert deed_record(single_deed_root, "6-1", "6#1")["scans"] == [
+        "scan-1.jpg",
+        "scan-2.jpg",
+        "scan-3.jpg",
+    ]
+    assert deed_record(single_deed_root, "10-1", "10#1")["scans"] == ["scan-1.jpg"]
+
+    # The last deed: nothing past its last page.
+    click_next_page_to_last(page)
+    expect(button(page, "next page")).to_be_disabled()
+
+
+def test_next_page_past_the_last_page_only_picks_a_next_deed_with_a_file(
+    single_deed_server, single_deed_root, page
+):
+    load_app_and_lock_annotator(page, single_deed_server)
+    pick_in_deed_dropdown(page, "10#1")
+    click_button(page, "open")
+    expect(page.get_by_text(HEADER_HINT)).to_be_visible()
+    save_header_or_balance_box(page, HEADER, "H1 · page 1")
+    click_button(page, "close deed")
+    expect(status(page, "no deed · page 1/3")).to_be_visible()
+    next_deed = deed_record(single_deed_root, "10-1", "10#1")
+
+    # No deed open: the next deed is picked, as in the dropdown, and nothing is written.
+    pick_in_deed_dropdown(page, "6#1")
+    click_next_page_to_last(page)
+    click_button(page, "next page")
+    expect(status(page, "10-1/scan-1.jpg · no deed · page 1/3")).to_be_visible()
+    assert not (single_deed_root / "6-1" / "deed-annotation-6#1.json").exists()
+
+    # 6#1 open: it closes, and 10#1, which has a file, is picked, not opened.
+    pick_in_deed_dropdown(page, "6#1")
+    click_button(page, "open")
+    expect(page.get_by_text(HEADER_HINT)).to_be_visible()
+    save_header_or_balance_box(page, HEADER, "H1 · page 1")
+    click_next_page_to_last(page)
+    click_button(page, "next page")
+    expect(status(page, "10-1/scan-1.jpg · no deed · page 1/3")).to_be_visible()
+    assert deed_record(single_deed_root, "6-1", "6#1")["scans"] == [
+        "scan-1.jpg",
+        "scan-2.jpg",
+        "scan-3.jpg",
+    ]
+    assert deed_record(single_deed_root, "10-1", "10#1") == next_deed

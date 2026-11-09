@@ -8,7 +8,9 @@ from vox_paginae.annotation import (
     HEADER_FIELDS,
     TYPES,
     load_deed_records,
+    new_deed_record,
     scans_label,
+    set_header_fields,
 )
 
 
@@ -68,6 +70,19 @@ def header_fields(copied_deed_person_data: dict) -> dict[str, str]:
     deceased's fields of the same names. A field missing or ``null`` there is blank.
     """
     return {field: copied_deed_person_data.get(field) or "" for field in HEADER_FIELDS}
+
+
+def new_deed_record_from_input(single_deed_input: dict, first_scan: str) -> dict:
+    """A new deed record for ``single_deed_input``'s deed, opened on ``first_scan``.
+
+    Its ``deed_id`` is the ``ref_reg``, and its header fields start as the copied
+    deed person data (see ``header_fields``).
+    """
+    copied = copied_deed_person_data(single_deed_input)
+    return set_header_fields(
+        new_deed_record(single_deed_input["ref_reg"], copied, first_scan),
+        **header_fields(copied),
+    )
 
 
 def input_item_choices(single_deed_input: dict, deed_record: dict | None) -> dict:
