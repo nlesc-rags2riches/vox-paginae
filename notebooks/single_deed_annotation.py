@@ -203,11 +203,12 @@ def _(get_deed_record, get_editing, input_item_dd, item_tags, mo):
     amount_in = mo.ui.text(
         label="amount", value=_item.get("amount", ""), debounce=False
     )
-    desc_in = mo.ui.text(
+    desc_in = mo.ui.text_area(
         label="description",
         value=_item.get("description", ""),
         full_width=True,
         debounce=False,
+        rows=3,  # it can be dragged taller
     )
     return amount_in, category_in, desc_in
 
