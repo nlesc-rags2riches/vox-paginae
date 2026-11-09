@@ -6,8 +6,16 @@ from pathlib import Path
 import marimo as mo
 from matplotlib.axes import Axes
 
-from vox_paginae.annotation import tagged_section_boxes
-from vox_paginae.ui import book_bar_html, crop, thumbnail
+from vox_paginae.annotation import (
+    add_item,
+    close_deed_record,
+    delete_item,
+    item_tags,
+    replace_item,
+    split_tag,
+    tagged_section_boxes,
+)
+from vox_paginae.ui import book_bar_html, crop, item_option, thumbnail
 
 
 def root_picker(initial_path: Path) -> mo.ui.file_browser:
@@ -93,6 +101,160 @@ def tagged_box_list_buttons(
         on_click=delete_picked_box,
     )
     return save_box_btn, tag_dropdown, delete_box_btn
+
+
+def item_dropdown(open_deed: dict | None) -> mo.ui.dropdown:
+    """The dropdown of ``open_deed``'s items, by tag.
+
+    Built in its own cell, apart from the item inputs: typing there would rebuild it and
+    lose the pick (#60).
+    """
+    return mo.ui.dropdown(
+        options={item_option(tag, item): tag for tag, item in item_tags(open_deed)}
+    )
+
+
+def item_buttons(
+    item_dd: mo.ui.dropdown,
+    *,
+    type_radio: mo.ui.radio,
+    category_in: mo.ui.text,
+    amount_in: mo.ui.text,
+    desc_in: mo.ui.text,
+    get_deed_record: Callable[[], dict | None],
+    set_deed_record: Callable[[dict | None], None],
+    save_open_deed: Callable[[dict], Path],
+    get_pending_boxes: Callable[[], list[tuple[str, list[int]]]],
+    set_pending_boxes: Callable,
+    get_editing: Callable[[], str | None],
+    set_editing: Callable[[str | None], None],
+    set_type: Callable[[str | None], None],
+    scan_names: list[str],
+    scan_name: str,
+    drawn_box: list[int] | None,
+    layout_boxes: list[tuple[str, list[int]]],
+) -> tuple[mo.ui.button, ...]:
+    """The item buttons: continue, clear pending, save, edit, cancel edit, delete and
+    close deed, in that order.
+
+    ``item_dd`` (from ``item_dropdown``) picks the item to edit or delete. Save adds the
+    item from the inputs and ``layout_boxes``, or replaces the one being edited.
+    """
+
+    def open_deed_record() -> dict:
+        # The buttons that call this are disabled while no deed is open.
+        deed_record = get_deed_record()
+        assert deed_record is not None
+        return deed_record
+
+    def before_first_scan(scan):
+        # Nothing is continued, saved or closed there: it would be outside scans.
+        return scan_names.index(scan) < scan_names.index(open_deed_record()["scans"][0])
+
+    def save_and_toast(deed_record, message=""):
+        path = save_open_deed(deed_record)
+        mo.status.toast(f"saved {path.name}{message}")
+
+    def save_item(_):
+        fields = (
+            type_radio.value,
+            category_in.value,
+            amount_in.value,
+            desc_in.value,
+            layout_boxes,
+        )
+        editing_tag = get_editing()
+        if editing_tag is None:
+            deed_record = add_item(open_deed_record(), *fields)
+        else:
+            deed_record = replace_item(open_deed_record(), editing_tag, *fields)
+        save_and_toast(deed_record)
+        set_deed_record(deed_record)
+        set_pending_boxes([])
+        set_editing(None)
+
+    def edit_item(_):
+        if item_dd.value:
+            item = dict(item_tags(open_deed_record()))[item_dd.value]
+            set_pending_boxes([(box["scan"], box["bbox"]) for box in item["layout"]])
+            set_type(split_tag(item_dd.value)[0])
+            set_editing(item_dd.value)
+
+    def cancel_edit(_):
+        set_editing(None)
+        set_pending_boxes([])
+
+    def delete_picked_item(_):
+        if item_dd.value:
+            deed_record = delete_item(open_deed_record(), item_dd.value)
+            save_and_toast(deed_record)
+            set_deed_record(deed_record)
+
+    def close_open_deed(_):
+        try:
+            deed_record = close_deed_record(open_deed_record(), scan_names, scan_name)
+        except ValueError as e:  # no header box or a blank field: it stays open
+            mo.status.toast(str(e))
+            return
+        save_and_toast(deed_record, ", deed closed")
+        set_deed_record(None)  # no deed open until the next open
+        set_type(None)
+
+    open_deed = get_deed_record()
+    has_items = bool(item_dd.options)
+    editing = get_editing() is not None
+    continue_btn = mo.ui.button(
+        label="continue",
+        disabled=drawn_box is None
+        or (open_deed is not None and before_first_scan(scan_name)),
+        on_click=lambda _: set_pending_boxes(lambda p: p + [(scan_name, drawn_box)]),
+    )
+    # Discards a stray continue: needs no deed or type, unlike save.
+    clear_pending_btn = mo.ui.button(
+        label="clear pending",
+        disabled=not get_pending_boxes(),
+        on_click=lambda _: set_pending_boxes([]),
+    )
+    save_btn = mo.ui.button(
+        label="save",
+        disabled=open_deed is None
+        or not layout_boxes
+        or type_radio.value is None
+        or not (amount_in.value.strip() or desc_in.value.strip())
+        or any(before_first_scan(scan) for scan, _ in layout_boxes),
+        on_click=save_item,
+    )
+    # Edit loads the item into the inputs and its boxes into pending; save replaces it.
+    edit_btn = mo.ui.button(
+        label="edit",
+        disabled=not has_items or bool(get_pending_boxes()) or editing,
+        on_click=edit_item,
+    )
+    cancel_edit_btn = mo.ui.button(
+        label="cancel edit", disabled=not editing, on_click=cancel_edit
+    )
+    delete_btn = mo.ui.button(
+        label="delete",
+        disabled=not has_items or editing,  # tags would shift
+        on_click=delete_picked_item,
+    )
+    close_deed_btn = mo.ui.button(
+        label="close deed",
+        disabled=open_deed is None
+        or bool(get_pending_boxes())
+        or editing
+        or before_first_scan(scan_name),
+        on_click=close_open_deed,
+    )
+    return (
+        continue_btn,
+        clear_pending_btn,
+        save_btn,
+        edit_btn,
+        cancel_edit_btn,
+        delete_btn,
+        close_deed_btn,
+    )
 
 
 # Quality = PNG pixels per inch of the page height: 100 is 1:1 with the screen, higher

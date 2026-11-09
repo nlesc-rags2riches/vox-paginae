@@ -577,6 +577,25 @@ def test_delete_writes_at_once(marimo_server, data_root, page):
     expect(button(page, "delete")).to_be_disabled()  # nothing left to delete
 
 
+def test_item_pick_survives_typing_in_amount_and_description(
+    marimo_server, data_root, page
+):
+    # #60: typing once re-created the item dropdown, so delete found nothing picked.
+    load_app_and_lock_annotator(page, marimo_server)
+    open_deed(page)
+    pick_item_type(page, "assets")
+    drag_box_on_page(page, 0.2, 0.2, 0.8, 0.3)
+    fill_text_input(page, "amount", "1,-")
+    save_item(page)
+
+    pick_in_dropdown(page, "A1 · 1,- ·")
+    type_in_text_input_key_by_key(page, "amount", "2")
+    type_in_text_input_key_by_key(page, "description", "Een")
+    click_button(page, "delete")
+    expect(page.locator("select option").filter(has_text="A1")).to_have_count(0)
+    assert deed_record(data_root)["annotation"]["assets"] == []
+
+
 def test_quality_changes_pixels_not_on_screen_size(marimo_server, page):
     load_app_and_lock_annotator(page, marimo_server)
     canvas = page.locator("canvas").first
