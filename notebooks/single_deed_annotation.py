@@ -117,7 +117,7 @@ def session_state(find_single_deed_folders, mo, root):
     folders = find_single_deed_folders(root)
     # Everything below resets when the root changes.
     # (folder, scan index) of the picked deed; None until one is picked.
-    get_folder_page, set_folder_page = mo.state(None)
+    get_folder_scan, set_folder_scan = mo.state(None)
     # None = no deed open: one is opened with the open button.
     get_deed_record, set_deed_record = mo.state(None)
     get_pending_boxes, set_pending_boxes = mo.state(
@@ -132,12 +132,12 @@ def session_state(find_single_deed_folders, mo, root):
         folders,
         get_deed_record,
         get_editing,
-        get_folder_page,
+        get_folder_scan,
         get_pending_boxes,
         get_type,
         set_deed_record,
         set_editing,
-        set_folder_page,
+        set_folder_scan,
         set_pending_boxes,
         set_type,
     )
@@ -148,10 +148,10 @@ def deed_picker(
     deed_choices,
     folders,
     get_deed_record,
-    get_folder_page,
+    get_folder_scan,
     get_pending_boxes,
     mo,
-    set_folder_page,
+    set_folder_scan,
 ):
     # Picking a deed shows its folder's first scan and writes nothing. Locked while a deed
     # is open, and while boxes are pending: they belong to this scan. Re-created on every
@@ -162,14 +162,14 @@ def deed_picker(
         deed_choices_error = None
     except ValueError as _e:  # one input without ref_reg: no deed can be listed
         _choices, deed_choices_error = {}, mo.callout(mo.md(str(_e)), kind="danger")
-    _picked = get_folder_page()[0] if get_folder_page() else None
+    _picked = get_folder_scan()[0] if get_folder_scan() else None
     deed_dd = mo.ui.dropdown(
         options=_choices,
         value=next((k for k, f in _choices.items() if f == _picked), None),
         searchable=True,
         label="deed",
         disabled=get_deed_record() is not None or bool(get_pending_boxes()),
-        on_change=lambda folder: set_folder_page((folder, 0)),
+        on_change=lambda folder: set_folder_scan((folder, 0)),
     )
     return deed_choices_error, deed_dd
 
@@ -209,7 +209,7 @@ def _(
     annotator_row,
     deed_choices_error,
     deed_dd,
-    get_folder_page,
+    get_folder_scan,
     list_pages,
     load_single_deed_input,
     mo,
@@ -227,13 +227,13 @@ def _(
         mo.vstack([annotator_row, deed_choices_error]),
     )
     mo.stop(
-        get_folder_page() is None,
+        get_folder_scan() is None,
         mo.vstack([annotator_row, deed_dd, mo.md("**pick a deed to see its pages**")]),
     )
-    folder, page_i = get_folder_page()
-    pages = list_pages(folder)
+    folder, scan_i = get_folder_scan()
+    scans = list_pages(folder)
     mo.stop(
-        not pages,
+        not scans,
         mo.vstack(
             [
                 annotator_row,
@@ -243,8 +243,8 @@ def _(
         ),
     )
     single_deed_input = load_single_deed_input(folder)
-    page = pages[page_i]
-    return folder, page, page_i, pages, single_deed_input
+    scan = scans[scan_i]
+    return folder, scan, scan_i, scans, single_deed_input
 
 
 @app.cell(hide_code=True)
@@ -273,17 +273,17 @@ def deed_save(
 
 
 @app.cell(hide_code=True)
-def page_buttons(folder, mo, page_i, pages, set_folder_page):
+def page_buttons(folder, mo, scan_i, scans, set_folder_scan):
     # Inside the deed's folder. Past its last scan comes with #86.
     next_page_btn = mo.ui.button(
         label="next page",
-        disabled=page_i == len(pages) - 1,
-        on_click=lambda _: set_folder_page((folder, page_i + 1)),
+        disabled=scan_i == len(scans) - 1,
+        on_click=lambda _: set_folder_scan((folder, scan_i + 1)),
     )
     prev_page_btn = mo.ui.button(
         label="prev page",
-        disabled=page_i == 0,
-        on_click=lambda _: set_folder_page((folder, page_i - 1)),
+        disabled=scan_i == 0,
+        on_click=lambda _: set_folder_scan((folder, scan_i - 1)),
     )
     return next_page_btn, prev_page_btn
 
@@ -295,9 +295,9 @@ def view_sliders(marimo_ui):
 
 
 @app.cell(hide_code=True)
-def _(fig_h_slider, page, quality_slider, scan_for_display):
+def _(fig_h_slider, scan, quality_slider, scan_for_display):
     scan_pixels, scan_size, png_dpi = scan_for_display(
-        page, fig_h_slider.value, quality_slider.value
+        scan, fig_h_slider.value, quality_slider.value
     )
     return png_dpi, scan_pixels, scan_size
 
@@ -311,7 +311,7 @@ def _(
     get_deed_record,
     get_pending_boxes,
     marimo_ui,
-    page,
+    scan,
     png_dpi,
     saved_boxes,
     scan_pixels,
@@ -326,14 +326,14 @@ def _(
         scan_size,
         FIG_H,
         png_dpi,
-        saved=saved_boxes(folder, page.name, _open["deed_id"] if _open else None),
+        saved=saved_boxes(folder, scan.name, _open["deed_id"] if _open else None),
         deed=[
             (_tag, _box["bbox"])
             for _tag, _box in deed_boxes(_open)
-            if _box["scan"] == page.name
+            if _box["scan"] == scan.name
         ],
         pending=[
-            _bbox for _scan, _bbox in get_pending_boxes() if _scan == page.name
+            _bbox for _scan, _bbox in get_pending_boxes() if _scan == scan.name
         ],
     )
 
@@ -342,12 +342,12 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(get_pending_boxes, page, page_sel, selection_box):
+def _(get_pending_boxes, scan, page_sel, selection_box):
     drawn_box = selection_box(page_sel.value)
 
     # The unsaved item, in draw order: pending boxes, then the one drawn now.
     layout_boxes = get_pending_boxes() + (
-        [(page.name, drawn_box)] if drawn_box else []
+        [(scan.name, drawn_box)] if drawn_box else []
     )
     return drawn_box, layout_boxes
 
@@ -378,8 +378,8 @@ def item_buttons(
     item_dd,
     layout_boxes,
     marimo_ui,
-    page,
-    pages,
+    scan,
+    scans,
     save_and_show_open_deed,
     save_open_deed,
     set_deed_record,
@@ -411,8 +411,8 @@ def item_buttons(
         get_editing=get_editing,
         set_editing=set_editing,
         set_type=set_type,
-        scan_names=[p.name for p in pages],
-        scan_name=page.name,
+        scan_names=[p.name for p in scans],
+        scan_name=scan.name,
         drawn_box=drawn_box,
         layout_boxes=layout_boxes,
     )
@@ -439,11 +439,11 @@ def deed_open(
     load_deed_records,
     mo,
     new_deed_record,
-    page,
-    pages,
+    scan,
+    scans,
     save_open_deed,
     set_deed_record,
-    set_folder_page,
+    set_folder_scan,
     set_header_fields,
     set_type,
     single_deed_input,
@@ -458,14 +458,14 @@ def deed_open(
             _deed_record = load_deed_records(folder)[_ref_reg]
             set_deed_record(_deed_record)
             set_type(None)
-            set_folder_page(
-                (folder, [p.name for p in pages].index(_deed_record["scans"][0]))
+            set_folder_scan(
+                (folder, [p.name for p in scans].index(_deed_record["scans"][0]))
             )
             return
         # This scan is its first scan. Its header fields start as the deed's copied data.
         _copied = copied_deed_person_data(single_deed_input)
         _deed_record = set_header_fields(
-            new_deed_record(_ref_reg, _copied, page.name), **header_fields(_copied)
+            new_deed_record(_ref_reg, _copied, scan.name), **header_fields(_copied)
         )
         _path = save_open_deed(_deed_record)  # at once: one file per deed
         set_deed_record(_deed_record)
@@ -515,8 +515,8 @@ def header_buttons(
     get_editing,
     get_pending_boxes,
     marimo_ui,
-    page,
-    pages,
+    scan,
+    scans,
     place_of_residence_in,
     save_and_show_open_deed,
     set_header_fields,
@@ -532,8 +532,8 @@ def header_buttons(
             delete_box=delete_header_box,
             get_deed_record=get_deed_record,
             save_and_show_open_deed=save_and_show_open_deed,
-            scan_names=[p.name for p in pages],
-            scan_name=page.name,
+            scan_names=[p.name for p in scans],
+            scan_name=scan.name,
             drawn_box=drawn_box,
             has_pending_boxes=bool(get_pending_boxes()),
             editing_item=get_editing() is not None,
@@ -563,8 +563,8 @@ def balance_buttons(
     get_editing,
     get_pending_boxes,
     marimo_ui,
-    page,
-    pages,
+    scan,
+    scans,
     save_and_show_open_deed,
     set_balance_totals,
     total_assets_in,
@@ -582,8 +582,8 @@ def balance_buttons(
             delete_box=delete_balance_box,
             get_deed_record=get_deed_record,
             save_and_show_open_deed=save_and_show_open_deed,
-            scan_names=[p.name for p in pages],
-            scan_name=page.name,
+            scan_names=[p.name for p in scans],
+            scan_name=scan.name,
             drawn_box=drawn_box,
             has_pending_boxes=bool(get_pending_boxes()),
             editing_item=get_editing() is not None,
@@ -599,18 +599,18 @@ def status_line(
     get_editing,
     get_pending_boxes,
     mo,
-    page,
-    page_i,
-    pages,
+    scan,
+    scan_i,
+    scans,
     status_text,
 ):
     # Its own cell, not in `layout`: see the book notebook's status_line.
     status_line = mo.md(
         status_text(
             folder,
-            page,
-            page_i,
-            len(pages),
+            scan,
+            scan_i,
+            len(scans),
             get_deed_record(),
             len(get_pending_boxes()),
             get_editing(),

@@ -108,3 +108,13 @@ def test_deed_choices_are_ref_reg_and_name_with_pages_once_annotated(tmp_path):
     )
     # Pages counted from 1, as in the status line; the order stays.
     assert list(deed_choices(folders)) == ["6#1 · Jan Modaal · pages 1-2", "10#1"]
+
+
+def test_deed_choices_keep_two_folders_with_the_same_label(tmp_path):
+    for name in ["6-1", "copy/6-1"]:
+        write_single_deed_folder(tmp_path / name, {"ref_reg": "6#1"})
+    # The later one gets its folder: none goes missing from the list.
+    assert deed_choices(find_single_deed_folders(tmp_path)) == {
+        "6#1": tmp_path / "6-1",
+        f"6#1 · {tmp_path / 'copy' / '6-1'}": tmp_path / "copy" / "6-1",
+    }
