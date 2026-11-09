@@ -69,8 +69,8 @@ def deed_choices(folders: list[Path]) -> dict[str, Path]:
     """``{"10#1399 · Jan Modaal": folder}`` for each of ``folders``, in their order.
 
     A folder with a deed annotation file is labelled with its pages too, e.g.
-    ``"10#1399 · Jan Modaal · pages 2-4"``. Each input is read as in
-    ``load_single_deed_input``.
+    ``"10#1399 · Jan Modaal · pages 2-4"``. A label already taken gets the folder's
+    path too. Each input is read as in ``load_single_deed_input``.
     """
     choices = {}
     for folder in folders:
@@ -81,5 +81,7 @@ def deed_choices(folders: list[Path]) -> dict[str, Path]:
         parts = [ref_reg] + ([full_name] if full_name else [])
         if deed_record:
             parts.append(scans_label(folder, deed_record["scans"]))
+        if " · ".join(parts) in choices:  # same ref_reg and name: keep both
+            parts.append(str(folder))
         choices[" · ".join(parts)] = folder
     return choices
