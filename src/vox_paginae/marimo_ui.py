@@ -124,6 +124,7 @@ def item_buttons(
     get_deed_record: Callable[[], dict | None],
     set_deed_record: Callable[[dict | None], None],
     save_open_deed: Callable[[dict], Path],
+    save_and_show_open_deed: Callable[[dict], None],
     get_pending_boxes: Callable[[], list[tuple[str, list[int]]]],
     set_pending_boxes: Callable,
     get_editing: Callable[[], str | None],
@@ -151,10 +152,6 @@ def item_buttons(
         # Nothing is continued, saved or closed there: it would be outside scans.
         return scan_names.index(scan) < scan_names.index(open_deed_record()["scans"][0])
 
-    def save_and_toast(deed_record, message=""):
-        path = save_open_deed(deed_record)
-        mo.status.toast(f"saved {path.name}{message}")
-
     def save_item(_):
         fields = (
             type_radio.value,
@@ -168,8 +165,7 @@ def item_buttons(
             deed_record = add_item(open_deed_record(), *fields)
         else:
             deed_record = replace_item(open_deed_record(), editing_tag, *fields)
-        save_and_toast(deed_record)
-        set_deed_record(deed_record)
+        save_and_show_open_deed(deed_record)
         set_pending_boxes([])
         set_editing(None)
 
@@ -187,8 +183,7 @@ def item_buttons(
     def delete_picked_item(_):
         if item_dd.value:
             deed_record = delete_item(open_deed_record(), item_dd.value)
-            save_and_toast(deed_record)
-            set_deed_record(deed_record)
+            save_and_show_open_deed(deed_record)
 
     def close_open_deed(_):
         try:
@@ -196,9 +191,10 @@ def item_buttons(
         except ValueError as e:  # no header box or a blank field: it stays open
             mo.status.toast(str(e))
             return
-        save_and_toast(deed_record, ", deed closed")
+        path = save_open_deed(deed_record)
         set_deed_record(None)  # no deed open until the next open
         set_type(None)
+        mo.status.toast(f"saved {path.name}, deed closed")
 
     open_deed = get_deed_record()
     has_items = bool(item_dd.options)
