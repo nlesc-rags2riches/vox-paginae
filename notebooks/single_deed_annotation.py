@@ -32,6 +32,7 @@ def imports():
         deed_choices,
         find_single_deed_folders,
         header_fields,
+        input_item_choices,
         load_single_deed_input,
     )
     from vox_paginae.ui import (
@@ -54,6 +55,7 @@ def imports():
         draw_scan,
         find_single_deed_folders,
         header_fields,
+        input_item_choices,
         item_tags,
         list_pages,
         load_deed_records,
@@ -120,6 +122,9 @@ def session_state(find_single_deed_folders, mo, root):
     get_folder_scan, set_folder_scan = mo.state(None)
     # None = no deed open: one is opened with the open button.
     get_deed_record, set_deed_record = mo.state(None)
+    # The open deed's single deed input, set on open. Apart from `single_deed_input`, which
+    # is re-read on every page turn: the input item pick must survive one.
+    get_open_deed_input, set_open_deed_input = mo.state(None)
     get_pending_boxes, set_pending_boxes = mo.state(
         []
     )  # (scan, bbox) pending boxes of the item being drawn
@@ -133,11 +138,13 @@ def session_state(find_single_deed_folders, mo, root):
         get_deed_record,
         get_editing,
         get_folder_scan,
+        get_open_deed_input,
         get_pending_boxes,
         get_type,
         set_deed_record,
         set_editing,
         set_folder_scan,
+        set_open_deed_input,
         set_pending_boxes,
         set_type,
     )
@@ -183,12 +190,14 @@ def type_input(get_type, mo):
 
 
 @app.cell(hide_code=True)
-def _(get_deed_record, get_editing, item_tags, mo):
+def _(get_deed_record, get_editing, input_item_dd, item_tags, mo):
     get_deed_record()  # re-created (cleared) after every open, write and close
-    # Prefilled from the item being edited, if any.
-    _item = dict(item_tags(get_deed_record())).get(get_editing(), {})
+    # Prefilled from the picked input item, else from the item being edited, if any. The
+    # input has no category: it stays the edited item's.
+    _edited = dict(item_tags(get_deed_record())).get(get_editing(), {})
+    _item = input_item_dd.value or _edited
     category_in = mo.ui.text(
-        label="category", value=_item.get("category") or ""
+        label="category", value=_edited.get("category") or ""
     )
     # debounce=False: save enables while typing (#11).
     amount_in = mo.ui.text(
@@ -295,7 +304,7 @@ def view_sliders(marimo_ui):
 
 
 @app.cell(hide_code=True)
-def _(fig_h_slider, scan, quality_slider, scan_for_display):
+def _(fig_h_slider, quality_slider, scan, scan_for_display):
     scan_pixels, scan_size, png_dpi = scan_for_display(
         scan, fig_h_slider.value, quality_slider.value
     )
@@ -311,9 +320,9 @@ def _(
     get_deed_record,
     get_pending_boxes,
     marimo_ui,
-    scan,
     png_dpi,
     saved_boxes,
+    scan,
     scan_pixels,
     scan_size,
 ):
@@ -342,7 +351,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(get_pending_boxes, scan, page_sel, selection_box):
+def _(get_pending_boxes, page_sel, scan, selection_box):
     drawn_box = selection_box(page_sel.value)
 
     # The unsaved item, in draw order: pending boxes, then the one drawn now.
@@ -367,6 +376,33 @@ def item_dropdown(get_deed_record, marimo_ui):
 
 
 @app.cell(hide_code=True)
+def input_item_dropdown(
+    get_deed_record,
+    get_editing,
+    get_open_deed_input,
+    input_item_choices,
+    mo,
+    set_type,
+):
+    # Fills in the item inputs, so in a cell of its own: typing there would rebuild it
+    # and lose the pick (#60). Re-created (cleared) on every write, edit and cancel.
+    get_editing()
+    _choices = (
+        input_item_choices(get_open_deed_input(), get_deed_record())
+        if get_deed_record() is not None
+        else {}
+    )
+    input_item_dd = mo.ui.dropdown(
+        options=_choices,
+        label="input item",
+        disabled=not _choices,
+        # The radio is re-created with the picked type; the inputs read the pick below.
+        on_change=lambda item: set_type(item["type"]) if item else None,
+    )
+    return (input_item_dd,)
+
+
+@app.cell(hide_code=True)
 def item_buttons(
     amount_in,
     category_in,
@@ -378,10 +414,10 @@ def item_buttons(
     item_dd,
     layout_boxes,
     marimo_ui,
-    scan,
-    scans,
     save_and_show_open_deed,
     save_open_deed,
+    scan,
+    scans,
     set_deed_record,
     set_editing,
     set_pending_boxes,
@@ -439,12 +475,13 @@ def deed_open(
     load_deed_records,
     mo,
     new_deed_record,
+    save_open_deed,
     scan,
     scans,
-    save_open_deed,
     set_deed_record,
     set_folder_scan,
     set_header_fields,
+    set_open_deed_input,
     set_type,
     single_deed_input,
 ):
@@ -457,18 +494,24 @@ def deed_open(
             # its file.
             _deed_record = load_deed_records(folder)[_ref_reg]
             set_deed_record(_deed_record)
+            set_open_deed_input(single_deed_input)
             set_type(None)
             set_folder_scan(
-                (folder, [p.name for p in scans].index(_deed_record["scans"][0]))
+                (
+                    folder,
+                    [p.name for p in scans].index(_deed_record["scans"][0]),
+                )
             )
             return
         # This scan is its first scan. Its header fields start as the deed's copied data.
         _copied = copied_deed_person_data(single_deed_input)
         _deed_record = set_header_fields(
-            new_deed_record(_ref_reg, _copied, scan.name), **header_fields(_copied)
+            new_deed_record(_ref_reg, _copied, scan.name),
+            **header_fields(_copied),
         )
         _path = save_open_deed(_deed_record)  # at once: one file per deed
         set_deed_record(_deed_record)
+        set_open_deed_input(single_deed_input)
         mo.status.toast(f"saved {_path.name}, deed open")
 
     # Opens the picked deed, or reopens it if it has a file. Not with pending boxes: a
@@ -515,10 +558,10 @@ def header_buttons(
     get_editing,
     get_pending_boxes,
     marimo_ui,
-    scan,
-    scans,
     place_of_residence_in,
     save_and_show_open_deed,
+    scan,
+    scans,
     set_header_fields,
 ):
     # Blank fields are saved too: close then says which.
@@ -563,9 +606,9 @@ def balance_buttons(
     get_editing,
     get_pending_boxes,
     marimo_ui,
+    save_and_show_open_deed,
     scan,
     scans,
-    save_and_show_open_deed,
     set_balance_totals,
     total_assets_in,
     total_in,
@@ -639,6 +682,7 @@ def layout(
     fig_h_slider,
     full_name_in,
     header_dd,
+    input_item_dd,
     item_dd,
     mo,
     next_page_btn,
@@ -669,7 +713,11 @@ def layout(
         [
             annotator_row,
             status_line,
-            mo.hstack([deed_dd, open_btn, close_deed_btn], justify="start", align="end"),
+            mo.hstack(
+                [deed_dd, open_btn, close_deed_btn],
+                justify="start",
+                align="end",
+            ),
             open_hint,
             mo.md("---"),
             mo.hstack(
@@ -704,6 +752,7 @@ def layout(
             mo.md("---"),
             mo.hstack([prev_page_btn, next_page_btn], justify="start"),
             mo.md("---"),
+            input_item_dd,
             mo.hstack([type_radio, category_in, amount_in], justify="start"),
             desc_in,
             mo.hstack(
