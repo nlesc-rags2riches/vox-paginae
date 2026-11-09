@@ -9,7 +9,10 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
 - UI: `notebooks/deed_annotation.py` (marimo). Logic: `src/vox_paginae/annotation.py`,
   the core, which works on an open deed and knows no input format; each input's
   reading and checks live beside it (`book_input.py` for a book's `deeds.json`).
-  The `marimo-library` skill governs the split. Edit the notebook only through
+  The `marimo-library` skill governs the split. The book notebook and the single-deed
+  notebook (#85) share `annotation.py` and `marimo_ui.py`: put behaviour both need there,
+  so each notebook cell stays a call. New features may land in one notebook only; the
+  other's browser tests still pass. Edit the notebook only through
   `marimo-pair`, including when the server runs with `--watch`: the running kernel is
   the source of truth. To test an older notebook, use `git worktree add`: the watched
   file stays as the kernel wrote it. No server running: `uv run python
