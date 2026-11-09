@@ -120,16 +120,16 @@ says otherwise.
 - The deeds are listed in the order a file browser shows their folders. Numbers in a
   name count as numbers, so `6-1` comes before `10-1`.
 - A deed is listed by its `ref_reg` and the deceased's `full_name`. Once it has a
-  file, its pages are listed too. The list can be searched.
-- A deed's pages are the `*.jpg` files in its folder, sorted by filename. All of them
-  are shown, not only those in `metadata.scans`.
+  file, its scans are listed too. The list can be searched.
+- A deed's **scans** are the `*.jpg` files in its folder, sorted by filename. All of
+  them are shown, not only those in `metadata.scans`.
 - Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office` and
   `deceased`. It is read as UTF-8.
 - An `input.json` without `metadata.ref_reg` shows an error naming it. No deed can
   then be picked.
-- Picking a deed shows its first page. It writes nothing.
-- **open** opens the picked deed on the current page. A deed with a file is reopened
-  instead, on its first page.
+- Picking a deed shows its first scan. It writes nothing.
+- **open** opens the picked deed on the current scan. A deed with a file is reopened
+  instead, on its first scan.
 - The deed list is locked while a deed is open.
 - The deed annotation file is `<folder>/deed-annotation-<ref_reg>.json`, next to the
   jpgs. `ref_reg` is as written in `input.json`, `#` included.
@@ -140,7 +140,7 @@ says otherwise.
     `assets`, `liabilities`, `scans` and `total` are not copied.
 - Opening fills the header fields in from the deceased's `full_name`,
   `date_of_death` and `place_of_residence`.
-- **next page** stops at the deed's last page.
+- **next page** stops at the deed's last scan.
 - There is no **move annotation**, **go to deed** or **delete deed**.
 
 ## Example
