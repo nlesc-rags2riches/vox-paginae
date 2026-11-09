@@ -12,9 +12,10 @@ HEADER_HINT = "Draw a box around the header and click save box as header"
 
 def text_input(page, label):
     # marimo labels are not linked to their <input> (shadow DOM): match the label text.
-    return page.locator("marimo-text", has=page.get_by_text(label, exact=True)).locator(
-        "input"
-    )
+    # The single-deed notebook's description is a text area.
+    return page.locator(
+        "marimo-text, marimo-text-area", has=page.get_by_text(label, exact=True)
+    ).locator("input, textarea")
 
 
 def button(page, label):

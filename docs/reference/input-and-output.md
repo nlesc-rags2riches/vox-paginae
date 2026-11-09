@@ -81,7 +81,7 @@ see Single deed folders.
     `pagexml_baseline_ids` (always `null`)
   - `category`: optional free text; left blank, it is written as `null`
   - `amount`: a string
-  - `description`: a single line
+  - `description`: free text describing the item. It can have several lines.
   - at least one of `amount` and `description` is non-blank; the other may be `""`
 - A deed can have no items: every item can be deleted, and the file stays.
 - Fields the tool doesn't fill are written as `null`, not left out.
