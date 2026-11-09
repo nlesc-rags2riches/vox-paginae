@@ -598,22 +598,15 @@ def deed_open(
 
 
 @app.cell(hide_code=True)
-def header_inputs(get_deed_record, mo):
-    # The header's fields, editable while a deed is open and showing its saved values:
-    # pre-filled on open from the deed's copied data. Re-created on every open, write and
-    # close: fields typed but not saved are then gone.
-    _open = get_deed_record()
-    _header = _open["annotation"]["header"] if _open else {}
-    # debounce=False: the value is in before a click on save header fields, as for the
-    # balance totals
+def header_inputs(get_deed_record, marimo_ui):
+    # The header's fields, editable while a deed is open: pre-filled on open from the deed's
+    # copied data.
     full_name_in, date_of_death_in, place_of_residence_in = (
-        mo.ui.text(
-            label=_field.replace("_", " "),
-            value=_header.get(_field, ""),
-            disabled=_open is None,
-            debounce=False,
+        marimo_ui.section_field_inputs(
+            get_deed_record(),
+            "header",
+            ["full_name", "date_of_death", "place_of_residence"],
         )
-        for _field in ["full_name", "date_of_death", "place_of_residence"]
     )
     return date_of_death_in, full_name_in, place_of_residence_in
 
@@ -629,32 +622,19 @@ def header_buttons(
     get_editing,
     get_pending_boxes,
     marimo_ui,
-    mo,
     page,
     pages,
     place_of_residence_in,
     save_and_show_open_deed,
     set_header_fields,
 ):
-    def _save_header_fields(_):
-        save_and_show_open_deed(
-            set_header_fields(
-                get_deed_record(),
-                full_name_in.value,
-                date_of_death_in.value,
-                place_of_residence_in.value,
-            )
-        )
-
-    # Blank ones are saved too: close then says which.
-    save_fields_btn = mo.ui.button(
-        label="save header fields",
-        disabled=get_deed_record() is None,
-        on_click=_save_header_fields,
-    )
-    save_header_btn, header_dd, delete_header_btn = (
-        marimo_ui.tagged_box_list_buttons(
+    # Blank fields are saved too: close then says which.
+    save_fields_btn, save_header_btn, header_dd, delete_header_btn = (
+        marimo_ui.section_buttons(
             "header",
+            (full_name_in, date_of_death_in, place_of_residence_in),
+            save_fields_label="save header fields",
+            set_fields=set_header_fields,
             add_box=add_header_box,
             delete_box=delete_header_box,
             get_deed_record=get_deed_record,
@@ -837,22 +817,15 @@ def deed_move(
 
 
 @app.cell(hide_code=True)
-def balance_inputs(get_deed_record, mo):
-    # The balance's totals, editable while a deed is open and showing its saved values (a
-    # typo check). Re-created on every open, write and close: totals typed but not saved
-    # are then gone.
-    _open = get_deed_record()
-    _balance = _open["annotation"]["balance"] if _open else {}
-    # debounce=False: the value is in before a click on save balance totals, as for the
-    # item amount
+def balance_inputs(get_deed_record, marimo_ui):
+    # The balance's totals, editable while a deed is open: showing the saved values is a
+    # typo check.
     total_assets_in, total_liabilities_in, total_in = (
-        mo.ui.text(
-            label=_field.replace("_", " "),
-            value=_balance.get(_field, ""),
-            disabled=_open is None,
-            debounce=False,
+        marimo_ui.section_field_inputs(
+            get_deed_record(),
+            "balance",
+            ["total_assets", "total_liabilities", "total"],
         )
-        for _field in ["total_assets", "total_liabilities", "total"]
     )
     return total_assets_in, total_in, total_liabilities_in
 
@@ -866,7 +839,6 @@ def balance_buttons(
     get_editing,
     get_pending_boxes,
     marimo_ui,
-    mo,
     page,
     pages,
     save_and_show_open_deed,
@@ -877,21 +849,12 @@ def balance_buttons(
 ):
     # The totals and the boxes are saved apart, and either may be blank or none: close
     # checks neither.
-    save_totals_btn = mo.ui.button(
-        label="save balance totals",
-        disabled=get_deed_record() is None,
-        on_click=lambda _: save_and_show_open_deed(
-            set_balance_totals(
-                get_deed_record(),
-                total_assets_in.value,
-                total_liabilities_in.value,
-                total_in.value,
-            )
-        ),
-    )
-    save_balance_btn, balance_dd, delete_balance_btn = (
-        marimo_ui.tagged_box_list_buttons(
+    save_totals_btn, save_balance_btn, balance_dd, delete_balance_btn = (
+        marimo_ui.section_buttons(
             "balance",
+            (total_assets_in, total_liabilities_in, total_in),
+            save_fields_label="save balance totals",
+            set_fields=set_balance_totals,
             add_box=add_balance_box,
             delete_box=delete_balance_box,
             get_deed_record=get_deed_record,
