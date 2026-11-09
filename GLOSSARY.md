@@ -36,6 +36,11 @@ _Avoid_: deed folder
 **Single deed input**:
 The JSON in a single deed folder describing its deed.
 
+**Input item**:
+One entry of a single deed input's `assets.items` or `liabilities.items`. An item can
+be picked from it.
+_UI_: input item
+
 **Deed person**:
 A person listed in a deed's `personen`.
 _File_: an entry of `personen`
@@ -131,5 +136,7 @@ _Avoid_: label
 - A **book** has many **scans** and many **deeds**.
 - A **single deed folder** is part of a **book**. It holds one **deed**, its **scans**
   and one **single deed input**.
+- A **single deed input** lists the deed's **input items**. Each **item** is picked
+  from at most one of them.
 - A scan can hold the end of one **deed** and the start of the next.
 - A **deed** has at most one **deed annotation file**, which holds its **annotation**.

@@ -123,8 +123,9 @@ says otherwise.
   file, its scans are listed too. The list can be searched.
 - A deed's **scans** are the `*.jpg` files in its folder, sorted by filename. All of
   them are shown, not only those in `metadata.scans`.
-- Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office` and
-  `deceased`. It is read as UTF-8.
+- Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office`,
+  `deceased`, and the `amount` and `description` of each item in `assets.items` and
+  `liabilities.items`. It is read as UTF-8.
 - An `input.json` without `metadata.ref_reg` shows an error naming it. No deed can
   then be picked.
 - Picking a deed shows its first scan. It writes nothing.
@@ -140,6 +141,13 @@ says otherwise.
     `assets`, `liabilities`, `scans` and `total` are not copied.
 - Opening fills the header fields in from the deceased's `full_name`,
   `date_of_death` and `place_of_residence`.
+- While a deed is open, **input item** lists the items of its `input.json`, with
+  their type, amount and description.
+- Picking one fills them in. Each can be corrected before saving.
+- An input item that is already saved is listed last, marked picked.
+- Nothing in the file links an item to its input item. An input item counts as saved
+  when an item of its type has its amount or its description.
+- An input item that is never picked does not stop the deed from closing.
 - **next page** stops at the deed's last scan.
 - There is no **move annotation**, **go to deed** or **delete deed**.
 

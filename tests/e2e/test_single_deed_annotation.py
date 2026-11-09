@@ -14,6 +14,7 @@ from .helpers import (
     load_app_page,
     lock_annotator,
     pick_in_deed_dropdown,
+    pick_in_dropdown,
     pick_item_type,
     save_header_or_balance_box,
     save_item,
@@ -137,3 +138,40 @@ def test_open_reopens_a_deed_with_a_file_on_its_first_scan(
     expect(page.locator("option", has_text="H1 · page 1")).to_have_count(1)
     assert deed_record(single_deed_root, "6-1", "6#1") == closed
     assert not (single_deed_root / "10-1" / "deed-annotation-10#1.json").exists()
+
+
+def test_pick_an_input_item_correct_it_and_save(
+    single_deed_server, single_deed_root, page
+):
+    load_app_and_lock_annotator(page, single_deed_server)
+    pick_in_deed_dropdown(page, "10#1")
+    click_button(page, "open")
+    expect(page.get_by_text(HEADER_HINT)).to_be_visible()
+    save_header_or_balance_box(page, HEADER, "H1 · page 1")
+    drag_box_on_page(page, 0.2, 0.3, 0.6, 0.5)
+    click_button(page, "continue")
+    expect(status(page, "pending 1")).to_be_visible()
+    pick_in_dropdown(page, "1 · assets · 900 · Een huis")
+    # The pick fills in the type, amount and description.
+    expect(page.get_by_role("radio", name="assets")).to_be_checked()
+    expect(text_input(page, "amount")).to_have_value("900")
+    expect(text_input(page, "description")).to_have_value("Een huis")
+    fill_text_input(page, "description", "Een huis met erf")
+    # The item goes on: the pick and the correction stay on the next page.
+    click_button(page, "next page")
+    expect(status(page, "page 2/3")).to_be_visible()
+    expect(text_input(page, "description")).to_have_value("Een huis met erf")
+    expect(page.get_by_role("radio", name="assets")).to_be_checked()
+    drag_box_on_page(page, 0.2, 0.1, 0.6, 0.2)
+    save_item(page)
+    # Picked: last, and marked.
+    expect(page.locator("option", has_text="Een huis · picked")).to_have_count(1)
+
+    record = deed_record(single_deed_root, "10-1", "10#1")
+    (item,) = record["annotation"]["assets"]
+    # Only the saved values: nothing links back to the input item.
+    assert set(item) == {"layout", "category", "amount", "description"}
+    assert (item["amount"], item["description"]) == ("900", "Een huis met erf")
+    assert [box["scan"] for box in item["layout"]] == ["scan-1.jpg", "scan-2.jpg"]
+    click_button(page, "close deed")
+    expect(status(page, "no deed · page 2/3")).to_be_visible()

@@ -4,7 +4,12 @@ import json
 import re
 from pathlib import Path
 
-from vox_paginae.annotation import HEADER_FIELDS, load_deed_records, scans_label
+from vox_paginae.annotation import (
+    HEADER_FIELDS,
+    TYPES,
+    load_deed_records,
+    scans_label,
+)
 
 
 def file_browser_order(path: Path) -> list[list[str | int]]:
@@ -63,6 +68,70 @@ def header_fields(copied_deed_person_data: dict) -> dict[str, str]:
     deceased's fields of the same names. A field missing or ``null`` there is blank.
     """
     return {field: copied_deed_person_data.get(field) or "" for field in HEADER_FIELDS}
+
+
+def input_item_choices(single_deed_input: dict, deed_record: dict | None) -> dict:
+    """``{"1 · assets · 900 · Een huis": item}`` for each item in ``single_deed_input``'s
+    ``assets.items`` and ``liabilities.items``, numbered in that order. The label shows
+    the description's first 30 characters.
+
+    Each ``item`` has its ``type`` (the list it is in), and its ``amount`` and
+    ``description`` as strings, stripped; a missing or ``null`` one is blank.
+
+    An input item an item of ``deed_record`` was picked from is listed last, marked
+    ``· picked``. Nothing links them, so it is recognised by its type and an equal
+    amount or description: each item marks at most one input item, an exactly equal
+    one first. Blank fields are never equal.
+    """
+    items = [
+        {
+            "type": type_,
+            **{
+                field: "" if item.get(field) is None else str(item[field]).strip()
+                for field in ("amount", "description")
+            },
+        }
+        for type_ in TYPES
+        for item in (single_deed_input.get(type_) or {}).get("items") or []
+    ]
+    saved = [
+        {"type": type_, **item}
+        for type_ in TYPES
+        for item in (deed_record["annotation"][type_] if deed_record else [])
+    ]
+    picked = set()  # indices into items
+
+    def count_equal_non_blank_fields(a, b):
+        return sum(1 for f in ("amount", "description") if a[f] and a[f] == b[f])
+
+    # Exact matches first, so a corrected item cannot take an exact one's input item.
+    for min_equal_fields in (2, 1):
+        for saved_item in list(saved):
+            i = next(
+                (
+                    i
+                    for i, item in enumerate(items)
+                    if i not in picked
+                    and item["type"] == saved_item["type"]
+                    and count_equal_non_blank_fields(item, saved_item)
+                    >= min_equal_fields
+                ),
+                None,
+            )
+            if i is not None:
+                picked.add(i)
+                saved.remove(saved_item)
+
+    def description_start(description):  # as in the item dropdown: it stays narrow
+        return description[:30] + ("…" if len(description) > 30 else "")
+
+    # Not picked first, then picked, each in input order.
+    return {
+        f"{i + 1} · {item['type']} · {item['amount']} · "
+        + description_start(item["description"])
+        + (" · picked" if i in picked else ""): item
+        for i, item in sorted(enumerate(items), key=lambda pair: pair[0] in picked)
+    }
 
 
 def deed_choices(folders: list[Path]) -> dict[str, Path]:
