@@ -52,9 +52,35 @@ def annotator_row(
     return mo.hstack([annotator_in, lock_btn], justify="start", align="end")
 
 
-def tagged_box_list_buttons(
+def section_field_inputs(
+    open_deed: dict | None, section: str, fields: list[str]
+) -> tuple[mo.ui.text, ...]:
+    """Text inputs for ``fields`` of ``open_deed``'s ``section``, in order.
+
+    ``section`` is ``"header"`` or ``"balance"``. They show the saved values and are
+    editable only while a deed is open. Rebuilt on every open, write and close: values
+    typed but not saved are then gone.
+    """
+    saved = open_deed["annotation"][section] if open_deed else {}
+    # debounce=False: the value is in before a click on the save button, as for the
+    # item amount
+    return tuple(
+        mo.ui.text(
+            label=field.replace("_", " "),
+            value=saved.get(field, ""),
+            disabled=open_deed is None,
+            debounce=False,
+        )
+        for field in fields
+    )
+
+
+def section_buttons(
     section: str,
+    field_inputs: tuple[mo.ui.text, ...],
     *,
+    save_fields_label: str,
+    set_fields: Callable[..., dict],
     add_box: Callable[..., dict],
     delete_box: Callable[..., dict],
     get_deed_record: Callable[[], dict | None],
@@ -64,14 +90,23 @@ def tagged_box_list_buttons(
     drawn_box: list[int] | None,
     has_pending_boxes: bool,
     editing_item: bool,
-) -> tuple[mo.ui.button, mo.ui.dropdown, mo.ui.button]:
-    """The save box button, tag dropdown and delete box button of ``section``.
+) -> tuple[mo.ui.button, mo.ui.button, mo.ui.dropdown, mo.ui.button]:
+    """The save fields button, save box button, tag dropdown and delete box button of
+    ``section``.
 
-    ``section`` is ``"header"`` or ``"balance"``. Boxes go in one at a time, on the
-    deed's first scan or a later one: before it they would be outside scans. Editing an
-    item locks them.
+    ``section`` is ``"header"`` or ``"balance"``. Save fields passes the values of
+    ``field_inputs`` (from ``section_field_inputs``) to ``set_fields`` in order, blank
+    ones too. Boxes go in one at a time, on the deed's first scan or a later one: before
+    it they would be outside scans. Editing an item locks them.
     """
     open_deed = get_deed_record()
+    save_fields_btn = mo.ui.button(
+        label=save_fields_label,
+        disabled=open_deed is None,
+        on_click=lambda _: save_and_show_open_deed(
+            set_fields(get_deed_record(), *(field.value for field in field_inputs))
+        ),
+    )
     tag_by_option = {
         f"{tag} · page {scan_names.index(box['scan']) + 1}": tag
         for tag, box in tagged_section_boxes(open_deed, section)
@@ -100,7 +135,7 @@ def tagged_box_list_buttons(
         disabled=not tag_by_option or editing_item,
         on_click=delete_picked_box,
     )
-    return save_box_btn, tag_dropdown, delete_box_btn
+    return save_fields_btn, save_box_btn, tag_dropdown, delete_box_btn
 
 
 def item_dropdown(open_deed: dict | None) -> mo.ui.dropdown:
