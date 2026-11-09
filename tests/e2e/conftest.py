@@ -61,15 +61,20 @@ DEED_12 = deed("deed-12", "12", "Oostdorp", "Kees Bakker", "1880-07-08")
 DEED_12["personen"].append({**DEED_12["personen"][0], "naam_volledig": "Klaas Bakker"})
 
 
-def write_book(book):
-    """Write three grayscale scans and a `deeds.json` into the new folder `book`."""
-    book.mkdir(parents=True)
+def write_scans(folder, names):
+    """Write a grayscale scan named each of ``names`` into the new folder ``folder``."""
+    folder.mkdir(parents=True)
     page = np.full((PAGE_H, PAGE_W), 230, np.uint8)
     # Dark "text lines": a constant page renders black (imshow autoscales vmin == vmax).
     for y in range(200, PAGE_H - 200, 120):
         page[y : y + 30, 200 : PAGE_W - 200] = 60
-    for name in ["page_01.jpg", "page_02.jpg", "page_03.jpg"]:
-        Image.fromarray(page).save(book / name)
+    for name in names:
+        Image.fromarray(page).save(folder / name)
+
+
+def write_book(book):
+    """Write three grayscale scans and a `deeds.json` into the new folder `book`."""
+    write_scans(book, ["page_01.jpg", "page_02.jpg", "page_03.jpg"])
     # Not in page order, and aktenummer 7 repeats: as in a real book.
     (book / "deeds.json").write_text(
         json.dumps([DEED_7_WEST, DEED_12, DEED_3, DEED_7_OOST]), encoding="utf-8"
@@ -83,9 +88,59 @@ def data_root(tmp_path):
     return tmp_path / "data"
 
 
+def single_deed_input(ref_reg, full_name, date_of_death, place_of_residence):
+    """A made-up `input.json`, with the fields Vox Paginae reads and some it leaves out."""
+    deceased = {
+        "full_name": full_name,
+        "profession": "bakker",
+        "date_of_death": date_of_death,
+        "place_of_residence": place_of_residence,
+        "place_of_death": None,
+    }
+    metadata = {
+        "aktenummer": None,
+        "ref_reg": ref_reg,
+        "tax_office": "Westdorp",
+        "deceased": deceased,
+        "scans": ["scan-2.jpg"],  # only some of the folder's scans, as in the example
+        "assets": {
+            "total": None,
+            "items": [{"amount": 900, "description": "Een huis"}],
+        },
+        "liabilities": {"total": None, "items": []},
+        "total": 900,
+    }
+    return {"metadata": metadata, "scans": []}
+
+
+def write_single_deed_folders(root):
+    """Write `10-1/` and `6-1/` into `root`: three scans and an `input.json` each."""
+    for name, deed_input in [
+        ("10-1", single_deed_input("10#1", "Piet Smit", "5 mei 1880", "Westdorp")),
+        ("6-1", single_deed_input("6#1", "Jan Modaal", "2 januari 1880", "Oostdorp")),
+    ]:
+        write_scans(root / name, ["scan-1.jpg", "scan-2.jpg", "scan-3.jpg"])
+        (root / name / "input.json").write_text(
+            json.dumps(deed_input), encoding="utf-8"
+        )
+
+
+@pytest.fixture
+def single_deed_root(tmp_path):
+    """`<tmp>/data/` with two single deed folders, from `write_single_deed_folders`."""
+    write_single_deed_folders(tmp_path / "data")
+    return tmp_path / "data"
+
+
+@pytest.fixture
+def single_deed_server(single_deed_root):
+    with serve(single_deed_root, notebook="notebooks/single_deed_annotation.py") as url:
+        yield url
+
+
 @contextmanager
-def serve(data_root, *args):
-    """Run the notebook as an app on `data_root` (plus notebook `args`); yields its URL."""
+def serve(data_root, *args, notebook="notebooks/deed_annotation.py"):
+    """Run ``notebook`` as an app on `data_root` (plus notebook `args`); yields its URL."""
     port = get_free_port()
     proc = subprocess.Popen(
         [
@@ -93,7 +148,7 @@ def serve(data_root, *args):
             "-m",
             "marimo",
             "run",
-            "notebooks/deed_annotation.py",
+            notebook,
             "--port",
             str(port),
             "--headless",
