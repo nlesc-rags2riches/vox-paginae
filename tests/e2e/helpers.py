@@ -4,10 +4,22 @@ use locators only to check what they see."""
 
 # TODO: Needs more detailed human review
 
+from collections.abc import Callable
+
 from playwright.sync_api import expect
 
 HEADER = (0.1, 0.05, 0.9, 0.15)  # clear of the item boxes the tests draw
 HEADER_HINT = "Draw a box around the header and click save box as header"
+
+# Set by a how-to test (see test_howtos.py) while it runs: called with the page, the
+# step's text and the element the step acts on, before each action.
+recorder: Callable | None = None
+
+
+def record_step(page, text, target=None):
+    """Hand one step to the how-to recorder, if one runs."""
+    if recorder:
+        recorder(page, text, target)
 
 
 def text_input(page, label):
@@ -34,38 +46,53 @@ def load_app_page(page, url):
 
 def click_button(page, label):
     """Click a button by its label."""
+    record_step(page, f"Click **{label}**.", button(page, label))
     button(page, label).click()
 
 
 def fill_text_input(page, label, text):
     """Type into a text input and leave it, so marimo sends the value."""
     box = text_input(page, label)
+    record_step(page, f"Type `{text}` in **{label}**.", box)
     box.fill(text)
     box.blur()
 
 
 def type_in_text_input_key_by_key(page, label, text):
     """Type into a text input key by key, and stay in it."""
-    text_input(page, label).press_sequentially(text, delay=50)
+    box = text_input(page, label)
+    record_step(page, f"Type `{text}` in **{label}**.", box)
+    box.press_sequentially(text, delay=50)
 
 
-def pick_in_dropdown(page, label):
-    """Pick ``label`` in whichever dropdown offers it (item or book)."""
-    page.locator("select", has=page.locator("option", has_text=label)).select_option(
-        label=label
-    )
+def pick_in_dropdown(page, label, dropdown=None):
+    """Pick ``label`` in the dropdown labeled ``dropdown``; without it, in whichever
+    dropdown offers ``label`` (item or book)."""
+    if dropdown:
+        select = page.locator(
+            "marimo-dropdown", has=page.get_by_text(dropdown, exact=True)
+        ).locator("select")
+        record_step(page, f"Pick `{label}` in **{dropdown}**.", select)
+    else:
+        select = page.locator("select", has=page.locator("option", has_text=label))
+        record_step(page, f"Pick `{label}`.", select)
+    select.select_option(label=label)
 
 
 def pick_item_type(page, item_type):
     """Pick ``assets`` or ``liabilities``."""
-    page.get_by_role("radio", name=item_type).check()
+    radio = page.get_by_role("radio", name=item_type)
+    record_step(page, f"Pick **{item_type}**.", radio)
+    radio.check()
 
 
 def search_deed_dropdown(page, search="", label="deed"):
     """The entries matching ``search`` in the searchable dropdown labeled ``label``;
     leaves it open."""
     # Unlike text inputs (see text_input), its <label for=…> names the button.
-    page.get_by_label(label, exact=True).click()
+    dropdown = page.get_by_label(label, exact=True)
+    record_step(page, f"Click **{label}** and type `{search}`.", dropdown)
+    dropdown.click()
     page.get_by_placeholder("Search...").fill(search)
     return page.get_by_role("dialog").get_by_role("option")
 
@@ -73,17 +100,29 @@ def search_deed_dropdown(page, search="", label="deed"):
 def pick_in_deed_dropdown(page, search, label="deed"):
     """Pick the one deed matching ``search`` in the searchable dropdown labeled
     ``label``."""
-    search_deed_dropdown(page, search, label).click()
+    option = search_deed_dropdown(page, search, label)
+    if recorder:  # its text only for the step: reading it is one more wait
+        record_step(page, f"Pick `{option.inner_text()}`.", option)
+    option.click()
 
 
 def close_deed_dropdown(page):
     """Close a searchable dropdown left open, without picking."""
+    record_step(page, "Press **Escape** to close the list.")
     page.keyboard.press("Escape")
 
 
-def drag_box_on_page(page, x0, y0, x1, y1):
-    """Drag a box on the page image; coordinates are fractions of the image."""
+def drag_box_on_page(page, x0, y0, x1, y1, around=None):
+    """Drag a box on the page image; coordinates are fractions of the image. ``around``
+    says what it boxes, as in "the header", for the how-to step."""
     canvas = page.locator("canvas").first
+    record_step(
+        page,
+        f"Drag a box around {around} on the scan."
+        if around
+        else "Drag a box on the scan.",
+        canvas,
+    )
     # A click can leave the canvas partly out of view. Pressing on it then scrolls the
     # page (marimo focuses it), so the position read here would no longer hold.
     canvas.scroll_into_view_if_needed()
@@ -99,6 +138,7 @@ def jump_to_overall_page(page, n):
     box = page.locator("marimo-slider", has=page.get_by_text("all pages")).locator(
         "input"
     )
+    record_step(page, f"Type `{n}` in **all pages**.", box)
     box.fill(str(n))
     box.press("Enter")
 
@@ -106,13 +146,16 @@ def jump_to_overall_page(page, n):
 def set_quality_to_highest(page):
     """Move the quality slider to its highest value."""
     quality = page.get_by_role("slider").first
+    record_step(page, "Move **quality** to its highest value.", quality)
     quality.focus()
     quality.press("End")
 
 
 def toggle_debug_panel(page):
     """Click the switch that shows or hides the debug panel."""
-    page.get_by_role("switch").click()
+    switch = page.get_by_role("switch")
+    record_step(page, "Click the **debug** switch.", switch)
+    switch.click()
 
 
 def save_item(page):
@@ -140,7 +183,7 @@ def save_header_or_balance_box(page, box, option, kind="header"):
     """Draw ``box``, save it as a ``kind`` (header or balance) box and wait for
     ``option`` in its dropdown: the page has been redrawn by then, so the next box drawn
     is kept."""
-    drag_box_on_page(page, *box)
+    drag_box_on_page(page, *box, around=f"the {kind}")
     click_button(page, f"save box as {kind}")
     expect(page.locator("option", has_text=option)).to_have_count(1)
 

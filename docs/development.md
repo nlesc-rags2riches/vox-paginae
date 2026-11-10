@@ -89,6 +89,20 @@ folder exists. Start the single-deed notebook on it in edit mode:
 uv run marimo edit notebooks/single_deed_annotation.py -- --data-root .scratch/demo
 ```
 
+## Write the how-to pages
+
+Some how-to pages are written by the browser tests in `tests/e2e/test_howtos.py`,
+screenshots included. Each test there is one page: its title comes from the test's
+`howto` marker, its intro from the docstring, and its steps from what the test does.
+To change such a page, change its test, then run:
+
+```bash
+uv run pytest -m e2e tests/e2e/test_howtos.py
+```
+
+Commit the pages it writes. CI fails if they differ from what the tests write. The
+screenshots are not committed: the docs workflow writes them before it builds the site.
+
 ## Build the docs
 
 The docs use [Zensical](https://zensical.org). Preview them at

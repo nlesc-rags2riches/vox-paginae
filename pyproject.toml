@@ -24,7 +24,10 @@ build-backend = "uv_build"
 exclude-newer = "1 week"
 
 [tool.pytest.ini_options]
-markers = ["e2e: browser tests (Playwright); run with `pytest -m e2e`"]
+markers = [
+    "e2e: browser tests (Playwright); run with `pytest -m e2e`",
+    "howto(title): a how-to test; its page is titled `title` (see tests/e2e/test_howtos.py)",
+]
 # A failed browser test leaves a trace and a screenshot in test-results/.
 # Open the trace with `uv run playwright show-trace <trace.zip>`.
 addopts = "-m 'not e2e' --tracing retain-on-failure --screenshot only-on-failure"
