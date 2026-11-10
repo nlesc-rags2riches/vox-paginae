@@ -119,6 +119,7 @@ def section_buttons(
 
     save_box_btn = mo.ui.button(
         label=f"save box as {section}",
+        kind="success",
         # Not with pending boxes: the drawn box is then the item's next one.
         disabled=open_deed is None
         or editing_item
@@ -132,6 +133,7 @@ def section_buttons(
     # The later ones move up: the second box becomes the first.
     delete_box_btn = mo.ui.button(
         label=f"delete {section} box",
+        kind="danger",
         disabled=not tag_by_option or editing_item,
         on_click=delete_picked_box,
     )
@@ -248,6 +250,7 @@ def item_buttons(
     )
     save_btn = mo.ui.button(
         label="save",
+        kind="success",
         disabled=open_deed is None
         or not layout_boxes
         or type_radio.value is None
@@ -266,6 +269,7 @@ def item_buttons(
     )
     delete_btn = mo.ui.button(
         label="delete",
+        kind="danger",
         disabled=not has_items or editing,  # tags would shift
         on_click=delete_picked_item,
     )
