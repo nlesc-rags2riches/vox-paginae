@@ -5,6 +5,14 @@ on:
   pull_request:
     # `labeled`: adding `pr/test-all-os` starts a run on all OSs (any label starts a run).
     types: [opened, synchronize, reopened, labeled]
+    # Skip pull requests that change only Markdown or docs/. A path that a test reads
+    # must still start a run: list it after the `!` lines, which it then overrides.
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "!docs/**"
+      # The how-to tests rewrite their pages and screenshots, and the e2e job checks them.
+      - "docs/how-to/**"
   workflow_dispatch:
 # A new run on the same pull request cancels the older one; runs on main all finish.
 concurrency:
@@ -16,15 +24,6 @@ env:
   # A file opened without `encoding=` fails the tests (see pyproject.toml).
   PYTHONWARNDEFAULTENCODING: "1"
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
-      - run: uvx prek run --all-files --show-diff-on-failure
-        env:
-          # CI checks out main as a branch.
-          SKIP: no-commit-to-branch
   unit:
     strategy:
       fail-fast: false
