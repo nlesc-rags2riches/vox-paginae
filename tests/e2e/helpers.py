@@ -5,21 +5,23 @@ use locators only to check what they see."""
 # TODO: Needs more detailed human review
 
 from collections.abc import Callable
+from functools import reduce
 
-from playwright.sync_api import expect
+from playwright.sync_api import Locator, expect
 
 HEADER = (0.1, 0.05, 0.9, 0.15)  # clear of the item boxes the tests draw
 HEADER_HINT = "Draw a box around the header and click save box as header"
 
 # Set by a how-to test (see test_howtos.py) while it runs: called with the page, the
-# step's text and the element the step acts on, before each action.
+# step's text, the element the step acts on and ``then``, before each action.
 recorder: Callable | None = None
 
 
-def record_step(page, text, target=None):
-    """Hand one step to the how-to recorder, if one runs."""
+def record_step(page, text, target=None, then=False):
+    """Hand one step to the how-to recorder, if one runs. With ``then``, the step has
+    no screenshot of its own: it joins the next step, as in "…, then click save"."""
     if recorder:
-        recorder(page, text, target)
+        recorder(page, text, target, then)
 
 
 def text_input(page, label):
@@ -39,8 +41,8 @@ def status(page, text):
     return page.get_by_text(text)
 
 
-def load_app_page(page, url):
-    page.set_viewport_size({"width": 1600, "height": 1200})
+def load_app_page(page, url, width=1600, height=1200):
+    page.set_viewport_size({"width": width, "height": height})
     page.goto(url)
 
 
@@ -56,6 +58,20 @@ def fill_text_input(page, label, text):
     record_step(page, f"Type `{text}` in **{label}**.", box)
     box.fill(text)
     box.blur()
+
+
+def fill_text_inputs(page, texts):
+    """Type into several text inputs, ``{label: text}``, as one step."""
+    boxes = [text_input(page, label) for label in texts]
+    values = [f"`{text}` in **{label}**" for label, text in texts.items()]
+    record_step(
+        page,
+        f"Type {', '.join(values[:-1])} and {values[-1]}.",
+        reduce(Locator.or_, boxes),
+    )
+    for box, text in zip(boxes, texts.values(), strict=True):
+        box.fill(text)
+        box.blur()
 
 
 def type_in_text_input_key_by_key(page, label, text):
@@ -121,7 +137,7 @@ def drag_box_on_page(page, x0, y0, x1, y1, around=None):
         f"Drag a box around {around} on the scan."
         if around
         else "Drag a box on the scan.",
-        canvas,
+        then=True,  # the next step's screenshot shows the box drawn
     )
     # A click can leave the canvas partly out of view. Pressing on it then scrolls the
     # page (marimo focuses it), so the position read here would no longer hold.
