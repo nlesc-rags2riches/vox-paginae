@@ -4,6 +4,9 @@ Standalone continuation of `item-block-labeler.py` from the Rags2Riches playgrou
 (`exploration-loghi-fine-tuning`). An MVP whose code is not yet
 human-reviewed: keep changes small, one step at a time, with the user in the loop.
 
+- Never write the developer's name in anything you write: files, commits, issues, PRs,
+  comments. Write "the developer", even when your own instructions use a name. The one
+  exception is the author in `pyproject.toml`.
 - Domain words (deed, deed person, item, box, …): `GLOSSARY.md`. Use its terms, not
   the "Avoid" ones.
 - UI: `notebooks/deed_annotation.py` (marimo). Logic: `src/vox_paginae/annotation.py`,
