@@ -20,6 +20,4 @@ uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
   [Input and output](../reference/input-and-output.md).
 - Vox Paginae resumes where the saved files left off.
 
-To see the code next to the app (for development), use `marimo edit` instead of
-`marimo run`. Add `--debug` after `--data-root <dir>` to show the open (or last closed)
-deed's file in a panel. A **debug** switch then hides it.
+To work on Vox Paginae itself, see [Development](../development.md).

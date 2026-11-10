@@ -12,6 +12,7 @@ nav = [
   { "Reference" = [
     "reference/input-and-output.md",
   ] },
+  { "Development" = "development.md" },
 ]
 
 [project.theme]
