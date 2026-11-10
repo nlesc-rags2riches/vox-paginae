@@ -1,10 +1,11 @@
 # Vox Paginae
 
-A [marimo](https://marimo.io) notebook for annotating scanned death-duty deeds
+[marimo](https://marimo.io) notebooks for annotating scanned death-duty deeds
 (_memories van successie_): where each deed's header, balance and **items** are on its
-pages, and what the items say. An item is one asset or liability of a deed: its type,
+scans, and what the items say. An item is one asset or liability of a deed: its type,
 an optional category, an amount or a description (or both), and one or more boxes.
-Each deed's annotation is saved as one JSON file next to its book's pages.
+Each deed's annotation is saved as one JSON file next to the deed's scans: in its
+single deed folder, or in its book.
 
 !!! warning "Minimum Viable Prototype, work in progress"
     This is an MVP. Much of the code was written with an AI coding assistant and has
