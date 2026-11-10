@@ -1,0 +1,23 @@
+name: Lint
+# No path filter: prek also lints Markdown, so docs-only pull requests need it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+# A new run on the same pull request cancels the older one; runs on main all finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uvx prek run --all-files --show-diff-on-failure
+        env:
+          # CI checks out main as a branch.
+          SKIP: no-commit-to-branch
