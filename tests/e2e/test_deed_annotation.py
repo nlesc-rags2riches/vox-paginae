@@ -599,12 +599,12 @@ def test_item_pick_survives_typing_in_amount_and_description(
 def test_quality_changes_pixels_not_on_screen_size(marimo_server, page):
     load_app_and_lock_annotator(page, marimo_server)
     canvas = page.locator("canvas").first
-    expect(canvas).to_have_attribute("height", "1200", timeout=10_000)  # 8 in * 150
+    expect(canvas).to_have_attribute("height", "975", timeout=10_000)  # 6.5 in * 150
     shown = canvas.bounding_box()
-    assert round(shown["height"]) == 800  # FIG_H * 100 px
+    assert round(shown["height"]) == 650  # FIG_H * 100 px
 
     set_quality_to_highest(page)  # 300 dpi
-    expect(canvas).to_have_attribute("height", "2400", timeout=10_000)
+    expect(canvas).to_have_attribute("height", "1950", timeout=10_000)
     assert canvas.bounding_box() == shown
 
 
