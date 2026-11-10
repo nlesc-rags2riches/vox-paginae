@@ -18,7 +18,9 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   file stays as the kernel wrote it. No server running: `uv run python
   scripts/demo_data.py <dir>`, then `uv run marimo edit notebooks/deed_annotation.py
   --no-token --watch -- --data-root <dir>`; lock an annotator name before cells past
-  the book cell run (`set_annotator((name, True))` from the scratchpad).
+  the book cell run (`set_annotator((name, True))` from the scratchpad). For the
+  single-deed notebook, `uv run python scripts/fake_deed.py <dir>` writes a fake
+  single deed folder with scans that look real (also for tutorial screenshots).
 - Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
   working run the affected ones with `-k`, and the whole suite once at the end. Known flake:
   `test_restart_resumes_on_last_page_with_no_open_deed`. A browser test that fails once:
