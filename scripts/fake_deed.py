@@ -28,7 +28,8 @@ PAGE_H = SCAN_H - 2 * FILM_TOP
 MARGIN = 70
 HAND_SIZE, LINE_H = 46, 62
 AMOUNT_W = 150  # the amount column at a memorie page's right edge
-ASSETS_TOTAL = "Totaal der baten"
+# The lines that end a section: the carried-over total starts again after them.
+SECTION_TOTALS = ("Totaal der baten", "Totaal der lasten")
 
 # Shaped like the `metadata` of `input.json`, plus `declarants`, which is only drawn.
 DEED = {
@@ -87,12 +88,26 @@ DEED = {
             {"amount": 87, "description": "Contanten in kas"},
         ],
     },
-    "liabilities": {"total": None, "items": []},
-    "total": 10769,
+    "liabilities": {
+        "total": 209,
+        "items": [
+            {"amount": 145, "description": "Kosten der begrafenis"},
+            {
+                "amount": 64,
+                "description": "Schuld aan Gerrit Smit, smid te Oostdorp, wegens "
+                "geleverd werk",
+            },
+        ],
+    },
+    "total": 10560,
 }
 
 # One (left, right) pair of page kinds per scan.
-LAYOUT = [("cover", "cover_back"), ("memorie", "memorie")]
+LAYOUT = [
+    ("cover", "cover_back"),
+    ("memorie", "memorie"),
+    ("memorie", "blank"),
+]
 
 COVER_ROWS = [  # (printed label, the deceased's field written in by hand)
     ("Naam van den overledene", "full_name"),
@@ -150,8 +165,9 @@ def wrap_to_width(text, font, width):
 
 
 def memorie_lines(deed):
-    """The memorie, as ``(text, amount)`` lines: its opening, then the assets with
-    their total. An item's amount is on its last line; other lines have ``None``.
+    """The memorie, as ``(text, amount)`` lines: its opening, then the assets and the
+    liabilities, each with its total. An item's amount is on its last line; other
+    lines have ``None``.
     """
     deceased = deed["deceased"]
     opening = (
@@ -164,11 +180,15 @@ def memorie_lines(deed):
     font, width = hand_font(), PAGE_W - 2 * MARGIN - AMOUNT_W - 40
     lines = [(t, None) for t in wrap_to_width(opening, font, width)]
     lines += [("", None)] + [(t, None) for t in wrap_to_width(declarants, font, width)]
-    lines += [("", None), ("Baten", None)]
-    for number, item in enumerate(deed["assets"]["items"], 1):
-        wrapped = wrap_to_width(f"{number}. {item['description']}", font, width)
-        lines += [(t, None) for t in wrapped[:-1]] + [(wrapped[-1], item["amount"])]
-    lines += [("", None), (ASSETS_TOTAL, deed["assets"]["total"])]
+    for heading, type_, total in zip(
+        ("Baten", "Lasten"), ("assets", "liabilities"), SECTION_TOTALS, strict=True
+    ):
+        lines += [("", None), (heading, None)]
+        for number, item in enumerate(deed[type_]["items"], 1):
+            wrapped = wrap_to_width(f"{number}. {item['description']}", font, width)
+            lines += [(t, None) for t in wrapped[:-1]]
+            lines += [(wrapped[-1], item["amount"])]
+        lines += [("", None), (total, deed[type_]["total"])]
     return lines
 
 
@@ -251,10 +271,12 @@ def memorie_page(page, deed, rng, memorie_state):
     while memorie_state["lines"] and row < rows - 1:
         text, amount = memorie_state["lines"].pop(0)
         write_line(row, text, amount)
-        if amount is not None and text != ASSETS_TOTAL:
+        if text in SECTION_TOTALS:
+            memorie_state["carried"] = 0
+        elif amount is not None:
             memorie_state["carried"] += amount
         row += 1
-    if memorie_state["lines"]:
+    if memorie_state["carried"] and memorie_state["lines"]:  # goes on next page
         write_line(row, "Transport", memorie_state["carried"])
 
 
@@ -262,6 +284,7 @@ PAGE_KINDS = {
     "cover": cover_page,
     "memorie": memorie_page,
     "cover_back": cover_back_page,
+    "blank": lambda *_: None,
 }
 
 
