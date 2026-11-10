@@ -8,6 +8,7 @@ Usage: uv run python scripts/fake_deed.py <dir>
 
 import json
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 import numpy as np
@@ -34,6 +35,24 @@ NUMBER_X, QUESTION_X, ANSWER_X = MARGIN, MARGIN + 60, int(PAGE_W * 0.6)
 SIDE_RULE_X = MARGIN + 230  # the memorie page's left margin, for the side note
 AMOUNT_W = 120  # the amount column beside a memorie item
 
+# Amounts are Decimal, so totals add up to the cent.
+ASSETS = [
+    {
+        "amount": Decimal("4812.50"),
+        "description": "Een woonhuis met schuur en erf, staande en gelegen te "
+        "Oostdorp aan den Brink, kadastraal bekend gemeente Oostdorp sectie A "
+        "nummer 214, groot achttien aren veertig centiaren",
+    },
+    {
+        "amount": Decimal("1250.75"),
+        "description": "Een perceel bouwland, gelegen onder Oostdorp in de "
+        "Noordesch, kadastraal bekend sectie B nummer 87",
+    },
+]
+LIABILITIES = [{"amount": Decimal("145.35"), "description": "Kosten der begrafenis"}]
+ASSETS_TOTAL = sum(item["amount"] for item in ASSETS)
+LIABILITIES_TOTAL = sum(item["amount"] for item in LIABILITIES)
+
 # Shaped like the `metadata` of `input.json`, plus `declarants`, which is only drawn.
 DEED = {
     "aktenummer": None,
@@ -50,27 +69,9 @@ DEED = {
         "Grietje Bos, weduwe van den overledene, zonder beroep",
         "Hendrik Modaal, landbouwer, zoon van den overledene",
     ],
-    "assets": {
-        "total": 6050,
-        "items": [
-            {
-                "amount": 4800,
-                "description": "Een woonhuis met schuur en erf, staande en gelegen te "
-                "Oostdorp aan den Brink, kadastraal bekend gemeente Oostdorp sectie A "
-                "nummer 214, groot achttien aren veertig centiaren",
-            },
-            {
-                "amount": 1250,
-                "description": "Een perceel bouwland, gelegen onder Oostdorp in de "
-                "Noordesch, kadastraal bekend sectie B nummer 87",
-            },
-        ],
-    },
-    "liabilities": {
-        "total": 145,
-        "items": [{"amount": 145, "description": "Kosten der begrafenis"}],
-    },
-    "total": 5905,
+    "assets": {"total": ASSETS_TOTAL, "items": ASSETS},
+    "liabilities": {"total": LIABILITIES_TOTAL, "items": LIABILITIES},
+    "total": ASSETS_TOTAL - LIABILITIES_TOTAL,
 }
 
 # One (left, right) pair of page kinds per scan.
@@ -379,7 +380,12 @@ def write_fake_deed(root, deed=DEED, layout=LAYOUT):
     assert not memorie, "the layout has too few memorie pages"
     metadata = {k: v for k, v in deed.items() if k != "declarants"} | {"scans": scans}
     (folder / "input.json").write_text(
-        json.dumps({"metadata": metadata, "scans": []}, indent=2, ensure_ascii=False),
+        json.dumps(
+            {"metadata": metadata, "scans": []},
+            indent=2,
+            ensure_ascii=False,
+            default=float,  # amounts are JSON numbers, as in a real input.json
+        ),
         encoding="utf-8",
     )
     return folder
