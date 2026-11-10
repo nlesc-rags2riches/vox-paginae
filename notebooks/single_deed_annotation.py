@@ -583,6 +583,7 @@ def deed_open(
     # reopen can change the scan.
     open_btn = mo.ui.button(
         label="open",
+        kind="success",
         disabled=get_deed_record() is not None or bool(get_pending_boxes()),
         on_click=_open,
     )
