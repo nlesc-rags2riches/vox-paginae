@@ -15,7 +15,7 @@ def test_fake_deed_opens_as_a_single_deed_folder_and_is_never_overwritten(tmp_pa
         return subprocess.run(
             [sys.executable, SCRIPT, tmp_path],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             check=False,
         )
 

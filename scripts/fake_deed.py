@@ -92,7 +92,7 @@ DEED = {
 }
 
 # One (left, right) pair of page kinds per scan.
-LAYOUT = [("cover", "memorie"), ("memorie", "balance")]
+LAYOUT = [("cover", "cover_back"), ("memorie", "memorie")]
 
 COVER_ROWS = [  # (printed label, the deceased's field written in by hand)
     ("Naam van den overledene", "full_name"),
@@ -102,9 +102,20 @@ COVER_ROWS = [  # (printed label, the deceased's field written in by hand)
     ("Plaats van overlijden", None),
     ("Burgerlijke staat", None),
     ("Datum der memorie", None),
-    ("Bedrag der baten", None),
-    ("Bedrag der lasten", None),
-    ("Zuiver saldo", None),
+    ("Namen der aangevers", None),
+    ("Dagteekening der aangifte", None),
+    ("Aantal bladen der memorie", None),
+]
+
+COVER_BACK_ROWS = [  # rows 12 to 19, printed and left blank
+    "Waarde der onroerende zaken",
+    "Zuiver bedrag bij schenking verkregen",
+    "Boeking der schenking",
+    "Aanwijzing der beschikkingen",
+    "Dagteekening voor den eed",
+    "Dagteekening waarop de eed is afgelegd",
+    "Boeking der verzuimde eedsaflegging",
+    "Dagteekening der machtiging",
 ]
 
 
@@ -183,13 +194,48 @@ def cover_page(page, deed, rng, memorie_state):
             write_by_hand(draw, (MARGIN + 60, y + 30), deed["deceased"][field], rng)
 
 
-def ledger(page, rng):
-    """Draw the amount column's rule on ``page``. Returns a function that writes a line
-    by hand on a row: its text on the left, its amount (``None`` for none) in the column.
+def cover_back_page(page, deed, rng, memorie_state):
+    """The back of the cover form: printed rows 11 to 19. Row 11 holds the balance,
+    filled in by hand: the assets, the liabilities and what is left.
+    """
+    draw = ImageDraw.Draw(page)
+    label_font = printed_font(22)
+    amount_x = PAGE_W * 0.62  # the column the answers are written in
+    draw.line([(MARGIN, 90), (PAGE_W - MARGIN, 90)], fill=40, width=3)
+    draw.line([(amount_x, 90), (amount_x, PAGE_H - MARGIN)], fill=70, width=2)
+    draw.text(
+        (MARGIN, 120),
+        "11.  Opgave van den staat des boedels:",
+        font=label_font,
+        fill=25,
+    )
+    liabilities = deed["liabilities"]["total"]
+    balance = [
+        ("1°. Baten", f"f {deed['assets']['total']}"),
+        ("2°. Lasten en schulden", f"f {liabilities}" if liabilities else "nihil"),
+        ("3°. Saldo", f"f {deed['total']}"),
+        ("4°. Vermeerdering bij nadere memoriën", None),
+    ]
+    for line, (label, amount) in enumerate(balance):
+        y = 175 + line * 60 + (25 if line >= 2 else 0)  # a gap above the saldo
+        draw.text((MARGIN + 50, y), label, font=label_font, fill=25)
+        if amount:
+            write_by_hand(draw, (amount_x + 40, y - 18), amount, rng)
+    # Under the liabilities: the line the saldo is worked out under.
+    draw.line([(amount_x + 30, 280), (amount_x + 260, 280)], fill=40, width=2)
+    for row, label in enumerate(COVER_BACK_ROWS, 12):
+        y = 470 + (row - 12) * 110
+        draw.text((MARGIN, y), f"{row}.  {label}", font=label_font, fill=25)
+
+
+def memorie_page(page, deed, rng, memorie_state):
+    """The next lines of ``memorie_state``, with the carried-over total at the top and the
+    bottom when the memorie goes on past this page.
     """
     draw = ImageDraw.Draw(page)
     amount_x = PAGE_W - MARGIN - AMOUNT_W
     draw.line([(amount_x, MARGIN), (amount_x, PAGE_H - MARGIN)], fill=70, width=2)
+    rows = (PAGE_H - 2 * MARGIN) // LINE_H
 
     def write_line(row, text, amount):
         y = MARGIN + row * LINE_H + rng.normal(0, 1)
@@ -197,15 +243,6 @@ def ledger(page, rng):
         if amount is not None:
             write_by_hand(draw, (amount_x + 20, y), f"f {amount}", rng)
 
-    return write_line
-
-
-def memorie_page(page, deed, rng, memorie_state):
-    """The next lines of ``memorie_state``, with the carried-over total at the top and the
-    bottom when the memorie goes on past this page.
-    """
-    write_line = ledger(page, rng)
-    rows = (PAGE_H - 2 * MARGIN) // LINE_H
     row = 0
     # Carried over from the page before.
     if memorie_state["carried"] and memorie_state["lines"]:
@@ -221,17 +258,11 @@ def memorie_page(page, deed, rng, memorie_state):
         write_line(row, "Transport", memorie_state["carried"])
 
 
-def balance_page(page, deed, rng, memorie_state):
-    """The balance: the totals of the assets and the liabilities, and what is left."""
-    write_line = ledger(page, rng)
-    write_line(0, "Recapitulatie", None)
-    write_line(2, "Baten", deed["assets"]["total"])
-    liabilities = deed["liabilities"]["total"]
-    write_line(3, "Lasten" + ("" if liabilities else ": nihil"), liabilities)
-    write_line(5, "Zuiver saldo", deed["total"])
-
-
-PAGE_KINDS = {"cover": cover_page, "memorie": memorie_page, "balance": balance_page}
+PAGE_KINDS = {
+    "cover": cover_page,
+    "memorie": memorie_page,
+    "cover_back": cover_back_page,
+}
 
 
 def grey_paper(rng):
