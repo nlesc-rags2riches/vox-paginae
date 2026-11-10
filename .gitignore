@@ -12,6 +12,8 @@ wheels/
 # Docs build and test artifacts
 site/
 test-results/
+# Written by the how-to tests (tests/e2e/test_howtos.py); CI builds them for the docs.
+docs/how-to/screenshots/
 
 # Local caches and tool state
 __marimo__/

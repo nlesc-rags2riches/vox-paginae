@@ -296,7 +296,7 @@ QUALITY_DPI = [100, 150, 200, 300]
 def view_sliders() -> tuple[mo.ui.slider, mo.ui.slider]:
     """The quality (dpi) and height (inches, shown at 100 px each) sliders of the page."""
     quality = mo.ui.slider(steps=QUALITY_DPI, value=150, label="quality")
-    height = mo.ui.slider(4.0, 14.0, step=0.5, value=8.0, label="height")
+    height = mo.ui.slider(4.0, 14.0, step=0.5, value=6.5, label="height")
     return quality, height
 
 
