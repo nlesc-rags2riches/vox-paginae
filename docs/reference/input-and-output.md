@@ -49,7 +49,7 @@ see Single deed folders.
 - Opening fills them in from the overledene's `naam_volledig`, `datum_overlijden` and
   `plaats_overlijden`. A field the overledene doesn't have starts empty.
 - A deed's **header** is optional. Its fields can be left empty and it can have no box.
-  In the file it is then empty fields and an empty layout.
+  In the file it is then empty fields and an empty `layout`.
 - A deed's **balance** is optional. Its three totals can be left empty and it can have
   no box. In the file it is then empty totals and an empty `layout`.
 - While a deed is open, its totals can be typed at any time. Any of them can be left
