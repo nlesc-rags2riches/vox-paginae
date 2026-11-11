@@ -24,11 +24,14 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   book cell run (`set_annotator((name, True))` from the scratchpad). The fake deed's
   scans look real, so they also serve for tutorial screenshots.
 - Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
-  working run the affected ones with `-k`, and the whole suite once at the end. Known flake:
-  `test_restart_resumes_on_last_page_with_no_open_deed`. A browser test that fails once:
-  rerun it once alone, then report it to the developer. A browser test that fails in CI
-  while #121 is open: check that the run uploaded `e2e-test-results` with a trace and a
-  screenshot of that test, and report the result on #121.
+  working run the affected ones with `-k`, and the whole suite once at the end. Known flakes:
+  `test_restart_resumes_on_last_page_with_no_open_deed`,
+  `test_root_without_scans_says_so_until_one_with_scans_is_picked` (#152). A browser test
+  that fails once: read its trace and screenshot first, then rerun it once alone, and
+  report both to the developer. They are in `test-results/<test>/` locally, and in the
+  run's `e2e-test-results` artifact in CI (`gh run download <run> -n e2e-test-results`).
+  `trace.zip` holds `trace.trace`, one JSON event per line: the actions, logs and DOM
+  snapshots.
 - Docs follow Diátaxis, built with Zensical. Keep them in step with the code:
   a read/write change updates `docs/reference/input-and-output.md` (draft it to
   `CODING_STANDARDS.md` › Docs, then confirm the wording with the user: it is a promise
