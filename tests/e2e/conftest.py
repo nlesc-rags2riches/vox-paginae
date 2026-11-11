@@ -139,25 +139,26 @@ def single_deed_server(single_deed_root):
 
 
 @contextmanager
-def serve(data_root, *args, notebook="notebooks/deed_annotation.py"):
-    """Run ``notebook`` as an app on `data_root` (plus notebook `args`); yields its URL."""
+def serve(data_root, *args, notebook="notebooks/deed_annotation.py", cwd=PROJECT):
+    """Run ``notebook`` as an app from ``cwd`` on `data_root` (none: no `--data-root`),
+    plus notebook `args`; yields its URL."""
     port = get_free_port()
+    root_args = ["--data-root", str(data_root)] if data_root else []
     proc = subprocess.Popen(
         [
             sys.executable,
             "-m",
             "marimo",
             "run",
-            notebook,
+            str(PROJECT / notebook),
             "--port",
             str(port),
             "--headless",
             "--",
-            "--data-root",
-            str(data_root),
+            *root_args,
             *args,
         ],
-        cwd=PROJECT,
+        cwd=cwd,
     )
     try:
         wait_until_ready(port)

@@ -1037,3 +1037,18 @@ def test_book_dropdown_moves_to_the_first_page(data_root, page):
         pick_in_dropdown(page, "book2")
         expect(status(page, "no deed · page 1/2")).to_be_visible()
     assert not list(book2.glob("deed-annotation-*.json"))
+
+
+@pytest.mark.parametrize(
+    "notebook",
+    ["notebooks/deed_annotation.py", "notebooks/single_deed_annotation.py"],
+)
+def test_without_data_root_the_root_is_the_folder_the_tool_started_from(
+    tmp_path, page, notebook
+):
+    started_from = tmp_path.resolve()
+    with serve(None, notebook=notebook, cwd=started_from) as url:
+        load_app_page(page, url)
+        expect(
+            page.get_by_text(f"root: {started_from} (click to change)")
+        ).to_be_visible(timeout=60_000)
