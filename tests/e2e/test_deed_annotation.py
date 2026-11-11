@@ -122,7 +122,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     expect(button(page, "open")).to_be_enabled()
 
 
-def test_open_needs_no_box_and_close_needs_a_header_box(marimo_server, data_root, page):
+def test_open_and_close_need_no_header_box(marimo_server, data_root, page):
     load_app_and_lock_annotator(page, marimo_server)
     hint = page.get_by_text(HEADER_HINT)
     expect(hint).to_have_count(0)  # no deed open
@@ -139,22 +139,7 @@ def test_open_needs_no_box_and_close_needs_a_header_box(marimo_server, data_root
         ["page_02.jpg"],
     )
 
-    # No header box: neither close deed nor the end of the book closes it, and says why.
-    why = page.get_by_text("this deed has no header box")
-    click_button(page, "close deed")
-    expect(why.first).to_be_visible()
-    expect(status(page, "editing deed-annotation-deed-3 · page 2/3")).to_be_visible()
-    # Before the first page: no header box either.
-    click_button(page, "prev page")
-    expect(status(page, "page 1/3")).to_be_visible()
-    drag_box_on_page(page, *HEADER)
-    expect(button(page, "save box as header")).to_be_disabled()
-    for n in [2, 3]:
-        click_button(page, "next page")
-        expect(status(page, f"page {n}/3")).to_be_visible()
-    expect(why).to_have_count(0, timeout=15_000)  # the first toast is gone
-    click_button(page, "next page")  # the book's last page
-    expect(why.first).to_be_visible()
+    click_button(page, "next page")
     expect(status(page, "editing deed-annotation-deed-3 · page 3/3")).to_be_visible()
 
     # One box per click, on any of the deed's pages: here a complementary one first.
@@ -177,15 +162,24 @@ def test_open_needs_no_box_and_close_needs_a_header_box(marimo_server, data_root
     expect(page.locator("option", has_text="H2")).to_have_count(0)
     (box,) = deed_record(data_root)["annotation"]["header"]["layout"]
     assert box["scan"] == "page_02.jpg"
+
+    # The last one deleted too: the hint is back, and close deed still closes it.
+    pick_in_dropdown(page, "H1 · page 2")
+    click_button(page, "delete header box")
+    expect(hint).to_be_visible()
     click_button(page, "close deed")
     expect(status(page, "no deed · page 2/3")).to_be_visible()
-    assert deed_record(data_root)["scans"] == ["page_02.jpg"]
+    record = deed_record(data_root)
+    assert (record["annotation"]["header"]["layout"], record["scans"]) == (
+        [],
+        ["page_02.jpg"],
+    )
 
 
 NEW_HEADER = (0.1, 0.2, 0.9, 0.3)
 
 
-def test_header_fields_are_prefilled_corrected_and_needed_to_close(
+def test_header_fields_are_prefilled_corrected_and_can_be_empty(
     marimo_server, data_root, page
 ):
     load_app_and_lock_annotator(page, marimo_server)
@@ -214,19 +208,17 @@ def test_header_fields_are_prefilled_corrected_and_needed_to_close(
     # The originals stay.
     assert record["copied_deed_person_data"]["naam_volledig"] == "Jan Modaal"
 
-    # An empty field: close refuses, and says which.
-    click_button(page, "close deed")
-    expect(
-        page.get_by_text("empty header fields: place of residence").first
-    ).to_be_visible()
-    expect(status(page, "editing deed-annotation-deed-3")).to_be_visible()
-    fill_text_input(page, "place of residence", "Oostdorp")
+    # Every field empty: the deed still closes, with "" for each.
+    fill_text_input(page, "full name", "")
+    fill_text_input(page, "date of death", "")
     click_button(page, "save header fields")
+    expect(text_input(page, "full name")).to_have_value("")
     click_button(page, "close deed")
     expect(status(page, "no deed")).to_be_visible()
-    assert deed_record(data_root)["annotation"]["header"]["place_of_residence"] == (
-        "Oostdorp"
-    )
+    header = deed_record(data_root)["annotation"]["header"]
+    assert [
+        header[f] for f in ["full_name", "date_of_death", "place_of_residence"]
+    ] == ["", "", ""]
 
 
 def test_save_box_as_header_also_saves_the_typed_fields(marimo_server, data_root, page):
@@ -510,7 +502,8 @@ def test_end_of_book_closes_deed_then_all_books_done(data_root, page):
         load_app_and_lock_annotator(page, url)
         click_button(page, "next page")
         expect(status(page, "page 2/3")).to_be_visible()
-        open_deed(page)
+        # No header box: the end of the book still closes it.
+        open_deed(page, header=False)
         # Before the first page: nowhere to close, continue or save.
         click_button(page, "prev page")
         expect(status(page, "page 1/3")).to_be_visible()

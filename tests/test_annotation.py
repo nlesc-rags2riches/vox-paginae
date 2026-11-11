@@ -219,28 +219,19 @@ def test_header_fields_are_stored_stripped_and_replaced_on_every_save():
     assert set_header_fields(q, "", "", "") == p
 
 
-def test_close_refuses_a_deed_with_no_header_box_or_an_empty_field_and_says_why():
+def test_close_needs_no_header_but_not_before_the_first_scan():
     page_names = ["p1.jpg", "p2.jpg"]
-    p = add_item(
-        new_deed_record("d1", COPIED, "p1.jpg"),
-        "assets",
-        "1,-",
-        "",
-        [("p1.jpg", [0] * 4)],
-    )
-    p = set_header_fields(p, *HEADER_VALUES)
-    with pytest.raises(ValueError, match="no header box"):
-        close_deed_record(p, page_names, "p2.jpg")
-    with_header = add_header_box(p, "p2.jpg", [0] * 4)  # on any scan: a later one too
-    assert close_deed_record(with_header, page_names, "p2.jpg")["scans"] == page_names
-    # Every header field is needed, and the message names the empty ones.
-    empty = set_header_fields(with_header, "Jan Modaal", " ", "")
-    with pytest.raises(
-        ValueError, match="empty header fields: date of death, place of residence"
-    ):
-        close_deed_record(empty, page_names, "p2.jpg")
-    with pytest.raises(ValueError, match="no header box"):  # deleted again
-        close_deed_record(delete_header_box(with_header, "H1"), page_names, "p2.jpg")
+    p = new_deed_record("d1", COPIED, "p1.jpg")  # no header box, every field empty
+    closed = close_deed_record(p, page_names, "p2.jpg")
+    assert closed["scans"] == page_names
+    assert closed["annotation"]["header"] == {
+        "full_name": "",
+        "date_of_death": "",
+        "place_of_residence": "",
+        "layout": [],
+    }
+    with pytest.raises(ValueError, match="cannot close before its first scan"):
+        close_deed_record(new_deed_record("d1", COPIED, "p2.jpg"), page_names, "p1.jpg")
 
 
 def test_close_fills_scans_from_the_first_scan_to_the_close_scan():

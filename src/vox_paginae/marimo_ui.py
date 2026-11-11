@@ -241,7 +241,7 @@ def item_buttons(
     def close_open_deed(_):
         try:
             deed_record = close_deed_record(open_deed_record(), scan_names, scan_name)
-        except ValueError as e:  # no header box or a blank field: it stays open
+        except ValueError as e:  # before its first scan: it stays open
             mo.status.toast(str(e))
             return
         path = save_open_deed(deed_record)
