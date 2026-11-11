@@ -214,3 +214,12 @@ def open_deed(page, search="Jan Modaal", header=True):
         # Shown once open has redrawn the page: a box drawn before that is dropped.
         expect(page.get_by_text(HEADER_HINT)).to_be_visible()
         save_header_or_balance_box(page, HEADER, "H1 · page")
+
+
+def pick_root(page, folder):
+    """Open the root picker and tick ``folder``, a folder right under the starting root."""
+    record_step(page, f"Click **(click to change)**, then tick **{folder}**.")
+    page.get_by_text("(click to change)").click()
+    # The tick box shows only while the pointer is on its row.
+    page.get_by_role("gridcell", name=folder, exact=True).hover()
+    page.get_by_role("checkbox", name=f"Select {folder}", exact=True).click()

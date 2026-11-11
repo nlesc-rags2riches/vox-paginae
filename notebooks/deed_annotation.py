@@ -275,6 +275,11 @@ def _(
             [annotator_row, mo.md("**give your name and lock it to start**")]
         ),
     )
+    # A wrong root picked: no book dropdown, it would be empty.
+    mo.stop(
+        not books,
+        mo.vstack([annotator_row, mo.md(f"**no scans under {root}**")]),
+    )
     book_i, page_i = get_book_page()
     # Each stop keeps the book dropdown: leaving a book never needs the jump slider.
     mo.stop(
@@ -290,7 +295,9 @@ def _(
             [
                 annotator_row,
                 book_dd,
-                mo.md(f"**no `deeds.json` in book `{book.relative_to(root)}`**"),
+                mo.md(
+                    f"**no `deeds.json` in book `{book.relative_to(root)}`**"
+                ),
             ]
         ),
     )
@@ -1076,8 +1083,9 @@ def layout(
 
 
 @app.cell(hide_code=True)
-def jump_slider(annotator_name, book_pages, get_book_page, mo):
-    mo.stop(not annotator_name)  # the locked name comes first, as for the form
+def jump_slider(annotator_name, book_pages, books, get_book_page, mo):
+    # The locked name comes first, as for the form. No books: no scans to jump to.
+    mo.stop(not annotator_name or not books)
     # Every page of every book in annotating order: the slider position is overall progress.
     all_pages = [
         (b, p)
