@@ -96,16 +96,19 @@ def section_buttons(
 
     ``section`` is ``"header"`` or ``"balance"``. Save fields passes the values of
     ``field_inputs`` (from ``section_field_inputs``) to ``set_fields`` in order, blank
-    ones too. Boxes go in one at a time, on the deed's first scan or a later one: before
-    it they would be outside scans. Editing an item locks them.
+    ones too; save box does so as well. Boxes go in one at a time, on the deed's first
+    scan or a later one: before it they would be outside scans. Editing an item locks
+    them.
     """
     open_deed = get_deed_record()
+
+    def deed_record_with_typed_fields():
+        return set_fields(get_deed_record(), *(field.value for field in field_inputs))
+
     save_fields_btn = mo.ui.button(
         label=save_fields_label,
         disabled=open_deed is None,
-        on_click=lambda _: save_and_show_open_deed(
-            set_fields(get_deed_record(), *(field.value for field in field_inputs))
-        ),
+        on_click=lambda _: save_and_show_open_deed(deed_record_with_typed_fields()),
     )
     tag_by_option = {
         f"{tag} · page {scan_names.index(box['scan']) + 1}": tag
@@ -126,8 +129,9 @@ def section_buttons(
         or drawn_box is None
         or has_pending_boxes
         or scan_names.index(scan_name) < scan_names.index(open_deed["scans"][0]),
+        # The typed fields too: the inputs are rebuilt on save, so they would be lost.
         on_click=lambda _: save_and_show_open_deed(
-            add_box(get_deed_record(), scan_name, drawn_box)
+            add_box(deed_record_with_typed_fields(), scan_name, drawn_box)
         ),
     )
     # The later ones move up: the second box becomes the first.

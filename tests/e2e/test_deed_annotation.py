@@ -228,6 +228,21 @@ def test_header_fields_are_prefilled_corrected_and_needed_to_close(
     )
 
 
+def test_save_box_as_header_also_saves_the_typed_fields(marimo_server, data_root, page):
+    # Box drawn, fields typed, then save box: the fields are not lost.
+    load_app_and_lock_annotator(page, marimo_server)
+    open_deed(page, header=False)
+    expect(page.get_by_text(HEADER_HINT)).to_be_visible()
+    drag_box_on_page(page, *HEADER, around="the header")
+    fill_text_input(page, "full name", "Jan Modaal Jr.")
+    click_button(page, "save box as header")
+    expect(page.locator("option", has_text="H1 · page")).to_have_count(1)
+    expect(text_input(page, "full name")).to_have_value("Jan Modaal Jr.")
+    header = deed_record(data_root)["annotation"]["header"]
+    assert header["full_name"] == "Jan Modaal Jr."
+    assert len(header["layout"]) == 1
+
+
 BALANCE = (0.2, 0.6, 0.8, 0.8)
 
 
