@@ -198,7 +198,7 @@ def page_buttons(
                     )
                 except (
                     ValueError
-                ) as _e:  # no header box or a blank field: it stays open, here
+                ) as _e:  # before its first scan: it stays open, here
                     mo.status.toast(str(_e))
                     return
                 _path = save_open_deed(_deed_record)

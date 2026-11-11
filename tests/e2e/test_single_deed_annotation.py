@@ -193,13 +193,7 @@ def test_next_page_past_the_last_page_closes_the_deed_and_opens_the_next(
     click_button(page, "open")
     expect(status(page, "editing deed-annotation-6#1 · page 1/3")).to_be_visible()
     click_next_page_to_last(page)
-    # No header box: the close is refused, says why, and the deed stays open here.
-    click_button(page, "next page")
-    expect(page.get_by_text("this deed has no header box").first).to_be_visible()
-    expect(status(page, "editing deed-annotation-6#1 · page 3/3")).to_be_visible()
-
-    save_header_or_balance_box(page, HEADER, "H1 · page 3")
-    click_button(page, "next page")
+    click_button(page, "next page")  # no header box: it still closes
     # The next deed, in the dropdown's order, is open on its first page.
     expect(
         status(page, "10-1/scan-1.jpg · editing deed-annotation-10#1 · page 1/3")

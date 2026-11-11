@@ -70,7 +70,7 @@ def new_deed_record(
         # Filled in by every write.
         "annotation_metadata": {"annotator_name": None, "annotation_date": None},
         "annotation": {
-            # Fields from set_header_fields, one or more boxes from add_header_box.
+            # Fields from set_header_fields, boxes from add_header_box: both optional.
             "header": {
                 "full_name": "",
                 "date_of_death": "",
@@ -176,7 +176,7 @@ def _delete_tagged_box(deed_record: dict, section: str, tag: str) -> dict:
 def add_header_box(deed_record: dict, scan: str, bbox: Sequence[float]) -> dict:
     """Return a copy of ``deed_record`` with ``bbox`` on ``scan`` as its last header box.
 
-    A header has one or more boxes, on any of the deed's scans, tagged ``H1, H2…`` by
+    A header has zero or more boxes, on any of the deed's scans, tagged ``H1, H2…`` by
     position.
     """
     return _add_tagged_box(deed_record, "header", scan, bbox)
@@ -291,18 +291,10 @@ def close_deed_record(
 
     ``scans`` becomes every scan in ``page_names`` (the book's, in order) from the
     first scan (``scans[0]``) to ``close_scan`` or the last scan a box reaches,
-    whichever is later, both included, with or without items. Closing a deed with no
-    header box, an empty header field, or before its first scan, raises ``ValueError``
-    saying why.
+    whichever is later, both included, with or without items. The header is optional:
+    no box and empty fields are fine. Closing before its first scan raises
+    ``ValueError`` saying why.
     """
-    header = deed_record["annotation"]["header"]
-    if not header["layout"]:
-        raise ValueError("this deed has no header box: save one before closing")
-    empty = [f.replace("_", " ") for f in HEADER_FIELDS if not header[f]]
-    if empty:
-        raise ValueError(
-            f"empty header fields: {', '.join(empty)}. Save them before closing"
-        )
     start = page_names.index(deed_record["scans"][0])
     end = page_names.index(close_scan)
     if end < start:
