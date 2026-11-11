@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.1"
+__generated_with = "0.25.2"
 app = marimo.App(width="full")
 
 
@@ -84,7 +84,7 @@ def imports():
 @app.cell
 def _(Path, marimo_ui, mo):
     # `marimo edit|run notebooks/deed_annotation.py -- --data-root <dir>` overrides the default.
-    default_root = Path(mo.cli_args().get("data-root") or Path.home())
+    default_root = Path(mo.cli_args().get("data-root") or Path.cwd())
     root_picker = marimo_ui.root_picker(default_root)
     return default_root, root_picker
 

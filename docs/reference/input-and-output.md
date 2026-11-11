@@ -11,7 +11,8 @@ see Single deed folders.
 
 - You give your name as the **annotator** and lock it. Until it is locked, only the
   name and the root folder can be changed. While locked it cannot be edited; unlock it to change it.
-- You pick a root folder. Every folder under it that directly contains `*.jpg` is a
+- You pick a root folder. It starts at the folder you started the tool from, or at
+  `--data-root` if you gave one. Every folder under it that directly contains `*.jpg` is a
   **book**, and books are taken in sorted path order.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
@@ -117,7 +118,8 @@ see Single deed folders.
 `notebooks/single_deed_annotation.py` follows In and Out, except where this section
 says otherwise.
 
-- You pick a root folder. Every folder under it that has an `input.json` is a
+- You pick a root folder. It starts at the folder you started the tool from, or at
+  `--data-root` if you gave one. Every folder under it that has an `input.json` is a
   **single deed folder**. It holds one deed.
 - The deeds are listed in the order a file browser shows their folders. Numbers in a
   name count as numbers, so `6-1` comes before `10-1`.

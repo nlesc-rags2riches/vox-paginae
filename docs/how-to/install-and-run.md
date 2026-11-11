@@ -15,7 +15,7 @@ Vox Paginae has two notebooks. Use the one that fits how your scans are stored:
 - One folder per book, each with a `deeds.json`: the book notebook.
 
 Both take `--data-root`: where the folder picker starts. The picker cannot go above it.
-Without it, the picker starts in your home folder.
+Without it, the picker starts in the folder you started the tool from.
 
 ## Single deed folders
 
