@@ -225,26 +225,29 @@ def pick_root(page, folder):
     While cells re-run, the picker can be redrawn between the steps and the pick is
     lost (#152), so the steps are tried again, up to three times."""
     record_step(page, f"Click **(click to change)**, then tick **{folder}**.")
+    opener = page.get_by_role("button", name=re.compile(r"\(click to change\)"))
     row = page.get_by_role("gridcell", name=folder, exact=True)
     root_line = page.get_by_text(
         re.compile(rf"[/\\]{re.escape(folder)} \(click to change\)")
     )
-    tries = 3
+    tries, lost = 3, None
     for attempt in range(tries):
         try:
             # A redraw can leave the picker closed; clicking an open one closes it.
-            if not row.is_visible():
-                page.get_by_text("(click to change)").click(timeout=5_000)
+            if opener.get_attribute("aria-expanded", timeout=5_000) != "true":
+                opener.click(timeout=5_000)
             # The tick box shows only while the pointer is on its row.
             row.hover(timeout=5_000)
             page.get_by_role("checkbox", name=f"Select {folder}", exact=True).click(
                 timeout=5_000
             )
-        except PlaywrightError:
-            pass  # lost to a redraw: the check below decides whether to try again
+        except PlaywrightError as error:
+            lost = error  # to a redraw: the check below decides whether to try again
         try:
             expect(root_line).to_be_visible(timeout=10_000)
             return
-        except AssertionError:
+        except AssertionError as not_picked:
             if attempt == tries - 1:
+                if lost:  # a helper bug would show only here, not as "not visible"
+                    not_picked.add_note(f"last error in the pick steps: {lost}")
                 raise
