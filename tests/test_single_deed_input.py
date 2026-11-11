@@ -187,7 +187,7 @@ def with_items(*items):
     deed_record = new_deed_record("10#1399", {}, "scan-1.jpg")
     for type_, amount, description in items:
         deed_record = add_item(
-            deed_record, type_, "", amount, description, [("scan-1.jpg", [0, 0, 1, 1])]
+            deed_record, type_, amount, description, [("scan-1.jpg", [0, 0, 1, 1])]
         )
     return deed_record
 

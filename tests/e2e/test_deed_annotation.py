@@ -109,7 +109,7 @@ def test_open_writes_the_file_at_once_then_items_go_into_it(
     record = deed_record(data_root)
     assert record["scans"] == ["page_02.jpg"]
     (item,) = record["annotation"]["assets"]
-    assert list(item) == ["layout", "category", "amount", "description"]
+    assert list(item) == ["layout", "amount", "description"]
     assert (item["amount"], item["description"]) == ("900,-", "Een huis")
     assert fractions(item["layout"][0]["bbox"]) == pytest.approx(
         [0.2, 0.3, 0.6, 0.5], abs=0.01

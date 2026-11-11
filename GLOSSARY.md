@@ -114,8 +114,8 @@ deed's scans. Each box is another written version of the same totals. It is opti
 the totals can be left empty and the balance can have no box.
 
 **Item**:
-One asset or liability of a deed: its type, an optional category, an amount or a
-description (or both), and one or more boxes.
+One asset or liability of a deed: its type, an amount or a description (or both),
+and one or more boxes.
 _Avoid_: block, item block
 
 **Type**:

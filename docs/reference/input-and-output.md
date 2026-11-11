@@ -81,7 +81,6 @@ see Single deed folders.
   - `layout`: one entry per box, each with `scan` (the filename), `bbox`
     (`[x0, y0, x1, y1]` in image pixels, origin top-left), and `pagexml_link` and
     `pagexml_baseline_ids` (always `null`)
-  - `category`: optional free text; left blank, it is written as `null`
   - `amount`: a string
   - `description`: free text describing the item. It can have several lines.
   - at least one of `amount` and `description` is non-blank; the other may be `""`
@@ -196,8 +195,7 @@ says otherwise.
           "pagexml_link": null, "pagexml_baseline_ids": null},
          {"scan": "page_02.jpg", "bbox": [380, 210, 2290, 420],
           "pagexml_link": null, "pagexml_baseline_ids": null}],
-       "category": "property", "amount": "900,-",
-       "description": "Een huis met erf ..."}
+       "amount": "900,-", "description": "Een huis met erf ..."}
     ],
     "liabilities": []
   }

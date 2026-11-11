@@ -1,7 +1,7 @@
 # Vox Paginae
 
 A [marimo](https://marimo.io) notebook for annotating scanned death-duty deeds: each
-deed's header, balance and items (type, category, amount, description, boxes), saved as
+deed's header, balance and items (type, amount, description, boxes), saved as
 one JSON file per deed.
 
 > [!WARNING]

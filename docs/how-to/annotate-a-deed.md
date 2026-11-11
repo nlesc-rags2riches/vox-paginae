@@ -158,7 +158,6 @@ what each field holds.
             "pagexml_baseline_ids": null
           }
         ],
-        "category": null,
         "amount": "4812.50",
         "description": "Een woonhuis met schuur en erf, staande en gelegen te Oostdorp aan den Brink, kadastraal bekend gemeente Oostdorp sectie A nummer 214, groot achttien aren veertig centiaren"
       },
@@ -176,7 +175,6 @@ what each field holds.
             "pagexml_baseline_ids": null
           }
         ],
-        "category": null,
         "amount": "1250.75",
         "description": "Een perceel bouwland, gelegen onder Oostdorp in de Noordesch, kadastraal bekend sectie B nummer 87"
       }
@@ -196,7 +194,6 @@ what each field holds.
             "pagexml_baseline_ids": null
           }
         ],
-        "category": null,
         "amount": "145.35",
         "description": "Kosten der begrafenis"
       }
