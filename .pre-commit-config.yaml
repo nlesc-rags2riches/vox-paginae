@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.10 # same as uv.lock: bump both together, not with prek auto-update
+    rev: v0.17.3 # same as uv.lock: bump both together, not with prek update
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -34,7 +34,7 @@ repos:
       - id: detect-private-key
       - id: no-commit-to-branch # main by default; CI skips it
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.13.6
+    rev: 0.13.7
     hooks:
       - id: uv-lock
   - repo: https://github.com/abravalheri/validate-pyproject
