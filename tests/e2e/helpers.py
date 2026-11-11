@@ -4,9 +4,11 @@ use locators only to check what they see."""
 
 # TODO: Needs more detailed human review
 
+import re
 from collections.abc import Callable
 from functools import reduce
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Locator, expect
 
 HEADER = (0.1, 0.05, 0.9, 0.15)  # clear of the item boxes the tests draw
@@ -217,9 +219,32 @@ def open_deed(page, search="Jan Modaal", header=True):
 
 
 def pick_root(page, folder):
-    """Open the root picker and tick ``folder``, a folder right under the starting root."""
+    """Open the root picker and tick ``folder``, a folder right under the starting root.
+    Returns once the root line shows ``folder``.
+
+    While cells re-run, the picker can be redrawn between the steps and the pick is
+    lost (#152), so the steps are tried again, up to three times."""
     record_step(page, f"Click **(click to change)**, then tick **{folder}**.")
-    page.get_by_text("(click to change)").click()
-    # The tick box shows only while the pointer is on its row.
-    page.get_by_role("gridcell", name=folder, exact=True).hover()
-    page.get_by_role("checkbox", name=f"Select {folder}", exact=True).click()
+    row = page.get_by_role("gridcell", name=folder, exact=True)
+    root_line = page.get_by_text(
+        re.compile(rf"[/\\]{re.escape(folder)} \(click to change\)")
+    )
+    tries = 3
+    for attempt in range(tries):
+        try:
+            # A redraw can leave the picker closed; clicking an open one closes it.
+            if not row.is_visible():
+                page.get_by_text("(click to change)").click(timeout=5_000)
+            # The tick box shows only while the pointer is on its row.
+            row.hover(timeout=5_000)
+            page.get_by_role("checkbox", name=f"Select {folder}", exact=True).click(
+                timeout=5_000
+            )
+        except PlaywrightError:
+            pass  # lost to a redraw: the check below decides whether to try again
+        try:
+            expect(root_line).to_be_visible(timeout=10_000)
+            return
+        except AssertionError:
+            if attempt == tries - 1:
+                raise

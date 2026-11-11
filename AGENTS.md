@@ -24,9 +24,8 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   book cell run (`set_annotator((name, True))` from the scratchpad). The fake deed's
   scans look real, so they also serve for tutorial screenshots.
 - Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
-  working run the affected ones with `-k`, and the whole suite once at the end. Known flakes:
-  `test_restart_resumes_on_last_page_with_no_open_deed`,
-  `test_root_without_scans_says_so_until_one_with_scans_is_picked` (#152). A browser test
+  working run the affected ones with `-k`, and the whole suite once at the end. Known flake:
+  `test_restart_resumes_on_last_page_with_no_open_deed`. A browser test
   that fails once: read its trace and screenshot first, then rerun it once alone, and
   report both to the developer. They are in `test-results/<test>/` locally, and in the
   run's `e2e-test-results` artifact in CI (`gh run download <run> -n e2e-test-results`).
