@@ -1052,3 +1052,23 @@ def test_without_data_root_the_root_is_the_folder_the_tool_started_from(
         expect(
             page.get_by_text(f"root: {started_from} (click to change)")
         ).to_be_visible(timeout=60_000)
+
+
+def test_root_cannot_change_while_a_deed_is_open_or_boxes_are_pending(
+    marimo_server, page
+):
+    load_app_and_lock_annotator(page, marimo_server)
+    root_picker = page.get_by_text("(click to change)")
+    expect(root_picker).to_be_visible()
+
+    open_deed(page)
+    expect(root_picker).to_have_count(0)
+    click_button(page, "close deed")
+    expect(root_picker).to_be_visible()
+
+    drag_box_on_page(page, 0.2, 0.2, 0.8, 0.3)
+    click_button(page, "continue")
+    expect(status(page, "pending 1")).to_be_visible()
+    expect(root_picker).to_have_count(0)
+    click_button(page, "clear pending")
+    expect(root_picker).to_be_visible()

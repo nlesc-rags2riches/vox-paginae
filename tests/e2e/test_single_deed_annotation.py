@@ -250,3 +250,27 @@ def test_next_page_past_the_last_page_only_picks_a_next_deed_with_a_file(
         "scan-3.jpg",
     ]
     assert deed_record(single_deed_root, "10-1", "10#1") == next_deed
+
+
+def test_root_cannot_change_while_a_deed_is_open_or_boxes_are_pending(
+    single_deed_server, page
+):
+    load_app_and_lock_annotator(page, single_deed_server)
+    root_picker = page.get_by_text("(click to change)")
+    expect(root_picker).to_be_visible()
+    pick_in_deed_dropdown(page, "10#1")
+
+    click_button(page, "open")
+    expect(page.get_by_text(HEADER_HINT)).to_be_visible()
+    expect(root_picker).to_have_count(0)
+    save_header_or_balance_box(page, HEADER, "H1 · page 1")
+    click_button(page, "close deed")
+    expect(status(page, "no deed · page 1/3")).to_be_visible()
+    expect(root_picker).to_be_visible()
+
+    drag_box_on_page(page, 0.2, 0.3, 0.6, 0.5)
+    click_button(page, "continue")
+    expect(status(page, "pending 1")).to_be_visible()
+    expect(root_picker).to_have_count(0)
+    click_button(page, "clear pending")
+    expect(root_picker).to_be_visible()

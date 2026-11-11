@@ -25,6 +25,20 @@ def root_picker(initial_path: Path) -> mo.ui.file_browser:
     )
 
 
+def root_line_or_picker(
+    root: Path,
+    picker: mo.ui.file_browser,
+    open_deed: dict | None,
+    pending_boxes: list[tuple[str, list[int]]],
+) -> mo.Html:
+    """``root``, with ``picker`` to change it unless a deed is open or boxes are
+    pending: a root change resets the session and drops that work."""
+    # The file browser has no disabled state: hide it instead.
+    if open_deed is not None or pending_boxes:
+        return mo.md(f"root: {root} (locked while a deed is open or boxes are pending)")
+    return mo.accordion({f"root: {root} (click to change)": picker})
+
+
 def annotator_input(name: str, locked: bool) -> mo.ui.text:
     """The annotator name input, holding ``name``; read only while ``locked``."""
     # Read-only while locked: a stray keystroke cannot change who is recorded.
