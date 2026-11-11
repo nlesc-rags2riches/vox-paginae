@@ -273,12 +273,14 @@ def test_annotate_a_deed(fake_deed_server, fake_deed_root, page, howto):
         )
     expect(page.locator("option", has_text="L1 · 145.35")).to_have_count(1)
 
-    save_header_or_balance_box(page, FAKE_DEED_BALANCE, "B1 · page 2", "balance")
+    # Box, then totals, then one click: save box saves the totals too.
+    drag_box_on_page(page, *FAKE_DEED_BALANCE, around="the balance")
     fill_text_inputs(
         page,
         {"total assets": "6063.25", "total liabilities": "145.35", "total": "5917.90"},
     )
-    click_button(page, "save balance totals")
+    click_button(page, "save box as balance")
+    expect(page.locator("option", has_text="B1 · page 2")).to_have_count(1)
 
     click_button(page, "close deed")
     expect(status(page, "no deed · page 2/2")).to_be_visible()
