@@ -14,7 +14,7 @@ see Single deed folders.
 - You pick a root folder. It starts at the folder you started the tool from, or at
   `--data-root` if you gave one. Every folder under it that directly contains `*.jpg` is a
   **book**, and books are taken in sorted path order. If no folder under the root has
-  scans, the screen says **no scans under &lt;root&gt;**: pick another root. The root
+  scans, the screen says **no scans under `<root>`**: pick another root. The root
   folder cannot be changed while a deed is open or boxes are pending.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
