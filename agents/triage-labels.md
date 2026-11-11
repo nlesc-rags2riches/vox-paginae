@@ -13,3 +13,9 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
 Edit the "Label in our tracker" column to match whatever vocabulary you actually use.
+
+## Scope label
+
+`book-notebook`: the issue only affects the book notebook. Leave it off issues about the
+single-deed notebook or about both. It says what an issue is about, not whether it will be
+worked on.
