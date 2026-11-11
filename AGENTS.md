@@ -23,14 +23,16 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   after `edit`; for the book notebook, lock an annotator name before cells past the
   book cell run (`set_annotator((name, True))` from the scratchpad). The fake deed's
   scans look real, so they also serve for tutorial screenshots.
-- Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~2 min, so while
+- Tests: `uv run pytest`; browser tests `uv run pytest -m e2e` take ~3 min, so while
   working run the affected ones with `-k`, and the whole suite once at the end. Known flake:
   `test_restart_resumes_on_last_page_with_no_open_deed`. A browser test
   that fails once: read its trace and screenshot first, then rerun it once alone, and
   report both to the developer. They are in `test-results/<test>/` locally, and in the
   run's `e2e-test-results` artifact in CI (`gh run download <run> -n e2e-test-results`).
   `trace.zip` holds `trace.trace`, one JSON event per line: the actions, logs and DOM
-  snapshots.
+  snapshots. A flake that passes alone often shows under load: run it 20 times with
+  every CPU busy (one `python3 -I -c 'while True: pass'` per core, killed afterwards).
+  A race fix holds when that loop passes 20 in a row (#152).
 - Docs follow Diátaxis, built with Zensical. Keep them in step with the code:
   a read/write change updates `docs/reference/input-and-output.md` (draft it to
   `CODING_STANDARDS.md` › Docs, then confirm the wording with the user: it is a promise
