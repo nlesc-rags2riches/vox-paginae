@@ -13,8 +13,9 @@ see Single deed folders.
   name and the root folder can be changed. While locked it cannot be edited; unlock it to change it.
 - You pick a root folder. It starts at the folder you started the tool from, or at
   `--data-root` if you gave one. Every folder under it that directly contains `*.jpg` is a
-  **book**, and books are taken in sorted path order. The root folder cannot be changed
-  while a deed is open or boxes are pending.
+  **book**, and books are taken in sorted path order. If no folder under the root has
+  scans, the screen says **no scans under `<root>`**: pick another root. The root
+  folder cannot be changed while a deed is open or boxes are pending.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
   book, and nothing can be annotated or saved in it. Its deeds are listed to pick from. A

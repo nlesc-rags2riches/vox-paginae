@@ -26,6 +26,7 @@ from .helpers import (
     pick_in_deed_dropdown,
     pick_in_dropdown,
     pick_item_type,
+    pick_root,
     save_header_or_balance_box,
     save_item,
     search_deed_dropdown,
@@ -1072,3 +1073,18 @@ def test_root_cannot_change_while_a_deed_is_open_or_boxes_are_pending(
     expect(root_picker).to_have_count(0)
     click_button(page, "clear pending")
     expect(root_picker).to_be_visible()
+
+
+def test_root_without_scans_says_so_until_one_with_scans_is_picked(
+    tmp_path, data_root, page
+):
+    (tmp_path / "empty").mkdir()
+    with serve(tmp_path) as url:
+        load_app_and_lock_annotator(page, url)
+        pick_root(page, "empty")
+        expect(page.get_by_text(f"no scans under {tmp_path / 'empty'}")).to_be_visible()
+        expect(page.locator("canvas")).to_have_count(0)
+        pick_root(page, data_root.name)
+        expect(status(page, "no deed · page 1/3")).to_be_visible()
+        # A cell that raises shows this toast.
+        expect(page.get_by_text("An internal error occurred")).to_have_count(0)
