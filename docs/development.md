@@ -117,3 +117,6 @@ Build them as CI does. `--strict` stops the build on any warning:
 ```bash
 uv run --only-group docs zensical build --strict
 ```
+
+Each push to `main` builds the docs and publishes them at
+<https://nlesc-rags2riches.github.io/vox-paginae/>. Pull requests only build them.
