@@ -198,12 +198,9 @@ def type_input(get_type, mo):
 @app.cell(hide_code=True)
 def _(get_deed_record, get_editing, input_item_dd, item_tags, mo):
     get_deed_record()  # re-created (cleared) after every open, write and close
-    # Prefilled from the picked input item, else from the item being edited, if any. The
-    # input has no category: it stays the edited item's.
-    _edited = dict(item_tags(get_deed_record())).get(get_editing(), {})
-    _item = input_item_dd.value or _edited
-    category_in = mo.ui.text(
-        label="category", value=_edited.get("category") or ""
+    # Prefilled from the picked input item, else from the item being edited, if any.
+    _item = input_item_dd.value or dict(item_tags(get_deed_record())).get(
+        get_editing(), {}
     )
     # debounce=False: save enables while typing (#11).
     amount_in = mo.ui.text(
@@ -216,7 +213,7 @@ def _(get_deed_record, get_editing, input_item_dd, item_tags, mo):
         debounce=False,
         rows=3,  # it can be dragged taller
     )
-    return amount_in, category_in, desc_in
+    return amount_in, desc_in
 
 
 @app.cell(hide_code=True)
@@ -489,7 +486,6 @@ def input_item_dropdown(
 @app.cell(hide_code=True)
 def item_buttons(
     amount_in,
-    category_in,
     desc_in,
     drawn_box,
     get_deed_record,
@@ -519,7 +515,6 @@ def item_buttons(
     ) = marimo_ui.item_buttons(
         item_dd,
         type_radio=type_radio,
-        category_in=category_in,
         amount_in=amount_in,
         desc_in=desc_in,
         get_deed_record=get_deed_record,
@@ -742,7 +737,6 @@ def layout(
     annotator_row,
     balance_dd,
     cancel_edit_btn,
-    category_in,
     clear_pending_btn,
     close_deed_btn,
     continue_btn,
@@ -827,7 +821,7 @@ def layout(
             mo.hstack([prev_page_btn, next_page_btn], justify="start"),
             mo.md("---"),
             input_item_dd,
-            mo.hstack([type_radio, category_in, amount_in], justify="start"),
+            mo.hstack([type_radio, amount_in], justify="start"),
             desc_in,
             mo.hstack(
                 [continue_btn, clear_pending_btn, save_btn], justify="start"

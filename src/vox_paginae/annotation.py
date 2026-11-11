@@ -93,7 +93,6 @@ def new_deed_record(
 def add_item(
     deed_record: dict,
     type_: str | None,
-    category: str,
     amount: str,
     description: str,
     layout_boxes: Sequence[tuple[str, Sequence[float]]],
@@ -103,20 +102,19 @@ def add_item(
     Each ``(scan, bbox)`` in ``layout_boxes`` becomes one ``layout`` entry.
 
     ``amount`` and ``description`` are stored as typed, stripped; at least one must be
-    non-blank. A blank ``category`` becomes ``None``.
+    non-blank.
     """
     if type_ not in TYPES:
         raise ValueError(f"type must be one of {TYPES}, got {type_!r}")
     if not layout_boxes:
         raise ValueError("an item needs at least one box")
-    category, amount, description = (t.strip() for t in (category, amount, description))
+    amount, description = amount.strip(), description.strip()
     if not (amount or description):
         raise ValueError("an item needs an amount or a description")
     deed_record = copy.deepcopy(deed_record)
     deed_record["annotation"][type_].append(
         {
             "layout": [new_box(scan, bbox) for scan, bbox in layout_boxes],
-            "category": category or None,
             "amount": amount,
             "description": description,
         }
@@ -263,7 +261,6 @@ def replace_item(
     deed_record: dict,
     tag: str,
     type_: str | None,
-    category: str,
     amount: str,
     description: str,
     layout_boxes: Sequence[tuple[str, Sequence[float]]],
@@ -277,7 +274,6 @@ def replace_item(
     deed_record = add_item(
         delete_item(deed_record, tag),
         type_,
-        category,
         amount,
         description,
         layout_boxes,

@@ -3,7 +3,7 @@
 [marimo](https://marimo.io) notebooks for annotating scanned death-duty deeds
 (_memories van successie_): where each deed's header, balance and **items** are on its
 scans, and what the items say. An item is one asset or liability of a deed: its type,
-an optional category, an amount or a description (or both), and one or more boxes.
+an amount or a description (or both), and one or more boxes.
 Each deed's annotation is saved as one JSON file next to the deed's scans: in its
 single deed folder, or in its book.
 

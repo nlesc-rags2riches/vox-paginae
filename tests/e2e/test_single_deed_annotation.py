@@ -171,7 +171,7 @@ def test_pick_an_input_item_correct_it_and_save(
     record = deed_record(single_deed_root, "10-1", "10#1")
     (item,) = record["annotation"]["assets"]
     # Only the saved values: nothing links back to the input item.
-    assert set(item) == {"layout", "category", "amount", "description"}
+    assert set(item) == {"layout", "amount", "description"}
     assert (item["amount"], item["description"]) == ("900", "Een huis met erf")
     assert [box["scan"] for box in item["layout"]] == ["scan-1.jpg", "scan-2.jpg"]
     click_button(page, "close deed")

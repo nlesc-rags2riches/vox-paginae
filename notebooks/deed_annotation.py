@@ -242,9 +242,6 @@ def _(get_deed_record, get_editing, item_tags, mo):
     get_deed_record()  # re-created (cleared) after every open, write and close
     # Prefilled from the item being edited, if any.
     _item = dict(item_tags(get_deed_record())).get(get_editing(), {})
-    category_in = mo.ui.text(
-        label="category", value=_item.get("category") or ""
-    )
     # debounce=False: save enables while typing. Not debounce=300: marimo's timed
     # debounce can send back a value the kernel replaced, e.g. edit then cancel edit (#11).
     amount_in = mo.ui.text(
@@ -256,7 +253,7 @@ def _(get_deed_record, get_editing, item_tags, mo):
         full_width=True,
         debounce=False,
     )
-    return amount_in, category_in, desc_in
+    return amount_in, desc_in
 
 
 @app.cell(hide_code=True)
@@ -409,7 +406,6 @@ def item_dropdown(get_deed_record, marimo_ui):
 @app.cell(hide_code=True)
 def item_buttons(
     amount_in,
-    category_in,
     desc_in,
     drawn_box,
     get_deed_record,
@@ -439,7 +435,6 @@ def item_buttons(
     ) = marimo_ui.item_buttons(
         item_dd,
         type_radio=type_radio,
-        category_in=category_in,
         amount_in=amount_in,
         desc_in=desc_in,
         get_deed_record=get_deed_record,
@@ -925,7 +920,6 @@ def layout(
     book,
     book_dd,
     cancel_edit_btn,
-    category_in,
     clear_pending_btn,
     close_deed_btn,
     continue_btn,
@@ -1031,7 +1025,7 @@ def layout(
             mo.md("---"),
             mo.hstack([prev_page_btn, next_page_btn], justify="start"),
             mo.md("---"),
-            mo.hstack([type_radio, category_in, amount_in], justify="start"),
+            mo.hstack([type_radio, amount_in], justify="start"),
             desc_in,
             mo.hstack(
                 [continue_btn, clear_pending_btn, save_btn], justify="start"

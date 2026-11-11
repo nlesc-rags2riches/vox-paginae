@@ -173,7 +173,6 @@ def item_buttons(
     item_dd: mo.ui.dropdown,
     *,
     type_radio: mo.ui.radio,
-    category_in: mo.ui.text,
     amount_in: mo.ui.text,
     desc_in: mo.ui.text,
     get_deed_record: Callable[[], dict | None],
@@ -210,7 +209,6 @@ def item_buttons(
     def save_item(_):
         fields = (
             type_radio.value,
-            category_in.value,
             amount_in.value,
             desc_in.value,
             layout_boxes,
