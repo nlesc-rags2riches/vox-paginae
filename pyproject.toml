@@ -10,14 +10,14 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "marimo>=0.25.1",
+    "marimo>=0.25.2",
     "matplotlib>=3.11.2",
     "numpy>=2.4.6",
-    "pillow>=12.3.0",
+    "pillow>=13.0.0",
 ]
 
 [build-system]
-requires = ["uv_build>=0.11.28,<0.12.0"]
+requires = ["uv_build>=0.13.7,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.uv]
@@ -58,12 +58,12 @@ exclude = ["notebooks/*.py"]
 
 [dependency-groups]
 dev = [
-    "playwright>=1.63.0",
-    "pytest>=9.1.1",
-    "pytest-playwright>=0.9.0",
-    "ruff>=0.16.10",
-    "ty>=0.0.92",
+    "playwright>=1.64.1",
+    "pytest>=9.2.0",
+    "pytest-playwright>=0.10.0",
+    "ruff>=0.17.3",
+    "ty>=0.0.97",
 ]
 docs = [
-    "zensical>=0.0.68",
+    "zensical>=0.0.74",
 ]

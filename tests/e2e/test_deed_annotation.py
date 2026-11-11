@@ -884,6 +884,7 @@ def test_delete_deed_needs_confirmation(marimo_server, data_root, page):
     expect(search_deed_dropdown(page, "Jan Modaal")).to_have_text(
         ["3 · Oostdorp · Jan Modaal"]
     )
+    close_deed_dropdown(page)
     pick_in_deed_dropdown(page, "Jan Modaal")
     expect(button(page, "open")).to_be_enabled()
     expect(button(page, "delete deed")).to_be_disabled()
@@ -939,6 +940,7 @@ def test_move_annotation_to_another_deed(marimo_server, data_root, page):
     expect(search_deed_dropdown(page, "Jan Modaal")).to_have_text(
         ["3 · Oostdorp · Jan Modaal"]
     )
+    close_deed_dropdown(page)
     pick_in_deed_dropdown(page, "Jan Modaal")
     expect(button(page, "open")).to_be_enabled()
 
@@ -955,6 +957,7 @@ def test_deed_dropdown_shows_the_picked_deed(marimo_server, page):
             "12 · Oostdorp · Kees Bakker · Klaas Bakker",
         ]
     )
+    close_deed_dropdown(page)
     pick_in_deed_dropdown(page, "Westdorp")
     expect(page.get_by_text("Piet Smit · died 1880-05-06 in Westdorp")).to_be_visible()
 
