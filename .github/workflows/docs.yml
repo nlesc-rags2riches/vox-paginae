@@ -11,7 +11,8 @@ on:
       - uv.lock
       - .github/workflows/docs.yml
   workflow_dispatch:
-# A new run on the same pull request cancels the older one; runs on main all finish.
+# A new run on the same pull request cancels the older one. Runs on main never cancel
+# a running one: they wait, the newest waiting run wins, so two deploys never overlap.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -29,3 +30,20 @@ jobs:
       - run: uv run --locked playwright install --with-deps chromium
       - run: uv run --locked pytest -m e2e tests/e2e/test_howtos.py
       - run: uv run --locked --only-group docs zensical build --strict
+      - uses: actions/upload-pages-artifact@v5.0.0
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1
