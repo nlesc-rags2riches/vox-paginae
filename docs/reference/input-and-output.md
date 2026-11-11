@@ -13,7 +13,8 @@ see Single deed folders.
   name and the root folder can be changed. While locked it cannot be edited; unlock it to change it.
 - You pick a root folder. It starts at the folder you started the tool from, or at
   `--data-root` if you gave one. Every folder under it that directly contains `*.jpg` is a
-  **book**, and books are taken in sorted path order.
+  **book**, and books are taken in sorted path order. The root folder cannot be changed
+  while a deed is open or boxes are pending.
 - A book's **pages** are its `*.jpg` files, sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
   book, and nothing can be annotated or saved in it. Its deeds are listed to pick from. A
@@ -120,7 +121,8 @@ says otherwise.
 
 - You pick a root folder. It starts at the folder you started the tool from, or at
   `--data-root` if you gave one. Every folder under it that has an `input.json` is a
-  **single deed folder**. It holds one deed.
+  **single deed folder**. It holds one deed. The root folder cannot be changed while a
+  deed is open or boxes are pending.
 - The deeds are listed in the order a file browser shows their folders. Numbers in a
   name count as numbers, so `6-1` comes before `10-1`.
 - A deed is listed by its `ref_reg` and the deceased's `full_name`. Once it has a

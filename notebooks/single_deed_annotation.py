@@ -81,10 +81,18 @@ def _(Path, marimo_ui, mo):
 
 
 @app.cell(hide_code=True)
-def _(default_root, mo, root_picker):
+def _(default_root, root_picker):
     root = root_picker.path() or default_root
-    mo.accordion({f"root: {root} (click to change)": root_picker})
     return (root,)
+
+
+@app.cell(hide_code=True)
+def _(get_deed_record, get_pending_boxes, marimo_ui, root, root_picker):
+    # Apart from the root cell: it reads the deed state, which resets on a root change.
+    marimo_ui.root_line_or_picker(
+        root, root_picker, get_deed_record(), get_pending_boxes()
+    )
+    return
 
 
 @app.cell(hide_code=True)
