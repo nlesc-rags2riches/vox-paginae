@@ -62,22 +62,18 @@ First start the single-deed notebook, as in
         `3 · liabilities · 145.35 · Kosten der begrafenis` in **input item**.
     4. Click **save**.
 
-12. Drag a box around the balance on the scan, then click **save box as balance**.
+12. Drag a box around the balance on the scan, then type `6063.25` in **total assets**, `145.35` in
+    **total liabilities** and `5917.90` in **total**.
 
     ![Step 12](screenshots/annotate-a-deed/step-12.jpg)
 
-13. Type `6063.25` in **total assets**, `145.35` in **total liabilities** and `5917.90` in
-    **total**.
+13. Click **save box as balance**.
 
     ![Step 13](screenshots/annotate-a-deed/step-13.jpg)
 
-14. Click **save balance totals**.
+14. Click **close deed**.
 
     ![Step 14](screenshots/annotate-a-deed/step-14.jpg)
-
-15. Click **close deed**.
-
-    ![Step 15](screenshots/annotate-a-deed/step-15.jpg)
 
 The result:
 

@@ -40,17 +40,19 @@ see Single deed folders.
 - While it is open, **save box as header** saves a drawn box as one of its header
   boxes. A header has one or more boxes. **delete header box** removes one.
 - While a deed is open, its **header fields** can be typed at any time: full name, date
-  of death and place of residence. **save header fields** saves them. Fields typed but
-  not saved are dropped by any other write.
+  of death and place of residence. **save header fields** saves the text in the
+  fields, but not the box. **save box as header** saves both the text in the fields
+  and the box. Fields typed but not saved are dropped by any other write.
 - Opening fills them in from the overledene's `naam_volledig`, `datum_overlijden` and
   `plaats_overlijden`. A field the overledene doesn't have starts empty.
 - A deed with no header box, or with an empty header field, cannot be closed. Closing
   it shows why, and it stays open.
 - A deed's **balance** is optional. Its three totals can be left empty and it can have
   no box. In the file it is then empty totals and an empty `layout`.
-- While a deed is open, its totals can be typed at any time. **save balance totals**
-  saves them. Any of them can be left empty. Totals typed but not saved are dropped by
-  any other write.
+- While a deed is open, its totals can be typed at any time. Any of them can be left
+  empty. **save balance totals** saves the text in the totals, but not the box. **save
+  box as balance** saves both the text in the totals and the box. Totals typed but not
+  saved are dropped by any other write.
 - While it is open, **save box as balance** saves a drawn box as one of its balance
   boxes. **delete balance box** removes one.
 - The file holds:

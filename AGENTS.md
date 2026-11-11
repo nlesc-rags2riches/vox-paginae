@@ -33,6 +33,11 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   a read/write change updates `docs/reference/input-and-output.md` (draft it to
   `CODING_STANDARDS.md` › Docs, then confirm the wording with the user: it is a promise
   to the annotator).
+- Behaviour changes in the form might affect the user flow and break the how-to docs,
+  or leave them longer than they need to be. The how-tos made by
+  `tests/e2e/test_howtos.py` change only through that test: see `docs/development.md` ›
+  Write the how-to pages. In your report, name each reference and how-to page the
+  change touches, and say whether you updated it or why it still holds.
 
 ## Agent skills
 
