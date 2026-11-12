@@ -1,0 +1,105 @@
+{
+  "format_version": "0.1.0",
+  "deed_id": "filled",
+  "copied_deed_person_data": {
+    "aktenummer": "93",
+    "plaats": "Westdorp",
+    "naam_volledig": "Jan Modaal"
+  },
+  "scans": [
+    "p1.jpg",
+    "p2.jpg",
+    "p3.jpg"
+  ],
+  "annotation_metadata": {
+    "annotator_name": "Ann",
+    "annotation_date": "<time of the write>"
+  },
+  "annotation": {
+    "header": {
+      "full_name": "Jan Modaal",
+      "date_of_death": "2 januari 1880",
+      "place_of_residence": "Oostdorp",
+      "layout": [
+        {
+          "scan": "p1.jpg",
+          "bbox": [
+            300,
+            120,
+            2400,
+            520
+          ],
+          "pagexml_link": null,
+          "pagexml_baseline_ids": null
+        }
+      ]
+    },
+    "balance": {
+      "total_assets": "900,-",
+      "total_liabilities": "10,-",
+      "total": "890,-",
+      "layout": [
+        {
+          "scan": "p3.jpg",
+          "bbox": [
+            400,
+            2600,
+            2300,
+            3000
+          ],
+          "pagexml_link": null,
+          "pagexml_baseline_ids": null
+        }
+      ]
+    },
+    "assets": [
+      {
+        "layout": [
+          {
+            "scan": "p1.jpg",
+            "bbox": [
+              412,
+              1880,
+              2310,
+              2240
+            ],
+            "pagexml_link": null,
+            "pagexml_baseline_ids": null
+          },
+          {
+            "scan": "p2.jpg",
+            "bbox": [
+              380,
+              210,
+              2290,
+              420
+            ],
+            "pagexml_link": null,
+            "pagexml_baseline_ids": null
+          }
+        ],
+        "amount": "900,-",
+        "description": "Een huis met erf,\nŐdön"
+      }
+    ],
+    "liabilities": [
+      {
+        "layout": [
+          {
+            "scan": "p2.jpg",
+            "bbox": [
+              0,
+              0,
+              9,
+              9
+            ],
+            "pagexml_link": null,
+            "pagexml_baseline_ids": null
+          }
+        ],
+        "amount": "10,-",
+        "description": ""
+      }
+    ]
+  }
+}

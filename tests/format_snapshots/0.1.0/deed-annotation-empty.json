@@ -1,0 +1,32 @@
+{
+  "format_version": "0.1.0",
+  "deed_id": "empty",
+  "copied_deed_person_data": {
+    "aktenummer": "93",
+    "plaats": "Westdorp",
+    "naam_volledig": "Jan Modaal"
+  },
+  "scans": [
+    "p1.jpg"
+  ],
+  "annotation_metadata": {
+    "annotator_name": "Ann",
+    "annotation_date": "<time of the write>"
+  },
+  "annotation": {
+    "header": {
+      "full_name": "",
+      "date_of_death": "",
+      "place_of_residence": "",
+      "layout": []
+    },
+    "balance": {
+      "total_assets": "",
+      "total_liabilities": "",
+      "total": "",
+      "layout": []
+    },
+    "assets": [],
+    "liabilities": []
+  }
+}
