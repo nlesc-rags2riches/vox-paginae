@@ -239,3 +239,6 @@ says otherwise.
   change bumps PATCH.
 - A file without `format_version` opens as usual. Its next write adds it. Its other
   fields stay as they were written.
+- A file with a newer `format_version` than the tool writes was made by a newer
+  version of the tool. Its deed can't be opened, reopened or deleted, and its file is
+  never written. The tool says so and names the file. The other deeds work as usual.

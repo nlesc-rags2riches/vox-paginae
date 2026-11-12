@@ -4,6 +4,7 @@
 
 import copy
 import json
+import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -49,6 +50,24 @@ HEADER_FIELDS = ("full_name", "date_of_death", "place_of_residence")
 # The version of the deed annotation file's format (Semantic Versioning 2.0.0), written
 # into every file. The reference's Format versions section says when it changes.
 FORMAT_VERSION = "0.1.0"
+
+
+def is_newer_format_version(version: str | None) -> bool:
+    """Whether ``version``, a file's ``format_version``, is newer than ``FORMAT_VERSION``.
+
+    Compared by MAJOR, MINOR and PATCH, as numbers. ``None`` (a file without one) is
+    not newer. A version without those three numbers, or not a string, is: it cannot
+    be read.
+    """
+    if version is None:
+        return False
+    if not isinstance(version, str):
+        return True
+    parts = re.match(r"(\d+)\.(\d+)\.(\d+)", version)
+    if parts is None:
+        return True
+    current = tuple(int(n) for n in FORMAT_VERSION.split("."))
+    return tuple(int(n) for n in parts.groups()) > current
 
 
 def new_box(scan: str, bbox: Sequence[float]) -> dict:
@@ -319,12 +338,37 @@ def deed_path(book: Path, deed_id: str) -> Path:
     return Path(book) / f"deed-annotation-{deed_id}.json"
 
 
+def check_not_newer_format_version(path: Path) -> None:
+    """Raise ``ValueError`` if ``path``, a deed annotation file, has a newer format
+    version (see ``is_newer_format_version``). A missing file passes.
+
+    The message, in Markdown for the annotator, names the file and says to update.
+    """
+    path = Path(path)
+    if not path.exists():
+        return
+    version = json.loads(path.read_text(encoding="utf-8")).get("format_version")
+    if is_newer_format_version(version):
+        raise ValueError(
+            "**This deed seems to have been edited with a newer version of Vox "
+            "Paginae. [Update Vox Paginae]"
+            "(https://nlesc-rags2riches.github.io/vox-paginae/how-to/install-and-run/).**"
+            f"\n\nIts file, `{path}`, has format version {version}. This version of "
+            f"Vox Paginae writes only {FORMAT_VERSION}, so the file was written by "
+            "another version. If you think something else is wrong, [open an issue]"
+            "(https://github.com/nlesc-rags2riches/vox-paginae/issues)."
+        )
+
+
 def save_deed_record(path: Path, deed_record: dict, annotator_name: str) -> Path:
     """Write ``deed_record`` to ``path``, its deed annotation file, by ``annotator_name``, now.
 
     Every write records the format version, the current annotator and the time (local,
     with its timezone), so a reopened file, or one without a version, gets the latest.
+    A file with a newer format version is never written: see
+    ``check_not_newer_format_version``.
     """
+    check_not_newer_format_version(path)
     # First in the file, for whoever reads it; an older version is replaced.
     deed_record = {"format_version": FORMAT_VERSION, **copy.deepcopy(deed_record)}
     deed_record["format_version"] = FORMAT_VERSION
@@ -371,7 +415,8 @@ def load_deed_records(book: Path) -> dict[str, dict]:
     """``{deed_id: deed_record}`` for every ``deed-annotation-*.json`` in ``book``.
 
     Files from the old format (``person-NNNN.json``) or with the old name
-    (``labeled-deed-*.json``) are not read.
+    (``labeled-deed-*.json``) are not read. Files with a newer format version are
+    skipped: their fields may differ. ``check_not_newer_format_version`` says why.
     """
     return {
         r["deed_id"]: r
@@ -379,6 +424,7 @@ def load_deed_records(book: Path) -> dict[str, dict]:
             json.loads(p.read_text(encoding="utf-8"))
             for p in sorted(Path(book).glob("deed-annotation-*.json"))
         )
+        if not is_newer_format_version(r.get("format_version"))
     }
 
 

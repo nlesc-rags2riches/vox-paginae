@@ -15,6 +15,7 @@ def imports():
         SCAN_EXTENSIONS,
         add_balance_box,
         add_header_box,
+        check_not_newer_format_version,
         close_deed_record,
         deed_boxes,
         deed_path,
@@ -47,6 +48,7 @@ def imports():
         SCAN_EXTENSIONS,
         add_balance_box,
         add_header_box,
+        check_not_newer_format_version,
         close_deed_record,
         deed_boxes,
         deed_choices,
@@ -552,6 +554,7 @@ def item_buttons(
 
 @app.cell(hide_code=True)
 def deed_open(
+    check_not_newer_format_version,
     deed_path,
     drawn_box,
     folder,
@@ -569,6 +572,12 @@ def deed_open(
     single_deed_input,
 ):
     _ref_reg = single_deed_input["ref_reg"]
+    # A file from a newer version of the tool is never opened: say so, under open.
+    try:
+        check_not_newer_format_version(deed_path(folder, _ref_reg))
+        _newer_format_error = None
+    except ValueError as _e:
+        _newer_format_error = mo.callout(mo.md(str(_e)), kind="danger")
 
     def _open(_):
         # Checked at click: another tab (its own session) may have written it meanwhile.
@@ -595,13 +604,15 @@ def deed_open(
     open_btn = mo.ui.button(
         label="open",
         kind="success",
-        disabled=get_deed_record() is not None or bool(get_pending_boxes()),
+        disabled=get_deed_record() is not None
+        or bool(get_pending_boxes())
+        or _newer_format_error is not None,
         on_click=_open,
     )
     # The header box is easy to miss: say so until the open deed has one and while
     # none is drawn. Close would refuse it.
     _record = get_deed_record()
-    open_hint = mo.md(
+    open_hint = _newer_format_error or mo.md(
         "Draw a box around the header and click **save box as header**"
         if _record is not None
         and not _record["annotation"]["header"]["layout"]
