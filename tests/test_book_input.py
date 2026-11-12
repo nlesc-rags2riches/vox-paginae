@@ -6,6 +6,7 @@ from vox_paginae.annotation import deed_path, new_deed_record, save_deed_record
 from vox_paginae.book_input import (
     copied_deed_person_data,
     deed_choices,
+    find_books,
     header_fields,
     load_deeds,
     single_overledene,
@@ -128,3 +129,10 @@ def test_single_overledene_rejects_a_deed_without_exactly_one(personen, error):
 def test_single_overledene_returns_the_one_deed_person():
     overledene = {"naam_volledig": "Jan Modaal", "rol": "overledene"}
     assert single_overledene({"personen": [overledene]}) is overledene
+
+
+def test_a_folder_of_jpeg_scans_is_a_book_whatever_the_case_of_the_extension(tmp_path):
+    for book, name in [("a", "1.JPG"), ("b", "1.Jpeg"), ("c", "1.png")]:
+        (tmp_path / book).mkdir()
+        (tmp_path / book / name).touch()
+    assert find_books(tmp_path) == [tmp_path / "a", tmp_path / "b"]

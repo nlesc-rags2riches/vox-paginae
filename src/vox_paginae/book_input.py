@@ -3,12 +3,12 @@
 import json
 from pathlib import Path
 
-from vox_paginae.annotation import load_deed_records, scans_label
+from vox_paginae.annotation import is_scan, load_deed_records, scans_label
 
 
 def find_books(root: Path) -> list[Path]:
-    """Every folder under ``root`` that directly contains ``*.jpg``, in sorted path order."""
-    return sorted({p.parent for p in Path(root).rglob("*.jpg")})
+    """Every folder under ``root`` that directly contains a scan, in sorted path order."""
+    return sorted({p.parent for p in Path(root).rglob("*") if is_scan(p)})
 
 
 def load_deeds(book: Path) -> dict[str, dict] | None:
