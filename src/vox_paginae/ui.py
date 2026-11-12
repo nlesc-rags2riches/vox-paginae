@@ -12,6 +12,10 @@ from PIL import Image
 
 from vox_paginae.annotation import deed_path
 
+# Known limit of thumbnail, crop and scan_for_display: a 16-bit grayscale scan (a TIFF
+# can be one) shows white, as convert("L") clips its values. Rescale it first if the
+# archives deliver such scans.
+
 
 @functools.lru_cache(maxsize=512)
 def thumbnail(scan: Path, height: int) -> bytes:

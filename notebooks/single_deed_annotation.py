@@ -12,6 +12,7 @@ def imports():
 
     from vox_paginae import marimo_ui
     from vox_paginae.annotation import (
+        SCAN_EXTENSIONS,
         add_balance_box,
         add_header_box,
         close_deed_record,
@@ -43,6 +44,7 @@ def imports():
 
     return (
         Path,
+        SCAN_EXTENSIONS,
         add_balance_box,
         add_header_box,
         close_deed_record,
@@ -218,6 +220,7 @@ def _(get_deed_record, get_editing, input_item_dd, item_tags, mo):
 
 @app.cell(hide_code=True)
 def _(
+    SCAN_EXTENSIONS,
     annotator_name,
     annotator_row,
     deed_choices_error,
@@ -247,6 +250,7 @@ def _(
     )
     folder, scan_i = get_folder_scan()
     scans = list_pages(folder)
+    _scan_extensions_text = ", ".join(f"`{e}`" for e in SCAN_EXTENSIONS)
     mo.stop(
         not scans,
         mo.vstack(
@@ -254,7 +258,7 @@ def _(
                 annotator_row,
                 deed_dd,
                 mo.md(
-                    f"**no scans (`.jpg`, `.jpeg`) in folder `{folder.relative_to(root)}`**"
+                    f"**no scans ({_scan_extensions_text}) in folder `{folder.relative_to(root)}`**"
                 ),
             ]
         ),

@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
-SCAN_EXTENSIONS = {".jpg", ".jpeg"}
+SCAN_EXTENSIONS = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
 
 
 def is_scan(path: Path) -> bool:

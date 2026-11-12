@@ -23,9 +23,10 @@ from vox_paginae.ui import (
 )
 
 
-@pytest.fixture
-def scan(tmp_path):
-    path = tmp_path / "scan.jpg"
+# Each scan format is shown the same way.
+@pytest.fixture(params=["scan.jpg", "scan.jpeg", "scan.png", "scan.tif", "scan.tiff"])
+def scan(tmp_path, request):
+    path = tmp_path / request.param
     Image.new("RGB", (600, 800), "white").save(path)
     return path
 

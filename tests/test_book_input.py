@@ -131,8 +131,15 @@ def test_single_overledene_returns_the_one_deed_person():
     assert single_overledene({"personen": [overledene]}) is overledene
 
 
-def test_a_folder_of_jpeg_scans_is_a_book_whatever_the_case_of_the_extension(tmp_path):
-    for book, name in [("a", "1.JPG"), ("b", "1.Jpeg"), ("c", "1.png")]:
+def test_a_folder_of_scans_is_a_book_whatever_the_case_of_the_extension(tmp_path):
+    books = [
+        ("a", "1.JPG"),
+        ("b", "1.Jpeg"),
+        ("c", "1.PNG"),
+        ("d", "1.Tif"),
+        ("e", "1.TIFF"),
+    ]
+    for book, name in [*books, ("f", "1.gif")]:
         (tmp_path / book).mkdir()
         (tmp_path / book / name).touch()
-    assert find_books(tmp_path) == [tmp_path / "a", tmp_path / "b"]
+    assert find_books(tmp_path) == [tmp_path / book for book, _ in books]

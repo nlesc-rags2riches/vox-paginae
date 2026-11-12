@@ -31,14 +31,19 @@ from vox_paginae.annotation import (
 from vox_paginae.book_input import find_books
 
 
-def test_scans_are_jpeg_files_whatever_the_case_of_the_extension(tmp_path):
-    for name in ["a.jpg", "B.JPG", "c.jpeg", "D.Jpeg", "notes.txt", "x.png"]:
+def test_scans_are_image_files_whatever_the_case_of_the_extension(tmp_path):
+    names = ["a.jpg", "B.JPG", "c.jpeg", "D.Jpeg", "e.png", "F.PNG", "g.tif", "H.TIFF"]
+    for name in [*names, "notes.txt", "x.gif", "y.jpg.json", "z.webp"]:
         (tmp_path / name).touch()
     assert [p.name for p in list_pages(tmp_path)] == [
         "B.JPG",
         "D.Jpeg",
+        "F.PNG",
+        "H.TIFF",
         "a.jpg",
         "c.jpeg",
+        "e.png",
+        "g.tif",
     ]
 
 
