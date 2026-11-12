@@ -13,6 +13,9 @@ from playwright.sync_api import Locator, expect
 
 HEADER = (0.1, 0.05, 0.9, 0.15)  # clear of the item boxes the tests draw
 HEADER_HINT = "Draw a box around the header and click save box as header"
+NEWER_VERSION_ERROR = (
+    "This deed seems to have been edited with a newer version of Vox Paginae."
+)
 
 # Set by a how-to test (see test_howtos.py) while it runs: called with the page, the
 # step's text, the element the step acts on and ``then``, before each action.

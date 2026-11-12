@@ -15,6 +15,7 @@ from vox_paginae.annotation import (
     delete_balance_box,
     delete_header_box,
     delete_item,
+    is_newer_format_version,
     item_tags,
     list_pages,
     load_deed_records,
@@ -475,3 +476,52 @@ def test_saved_boxes_reads_every_deed_file_on_a_scan(tmp_path):
     assert saved_boxes(tmp_path, "a.jpg") == [("L1", [1, 2, 3, 4])]
     # The open deed is drawn from memory, not from its (stale) file.
     assert saved_boxes(tmp_path, "b.jpg", skip_deed_id="d2") == [("L1", [5, 6, 7, 8])]
+
+
+@pytest.mark.parametrize(
+    ("version", "is_newer"),
+    [
+        (None, False),  # a file without format_version
+        ("1.2.3", False),
+        ("1.2.2", False),
+        ("1.1.9", False),
+        ("0.9.9", False),
+        ("1.2.4", True),
+        ("1.3.0", True),
+        ("2.0.0", True),
+        ("1.10.0", True),  # compared as numbers, not as text
+        ("1.3.0-rc1", True),  # a pre-release compares by its three numbers
+        ("abc", True),  # no version this tool can read: refused, as newer
+        ("1.2", True),
+        (1, True),  # not a string
+    ],
+)
+def test_is_newer_format_version_compares_with_the_tools_version(
+    monkeypatch, version, is_newer
+):
+    monkeypatch.setattr("vox_paginae.annotation.FORMAT_VERSION", "1.2.3")
+    assert is_newer_format_version(version) is is_newer
+
+
+def test_a_file_with_a_newer_format_version_is_never_written(tmp_path):
+    path = deed_path(tmp_path, "d1")
+    newer = {**new_deed_record("d1", COPIED, "a.jpg"), "format_version": "99.0.0"}
+    path.write_text(json.dumps(newer), encoding="utf-8")
+    before = path.read_bytes()
+    with pytest.raises(ValueError) as refused:
+        save_deed_record(path, new_deed_record("d1", COPIED, "a.jpg"), "Ann")
+    assert f"`{path}`, has format version 99.0.0" in str(refused.value)
+    assert path.read_bytes() == before
+    assert not path.with_suffix(".json.tmp").exists()
+
+
+def test_load_deed_records_skips_a_file_with_a_newer_format_version(tmp_path):
+    save_deed_record(
+        deed_path(tmp_path, "d1"), new_deed_record("d1", COPIED, "a.jpg"), "Ann"
+    )
+    # A newer format may have other fields: none of them is read.
+    deed_path(tmp_path, "d2").write_text(
+        json.dumps({"format_version": "99.0.0", "renamed_deed_id": "d2"}),
+        encoding="utf-8",
+    )
+    assert list(load_deed_records(tmp_path)) == ["d1"]

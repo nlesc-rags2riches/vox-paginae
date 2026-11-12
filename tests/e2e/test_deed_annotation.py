@@ -13,6 +13,7 @@ from .conftest import PAGE_H, PAGE_W, serve
 from .helpers import (
     HEADER,
     HEADER_HINT,
+    NEWER_VERSION_ERROR,
     button,
     click_button,
     close_deed_dropdown,
@@ -1000,6 +1001,29 @@ def test_deed_without_exactly_one_overledene_shows_an_error(marimo_server, page)
     pick_in_deed_dropdown(page, "Jan Modaal")
     expect(page.get_by_text("This deed has 2 deed persons")).to_have_count(0)
     expect(page.get_by_text("Jan Modaal · died 1880-01-02 in Oostdorp")).to_be_visible()
+
+
+def test_a_deed_file_from_a_newer_version_shows_an_error_and_is_never_touched(
+    data_root, page
+):
+    path = data_root / "book1" / "deed-annotation-deed-3.json"
+    path.write_text(
+        json.dumps({"format_version": "99.0.0", "deed_id": "deed-3"}), encoding="utf-8"
+    )
+    before = path.read_bytes()
+    with serve(data_root) as url:
+        load_app_and_lock_annotator(page, url)
+        pick_in_deed_dropdown(page, "Jan Modaal")
+        expect(page.get_by_text(NEWER_VERSION_ERROR)).to_be_visible()
+        expect(page.get_by_text(str(path))).to_be_visible()
+        # A file this version can read would enable these: only the version stops them.
+        # Not open: any file disables it.
+        for label in ["go to deed", "reopen", "delete deed"]:
+            expect(button(page, label)).to_be_disabled()
+        # Only that deed fails: another one in the same book still opens.
+        open_deed(page, "Piet Smit")
+        expect(status(page, "editing deed-annotation-deed-7g")).to_be_visible()
+    assert path.read_bytes() == before
 
 
 def test_book_dropdown_moves_to_the_first_page(data_root, page):

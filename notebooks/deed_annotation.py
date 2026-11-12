@@ -14,6 +14,7 @@ def imports():
     from vox_paginae.annotation import (
         add_balance_box,
         add_header_box,
+        check_not_newer_format_version,
         close_deed_record,
         deed_boxes,
         deed_path,
@@ -50,6 +51,7 @@ def imports():
         Path,
         add_balance_box,
         add_header_box,
+        check_not_newer_format_version,
         close_deed_record,
         copied_deed_person_data,
         deed_boxes,
@@ -514,8 +516,10 @@ def deed_picker(book, deed_choices, deeds, get_deed_record, mo):
 @app.cell(hide_code=True)
 def deed_info(
     book,
+    check_not_newer_format_version,
     deed_choices,
     deed_dd,
+    deed_path,
     deeds,
     get_deed_record,
     mo,
@@ -524,6 +528,7 @@ def deed_info(
     # The picked deed's overledene as in deeds.json, read only; while a deed is open,
     # its deed, as text: the dropdown pick is stale after a reopen.
     # Checked on pick, so only a deed that breaks the rule fails, not the whole book.
+    # So is a file from a newer version of the tool: its deed is never opened.
     _open = get_deed_record()
     _deed_id = deed_dd.value if _open is None else _open["deed_id"]
     _deed = deeds.get(_deed_id)
@@ -542,6 +547,7 @@ def deed_info(
     if _deed:
         try:
             _p = single_overledene(_deed)
+            check_not_newer_format_version(deed_path(book, _deed_id))
             deed_details = mo.md(
                 f"**{_p['naam_volledig']}** · died {_p['datum_overlijden']} in {_p['plaats_overlijden']}"
             )
@@ -677,10 +683,11 @@ def deed_file_buttons(
     set_type,
 ):
     # Like the jump's go: a deed never crosses books, pending boxes belong to this page.
-    # Only for a deed with a file; one without is opened instead.
+    # Only for a deed with a file this version can read; one without is opened
+    # instead. A newer file is never touched: `deed_info` says why.
     _disabled = (
         deed_dd.value is None
-        or not deed_path(book, deed_dd.value).exists()
+        or deed_dd.value not in load_deed_records(book)
         or get_deed_record() is not None
         or bool(get_pending_boxes())
     )

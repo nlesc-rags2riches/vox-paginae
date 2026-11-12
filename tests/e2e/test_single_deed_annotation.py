@@ -7,6 +7,7 @@ from .conftest import PAGE_H, PAGE_W
 from .helpers import (
     HEADER,
     HEADER_HINT,
+    NEWER_VERSION_ERROR,
     button,
     click_button,
     close_deed_dropdown,
@@ -209,6 +210,28 @@ def test_next_page_past_the_last_page_closes_the_deed_and_opens_the_next(
     # The last deed: nothing past its last page.
     click_next_page_to_last(page)
     expect(button(page, "next page")).to_be_disabled()
+
+
+def test_a_deed_file_from_a_newer_version_shows_an_error_and_is_never_touched(
+    single_deed_server, single_deed_root, page
+):
+    path = single_deed_root / "6-1" / "deed-annotation-6#1.json"
+    path.write_text(
+        json.dumps({"format_version": "99.0.0", "deed_id": "6#1"}), encoding="utf-8"
+    )
+    before = path.read_bytes()
+    load_app_and_lock_annotator(page, single_deed_server)
+    pick_in_deed_dropdown(page, "6#1")
+    expect(page.get_by_text(NEWER_VERSION_ERROR)).to_be_visible()
+    expect(page.get_by_text(str(path))).to_be_visible()
+    # No deed open and no pending boxes: only the version stops open.
+    expect(button(page, "open")).to_be_disabled()
+    # Only that deed fails: another one still opens.
+    pick_in_deed_dropdown(page, "10#1")
+    expect(page.get_by_text(NEWER_VERSION_ERROR)).to_have_count(0)
+    click_button(page, "open")
+    expect(status(page, "editing deed-annotation-10#1")).to_be_visible()
+    assert path.read_bytes() == before
 
 
 def test_next_page_past_the_last_page_only_picks_a_next_deed_with_a_file(
