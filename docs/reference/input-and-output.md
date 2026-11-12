@@ -16,8 +16,8 @@ see Single deed folders.
   **book**, and books are taken in sorted path order. If no folder under the root has
   scans, the screen says **no scans under `<root>`**: pick another root. The root
   folder cannot be changed while a deed is open or boxes are pending.
-- A book's **pages** are its scans: the `.jpg` and `.jpeg` files, whatever the case of the
-  extension (`.JPG` too), sorted by filename.
+- A book's **pages** are its scans: the `.jpg`, `.jpeg`, `.png`, `.tif` and `.tiff`
+  files, whatever the case of the extension (`.JPG` too), sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
   book, and nothing can be annotated or saved in it. Its deeds are listed to pick from. A
   deed must have exactly one deed person, with `rol: overledene`; picking it shows that
@@ -128,9 +128,9 @@ says otherwise.
   name count as numbers, so `6-1` comes before `10-1`.
 - A deed is listed by its `ref_reg` and the deceased's `full_name`. Once it has a
   file, its scans are listed too. The list can be searched.
-- A deed's **scans** are the `.jpg` and `.jpeg` files in its folder, whatever the case of
-  the extension (`.JPG` too), sorted by filename. All of them are shown, not only
-  those in `metadata.scans`.
+- A deed's **scans** are the `.jpg`, `.jpeg`, `.png`, `.tif` and `.tiff` files in its
+  folder, whatever the case of the extension (`.JPG` too), sorted by filename. All of
+  them are shown, not only those in `metadata.scans`.
 - Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office`,
   `deceased`, and the `amount` and `description` of each item in `assets.items` and
   `liabilities.items`. It is read as UTF-8.
