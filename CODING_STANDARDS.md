@@ -17,6 +17,24 @@ name to the short one.
 
 Example: `save_item`, not `save`: the app also saves header and balance boxes.
 
+## File format
+
+### A format change bumps the format version
+
+The format of the deed annotation file is what the reference's Format versions section
+says it is: the file's name, its encoding, its fields, and what each field holds. Any
+change to it bumps `FORMAT_VERSION` in `annotation.py`. Which part to bump is a human
+call, guided by that section.
+
+`tests/test_format_snapshots.py` compares two files the tool writes, one filled in and
+one just opened, with their snapshots in `tests/format_snapshots/<version>/`. A change
+to the files' names, encoding or fields fails it. The fix is a new folder named after
+the new version, never an edit to an old one.
+
+A change in what a field holds, with the same fields, fails no test. It still bumps the
+version. Example: if `scans` held only the pages with boxes, the snapshot could still
+pass, but a reader that counts pages would break.
+
 ## Tests
 
 ### A disabled-button check must be able to fail
