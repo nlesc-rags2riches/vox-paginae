@@ -33,8 +33,8 @@ uv run marimo run notebooks/single_deed_annotation.py -- --data-root /path/to/de
 uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
 ```
 
-- Every folder under the root that directly holds `*.jpg` files is a **book**; see
-  [Input and output](../reference/input-and-output.md).
+- Every folder under the root that directly holds scans (`.jpg` or `.jpeg` files, in any
+  case) is a **book**; see [Input and output](../reference/input-and-output.md).
 - The book notebook resumes where the saved files left off.
 
 To work on Vox Paginae itself, see [Development](../development.md).

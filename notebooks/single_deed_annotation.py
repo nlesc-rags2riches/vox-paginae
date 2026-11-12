@@ -241,7 +241,9 @@ def _(
     )
     mo.stop(
         get_folder_scan() is None,
-        mo.vstack([annotator_row, deed_dd, mo.md("**pick a deed to see its pages**")]),
+        mo.vstack(
+            [annotator_row, deed_dd, mo.md("**pick a deed to see its pages**")]
+        ),
     )
     folder, scan_i = get_folder_scan()
     scans = list_pages(folder)
@@ -251,7 +253,9 @@ def _(
             [
                 annotator_row,
                 deed_dd,
-                mo.md(f"**no `*.jpg` in folder `{folder.relative_to(root)}`**"),
+                mo.md(
+                    f"**no scans (`.jpg`, `.jpeg`) in folder `{folder.relative_to(root)}`**"
+                ),
             ]
         ),
     )

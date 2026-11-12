@@ -12,11 +12,12 @@ see Single deed folders.
 - You give your name as the **annotator** and lock it. Until it is locked, only the
   name and the root folder can be changed. While locked it cannot be edited; unlock it to change it.
 - You pick a root folder. It starts at the folder you started the tool from, or at
-  `--data-root` if you gave one. Every folder under it that directly contains `*.jpg` is a
+  `--data-root` if you gave one. Every folder under it that directly contains scans is a
   **book**, and books are taken in sorted path order. If no folder under the root has
   scans, the screen says **no scans under `<root>`**: pick another root. The root
   folder cannot be changed while a deed is open or boxes are pending.
-- A book's **pages** are its `*.jpg` files, sorted by filename.
+- A book's **pages** are its scans: the `.jpg` and `.jpeg` files, whatever the case of the
+  extension (`.JPG` too), sorted by filename.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
   book, and nothing can be annotated or saved in it. Its deeds are listed to pick from. A
   deed must have exactly one deed person, with `rol: overledene`; picking it shows that
@@ -32,7 +33,7 @@ see Single deed folders.
 ## Out
 
 - One **deed annotation file** per deed:
-  `<book>/deed-annotation-<deed_id>.json`, saved next to the jpgs. A deed that has a file
+  `<book>/deed-annotation-<deed_id>.json`, saved next to the scans. A deed that has a file
   cannot be opened anew, only reopened. It is written and read as UTF-8, on every
   system, so a file saved on one system opens unchanged on another.
 - A deed belongs to exactly one book.
@@ -127,8 +128,9 @@ says otherwise.
   name count as numbers, so `6-1` comes before `10-1`.
 - A deed is listed by its `ref_reg` and the deceased's `full_name`. Once it has a
   file, its scans are listed too. The list can be searched.
-- A deed's **scans** are the `*.jpg` files in its folder, sorted by filename. All of
-  them are shown, not only those in `metadata.scans`.
+- A deed's **scans** are the `.jpg` and `.jpeg` files in its folder, whatever the case of
+  the extension (`.JPG` too), sorted by filename. All of them are shown, not only
+  those in `metadata.scans`.
 - Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office`,
   `deceased`, and the `amount` and `description` of each item in `assets.items` and
   `liabilities.items`. It is read as UTF-8.
@@ -139,7 +141,7 @@ says otherwise.
   instead, on its first scan.
 - The deed list is locked while a deed is open.
 - The deed annotation file is `<folder>/deed-annotation-<ref_reg>.json`, next to the
-  jpgs. `ref_reg` is as written in `input.json`, `#` included.
+  scans. `ref_reg` is as written in `input.json`, `#` included.
 - In the file:
   - `deed_id`: the `ref_reg`
   - `copied_deed_person_data`: `ref_reg`, `aktenummer` and `tax_office`, and every

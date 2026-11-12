@@ -8,10 +8,17 @@ from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
+SCAN_EXTENSIONS = {".jpg", ".jpeg"}
+
+
+def is_scan(path: Path) -> bool:
+    """Whether ``path`` is a scan: its extension is in ``SCAN_EXTENSIONS``, in any case."""
+    return path.suffix.lower() in SCAN_EXTENSIONS
+
 
 def list_pages(book: Path) -> list[Path]:
-    """The ``*.jpg`` in ``book``, sorted by filename as plain strings."""
-    return sorted(Path(book).glob("*.jpg"), key=lambda p: p.name)
+    """The scans in ``book``, sorted by filename as plain strings."""
+    return sorted(filter(is_scan, Path(book).glob("*")), key=lambda p: p.name)
 
 
 def scans_label(book: Path, scans: list[str]) -> str:

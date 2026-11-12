@@ -31,6 +31,17 @@ from vox_paginae.annotation import (
 from vox_paginae.book_input import find_books
 
 
+def test_pages_are_jpeg_files_whatever_the_case_of_the_extension(tmp_path):
+    for name in ["a.jpg", "B.JPG", "c.jpeg", "D.Jpeg", "notes.txt", "x.png"]:
+        (tmp_path / name).touch()
+    assert [p.name for p in list_pages(tmp_path)] == [
+        "B.JPG",
+        "D.Jpeg",
+        "a.jpg",
+        "c.jpeg",
+    ]
+
+
 def test_next_page_crosses_books_and_stops_when_done():
     counts = [2, 1]
     assert next_page((0, 0), counts) == (0, 1)
