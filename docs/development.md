@@ -76,14 +76,15 @@ deed's annotation file in a panel. A **debug** switch then hides it.
 
 ### Single-deed notebook
 
-Write a fake single deed folder, with scans that look like a real deed:
+Write two fake single deed folders, with scans that look like a real deed:
 
 ```bash
 uv run python scripts/fake_deed.py .scratch/demo
 ```
 
-It writes `.scratch/demo/1-1001/`, the same on every run. It refuses to run if that
-folder exists. Start the single-deed notebook on it in edit mode:
+It writes `.scratch/demo/1-1001/` and `.scratch/demo/1-1002/`, the same on every run.
+In `1#1002`, an asset starts on one scan and ends on the next. The script refuses to
+write a folder that exists. Start the single-deed notebook on them in edit mode:
 
 ```bash
 uv run marimo edit notebooks/single_deed_annotation.py -- --data-root .scratch/demo

@@ -174,7 +174,6 @@ def test_pick_an_input_item_correct_it_and_save(
     # Only the saved values: nothing links back to the input item.
     assert set(item) == {"layout", "amount", "description"}
     assert (item["amount"], item["description"]) == ("900", "Een huis met erf")
-    assert [box["scan"] for box in item["layout"]] == ["scan-1.jpg", "scan-2.jpg"]
     click_button(page, "close deed")
     expect(status(page, "no deed · page 2/3")).to_be_visible()
 

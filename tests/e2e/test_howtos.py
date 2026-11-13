@@ -64,6 +64,10 @@ FAKE_DEED_HEADER = (0.53, 0.09, 0.945, 0.28)  # scan 1, right page
 FAKE_DEED_BALANCE = (0.315, 0.125, 0.46, 0.27)  # its amounts only
 FAKE_DEED_ASSETS = [(0.655, 0.4, 0.955, 0.575), (0.655, 0.58, 0.955, 0.69)]
 FAKE_DEED_LIABILITY = (0.655, 0.715, 0.955, 0.755)
+# The fake deed `1#1002`'s fourth asset spans two scans: its start at the bottom of
+# scan 2's right page, its rest at the top of scan 3's left page.
+FAKE_DEED_ITEM_START = (0.655, 0.8, 0.955, 0.89)
+FAKE_DEED_ITEM_REST = (0.185, 0.085, 0.47, 0.18)
 
 
 def wrap_markdown(text, first_indent, indent):
@@ -157,7 +161,9 @@ class HowToRecorder:
             "",
             '!!! note "Generated page"',
             "",
-            f"    The browser test `{test_id}` writes this page.",
+            wrap_markdown(
+                f"The browser test `{test_id}` writes this page.", "    ", "    "
+            ),
             "    To change the page, change the test.",
             "",
         ]
@@ -197,9 +203,9 @@ def howto(request, page):
 
 @pytest.fixture
 def fake_deed_root(tmp_path):
-    """`<tmp>/data/` with the fake deed `1#1001`, as `scripts/fake_deed.py` writes it:
-    its scans look real. Its input has a wrong amount for the first asset, 1234.56,
-    for the annotator to correct."""
+    """`<tmp>/data/` with the fake deeds `1#1001` and `1#1002`, as
+    `scripts/fake_deed.py` writes them: their scans look real. The input of `1#1001` has
+    a wrong amount for the first asset, 1234.56, for the annotator to correct."""
     root = tmp_path / "data"
     subprocess.run(
         [sys.executable, PROJECT / "scripts" / "fake_deed.py", root], check=True
@@ -295,4 +301,52 @@ def test_annotate_a_deed(fake_deed_server, fake_deed_root, page, howto):
         " [Input and output](../reference/input-and-output.md) for what each field"
         " holds.",
         annotation,
+    )
+
+
+@pytest.mark.howto("Annotate an item that spans two scans")
+def test_annotate_an_item_that_spans_two_scans(
+    fake_deed_server, fake_deed_root, page, howto
+):
+    """An item can start at the bottom of one scan and go on at the top of the next.
+    Box its start, click **continue** to keep that box, then box the rest on the next
+    scan. The item is saved once, with a box on each scan.
+
+    First start the single-deed notebook, as in
+    [How to install and run](install-and-run.md#single-deed-folders).
+    """
+    # 16:9, as in test_annotate_a_deed.
+    load_app_page(page, fake_deed_server, height=900)
+    with howto.briefly("Open the deed, as in [Annotate a deed](annotate-a-deed.md):"):
+        lock_annotator(page, "YourName")
+        pick_in_deed_dropdown(page, "1#1002")
+        click_button(page, "open")
+    expect(status(page, "editing deed-annotation-1#1002 · page 1/3")).to_be_visible()
+    click_button(page, "next page")
+    expect(status(page, "page 2/3")).to_be_visible()
+
+    howto.note("The item starts at the bottom of the right page.")
+    drag_box_on_page(page, *FAKE_DEED_ITEM_START, around="the start of the item")
+    click_button(page, "continue")
+    expect(status(page, "page 2/3 · pending 1")).to_be_visible()
+    click_button(page, "next page")
+    expect(status(page, "page 3/3 · pending 1")).to_be_visible()
+    howto.note("It goes on at the top of the left page.")
+    drag_box_on_page(page, *FAKE_DEED_ITEM_REST, around="the rest of the item")
+    pick_in_dropdown(
+        page, "4 · assets · 185.45 · Twee koeien, drie schapen, een…", "input item"
+    )
+    save_item(page)
+    expect(status(page, "page 3/3 · pending 0")).to_be_visible()
+    click_button(page, "close deed")
+    expect(status(page, "no deed · page 3/3")).to_be_visible()
+
+    path = fake_deed_root / "1-1002" / "deed-annotation-1#1002.json"
+    annotation = json.loads(path.read_text(encoding="utf-8"))["annotation"]
+    assert annotation["liabilities"] == []
+    (item,) = annotation["assets"]
+    assert [box["scan"] for box in item["layout"]] == ["scan-002.jpg", "scan-003.jpg"]
+    assert item["amount"] == "185.45"
+    howto.show_json(
+        "In `deed-annotation-1#1002.json`, the item has one box on each scan:", item
     )
