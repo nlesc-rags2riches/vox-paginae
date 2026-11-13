@@ -164,12 +164,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Belo
     git push origin vX.Y.Z
     ```
 
-6. Make the GitHub release from the tag, with the version's changelog section as its
-   notes:
+6. On GitHub, make a release from the tag `vX.Y.Z`. As its notes, paste the newest
+   version's changelog section, which this prints:
 
     ```bash
-    awk '/^## \[X.Y.Z\]/{found=1; next} /^(## )?\[/{found=0} found' CHANGELOG.md |
-      gh release create vX.Y.Z --title vX.Y.Z --notes-file -
+    uv run python scripts/release_notes.py
     ```
 
 ## Build the docs
