@@ -76,14 +76,15 @@ deed's annotation file in a panel. A **debug** switch then hides it.
 
 ### Single-deed notebook
 
-Write a fake single deed folder, with scans that look like a real deed:
+Write two fake single deed folders, with scans that look like a real deed:
 
 ```bash
 uv run python scripts/fake_deed.py .scratch/demo
 ```
 
-It writes `.scratch/demo/1-1001/`, the same on every run. It refuses to run if that
-folder exists. Start the single-deed notebook on it in edit mode:
+It writes `.scratch/demo/1-1001/` and `.scratch/demo/1-1002/`, the same on every run.
+In `1#1002`, an asset starts on one scan and ends on the next. The script refuses to
+write a folder that exists. Start the single-deed notebook on them in edit mode:
 
 ```bash
 uv run marimo edit notebooks/single_deed_annotation.py -- --data-root .scratch/demo
@@ -102,6 +103,16 @@ uv run pytest -m e2e tests/e2e/test_howtos.py
 
 Commit the pages it writes. CI fails if they differ from what the tests write. The
 screenshots are not committed: the docs workflow writes them before it builds the site.
+
+A how-to test writes a page. It does not test the app. Skip every how-to test and
+nothing should go untested:
+
+- The other tests check every behaviour, including what a how-to shows.
+- A how-to test only waits for what its steps need, as with `expect(status(...))`, and
+  checks that its page shows the right thing, such as the JSON at its end.
+
+So when one of the other tests fails, the app has a bug. When a how-to test fails, its
+page or the flow it follows has changed.
 
 ## Build the docs
 

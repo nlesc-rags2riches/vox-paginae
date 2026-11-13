@@ -1,7 +1,8 @@
-"""Write `<dir>/1-1001/`: a fake single deed folder to try the single-deed notebook on.
+"""Write `<dir>/1-1001/` and `<dir>/1-1002/`: fake single deed folders to try the
+single-deed notebook on. In 1#1002, an asset runs from one scan onto the next.
 
-Its scans look like a 1921 Drenthe deed on microfilm (two pages side by side), with
-invented content. The same every run. Refuses to run if the folder exists.
+Their scans look like a 1921 Drenthe deed on microfilm (two pages side by side), with
+invented content. The same every run. Refuses to write a folder that exists.
 
 Usage: uv run python scripts/fake_deed.py <dir>
 """
@@ -50,34 +51,95 @@ ASSETS = [
     },
 ]
 LIABILITIES = [{"amount": Decimal("145.35"), "description": "Kosten der begrafenis"}]
-ASSETS_TOTAL = sum(item["amount"] for item in ASSETS)
-LIABILITIES_TOTAL = sum(item["amount"] for item in LIABILITIES)
+
+
+def with_totals(deed, assets, liabilities):
+    """``deed`` with its ``assets`` and ``liabilities`` and their totals."""
+    assets_total = sum(item["amount"] for item in assets)
+    liabilities_total = sum(item["amount"] for item in liabilities)
+    return deed | {
+        "assets": {"total": assets_total, "items": assets},
+        "liabilities": {"total": liabilities_total, "items": liabilities},
+        "total": assets_total - liabilities_total,
+    }
+
 
 # Shaped like the `metadata` of `input.json`, plus `declarants`, which is only drawn.
-DEED = {
-    "aktenummer": None,
-    "ref_reg": "1#1001",
-    "tax_office": "Westdorp",
-    "deceased": {
-        "full_name": "Jan Modaal",
-        "profession": "landbouwer",
-        "date_of_death": "14 maart 1921",
-        "place_of_residence": "Oostdorp",
-        "place_of_death": "Oostdorp",
+DEED = with_totals(
+    {
+        "aktenummer": None,
+        "ref_reg": "1#1001",
+        "tax_office": "Westdorp",
+        "deceased": {
+            "full_name": "Jan Modaal",
+            "profession": "landbouwer",
+            "date_of_death": "14 maart 1921",
+            "place_of_residence": "Oostdorp",
+            "place_of_death": "Oostdorp",
+        },
+        "declarants": [
+            "Grietje Bos, weduwe van den overledene, zonder beroep",
+            "Hendrik Modaal, landbouwer, zoon van den overledene",
+        ],
     },
-    "declarants": [
-        "Grietje Bos, weduwe van den overledene, zonder beroep",
-        "Hendrik Modaal, landbouwer, zoon van den overledene",
-    ],
-    "assets": {"total": ASSETS_TOTAL, "items": ASSETS},
-    "liabilities": {"total": LIABILITIES_TOTAL, "items": LIABILITIES},
-    "total": ASSETS_TOTAL - LIABILITIES_TOTAL,
-}
+    ASSETS,
+    LIABILITIES,
+)
 
 # One (left, right) pair of page kinds per scan.
 LAYOUT = [
     ("previous_deed_end", "cover"),
     ("cover_back", "memorie"),
+]
+
+# Its memorie fills the right page of scan 2, and its last asset goes on, on scan 3.
+DEED_WITH_AN_ITEM_ON_TWO_SCANS = with_totals(
+    {
+        "aktenummer": None,
+        "ref_reg": "1#1002",
+        "tax_office": "Westdorp",
+        "deceased": {
+            "full_name": "Klaas Akkerman",
+            "profession": "arbeider",
+            "date_of_death": "3 juni 1921",
+            "place_of_residence": "Zuiderveen",
+            "place_of_death": "Zuiderveen",
+        },
+        "declarants": [
+            "Aaltje Akkerman, ongehuwd, zonder beroep, dochter van den overledene",
+            "Albert Akkerman, arbeider, zoon van den overledene",
+        ],
+    },
+    [
+        {
+            "amount": Decimal("2150.00"),
+            "description": "Een arbeiderswoning met tuin, staande en gelegen te "
+            "Zuiderveen aan den Dorpsweg, kadastraal bekend gemeente Zuiderveen "
+            "sectie C nummer 31, groot vier aren tien centiaren",
+        },
+        {
+            "amount": Decimal("310.00"),
+            "description": "Een perceel weiland, gelegen onder Zuiderveen in de "
+            "Middenmaten, kadastraal bekend sectie C nummer 102",
+        },
+        {
+            "amount": Decimal("75.00"),
+            "description": "Een perceel heidegrond, gelegen onder Zuiderveen aan "
+            "het Veenpad, sectie D nummer 9",
+        },
+        {
+            "amount": Decimal("185.45"),
+            "description": "Twee koeien, drie schapen, een varken en twintig "
+            "kippen, alsmede het landbouwgereedschap, het huisraad, de kleeding en "
+            "het linnengoed van den overledene, alles bij schatting",
+        },
+    ],
+    [{"amount": Decimal("98.15"), "description": "Kosten der begrafenis"}],
+)
+LAYOUT_WITH_AN_ITEM_ON_TWO_SCANS = [*LAYOUT, ("memorie", "blank")]
+FAKE_DEEDS = [
+    (DEED, LAYOUT),
+    (DEED_WITH_AN_ITEM_ON_TWO_SCANS, LAYOUT_WITH_AN_ITEM_ON_TWO_SCANS),
 ]
 
 # (number, printed question, handwritten answer). The answers are invented filler.
@@ -327,6 +389,7 @@ PAGE_KINDS = {
     "cover": cover_page,
     "cover_back": cover_back_page,
     "memorie": memorie_page,
+    "blank": lambda page, deed, rng, memorie: None,  # the deed ends on the page before
 }
 
 
@@ -392,7 +455,8 @@ def write_fake_deed(root, deed=DEED, layout=LAYOUT):
 
 
 if __name__ == "__main__":
-    try:
-        print(write_fake_deed(sys.argv[1]))
-    except FileExistsError as error:
-        sys.exit(f"{error.filename} exists: nothing written.")
+    for deed, layout in FAKE_DEEDS:
+        try:
+            print(write_fake_deed(sys.argv[1], deed, layout))
+        except FileExistsError as error:
+            sys.exit(f"{error.filename} exists: not overwritten.")

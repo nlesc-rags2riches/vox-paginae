@@ -10,7 +10,7 @@ from vox_paginae.single_deed_input import (
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "fake_deed.py"
 
 
-def test_fake_deed_opens_as_a_single_deed_folder_and_is_never_overwritten(tmp_path):
+def test_fake_deeds_open_as_single_deed_folders_and_are_never_overwritten(tmp_path):
     def run():
         return subprocess.run(
             [sys.executable, SCRIPT, tmp_path],
@@ -20,14 +20,17 @@ def test_fake_deed_opens_as_a_single_deed_folder_and_is_never_overwritten(tmp_pa
         )
 
     assert run().returncode == 0
-    [folder] = find_single_deed_folders(tmp_path)
-    assert folder.name == "1-1001"
-    metadata = load_single_deed_input(folder)
-    assert metadata["ref_reg"] == "1#1001"
-    assert sorted(p.name for p in folder.glob("*.jpg")) == metadata["scans"]
+    folders = find_single_deed_folders(tmp_path)
+    assert [folder.name for folder in folders] == ["1-1001", "1-1002"]
+    for folder in folders:
+        metadata = load_single_deed_input(folder)
+        assert metadata["ref_reg"] == folder.name.replace("-", "#")
+        assert sorted(p.name for p in folder.glob("*.jpg")) == metadata["scans"]
+    # 1#1002 has an item that runs from scan 2 onto scan 3.
+    assert len(load_single_deed_input(folders[1])["scans"]) == 3
 
-    scans = {p.name: p.read_bytes() for p in folder.iterdir()}
+    files = {p: p.read_bytes() for p in tmp_path.glob("*/*")}
     refused = run()
     assert refused.returncode != 0
     assert "exists" in refused.stderr
-    assert {p.name: p.read_bytes() for p in folder.iterdir()} == scans
+    assert {p: p.read_bytes() for p in tmp_path.glob("*/*")} == files

@@ -9,6 +9,7 @@ nav = [
   { "How-to guides" = [
     "how-to/install-and-run.md",
     "how-to/annotate-a-deed.md",
+    "how-to/annotate-an-item-that-spans-two-scans.md",
   ] },
   { "Reference" = [
     "reference/input-and-output.md",
