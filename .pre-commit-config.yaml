@@ -1,6 +1,12 @@
+# `prek update` pins each remote hook to the commit SHA of a release 7 days old or more.
+# Leave ruff out of it: `prek update --exclude-repo https://github.com/astral-sh/ruff-pre-commit`.
+update:
+  freeze: true
+  cooldown_days: 7
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3 # same as uv.lock: bump both together, not with prek update
+    # Same version as uv.lock: bump both together, by hand.
+    rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c  # frozen: v0.17.3
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -34,20 +40,24 @@ repos:
       - id: detect-private-key
       - id: no-commit-to-branch # main by default; CI skips it
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.13.7
+    rev: d1df990f871e616da38bb602a2671d5e840b9989  # frozen: 0.13.7
     hooks:
       - id: uv-lock
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.27
+    rev: 82d21874c3242e4dc27bb47641c996902ef64eef  # frozen: v0.27
     hooks:
       - id: validate-pyproject
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.50.0
+    rev: cbcdc463be5464e25e3e955a511599a67b9b987f  # frozen: v0.50.0
     hooks:
       - id: markdownlint-fix
         exclude: ^agents/ # copied from mattpocock/skills
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:
       - id: actionlint
         args: [-ignore, SC]
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: 06a39750ec31860bb44f2acf67182c40016cd1e7  # frozen: v1.32.0
+    hooks:
+      - id: zizmor
