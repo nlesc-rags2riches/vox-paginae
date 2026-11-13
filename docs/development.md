@@ -123,8 +123,53 @@ bug, a new or changed how-to page. Tests, CI, refactors and development tools st
 A pull request with such a change adds one line under `## [Unreleased]`, in the section
 that fits (Added, Changed, Fixed, Removed), ending with the issue number, as in `(#90)`.
 
-On a release, rename `[Unreleased]` to the version and date, start a new empty
-`[Unreleased]` above it, and update the compare links at the bottom.
+On a release, the changelog changes as in [Make a release](#make-a-release).
+
+## Make a release
+
+Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Below,
+`X.Y.Z` is the new version and `A.B.C` the one before it. The package version is not
+`FORMAT_VERSION`, which changes only with the file format.
+
+1. Branch from an up-to-date `main`:
+
+    ```bash
+    git switch main && git pull
+    git switch -c release-X.Y.Z
+    ```
+
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` and add a
+   new empty `## [Unreleased]` above it. At the bottom, update the links:
+
+    ```markdown
+    [Unreleased]: https://github.com/nlesc-rags2riches/vox-paginae/compare/vX.Y.Z...HEAD
+    [X.Y.Z]: https://github.com/nlesc-rags2riches/vox-paginae/compare/vA.B.C...vX.Y.Z
+    ```
+
+3. Set the version in `pyproject.toml` and `uv.lock`:
+
+    ```bash
+    uv version X.Y.Z
+    ```
+
+4. Commit, push, and open a pull request titled `Release X.Y.Z`. Merge it once CI
+   passes.
+
+5. Tag the merge commit on `main` and push the tag. Tag after the merge, not on the
+   branch: a squash merge makes a new commit, and the tag must be on `main`.
+
+    ```bash
+    git switch main && git pull
+    git tag vX.Y.Z
+    git push origin vX.Y.Z
+    ```
+
+6. On GitHub, make a release from the tag `vX.Y.Z`. As its notes, paste the newest
+   version's changelog section, which this prints:
+
+    ```bash
+    uv run python scripts/release_notes.py
+    ```
 
 ## Build the docs
 
