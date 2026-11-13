@@ -104,6 +104,16 @@ uv run pytest -m e2e tests/e2e/test_howtos.py
 Commit the pages it writes. CI fails if they differ from what the tests write. The
 screenshots are not committed: the docs workflow writes them before it builds the site.
 
+A how-to test writes a page. It does not test the app. Skip every how-to test and
+nothing should go untested:
+
+- The other tests check every behaviour, including what a how-to shows.
+- A how-to test only waits for what its steps need, as with `expect(status(...))`, and
+  checks that its page shows the right thing, such as the JSON at its end.
+
+So when one of the other tests fails, the app has a bug. When a how-to test fails, its
+page or the flow it follows has changed.
+
 ## Build the docs
 
 The docs use [Zensical](https://zensical.org). Preview them at

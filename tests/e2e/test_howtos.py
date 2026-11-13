@@ -2,7 +2,9 @@
 its page to `docs/how-to/`: its title from the `howto` marker, its intro from the
 docstring, one step per helper action, each with a screenshot taken just before it.
 
-Only the normal path, no edge cases: those are in the other browser tests.
+Only the normal path, no edge cases. These tests write pages, they do not test the app:
+the other tests check every behaviour (see `docs/development.md` › Write the how-to
+pages).
 """
 
 # TODO: Needs more detailed human review
