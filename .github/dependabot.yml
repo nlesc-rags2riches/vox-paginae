@@ -1,0 +1,23 @@
+# Version updates: one grouped pull request per ecosystem, once a month, for releases
+# at least 7 days old (uv refuses newer ones: `exclude-newer` in pyproject.toml).
+# Not pre-commit: the ruff hook is bumped by hand together with uv.lock.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      uv:
+        patterns: ["*"]
