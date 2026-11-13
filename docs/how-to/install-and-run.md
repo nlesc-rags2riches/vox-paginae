@@ -32,7 +32,7 @@ From the `vox-paginae` folder, after `uv sync`:
 uv run marimo run notebooks/single_deed_annotation.py -- --data-root /path/to/deeds
 ```
 
-!!! Limitation "`input.json` is required"
+!!! warning "Limitation: `input.json` is required"
     Every folder under the root that has an `input.json` is a **single deed folder**.
     It should be possible to annotate a deed without one, but that use case is
     still not supported.
@@ -48,7 +48,7 @@ uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
 
 The book notebook resumes where the saved files left off.
 
-!!! Limitation "`deeds.json` is required"
+!!! warning "Limitation: `deeds.json` is required"
     Every folder under the root that has an `deeds.json` is a **book folder**.
     It should be possible to annotate a book without one, but that use case is
     still not supported.
