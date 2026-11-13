@@ -1,9 +1,9 @@
 # How to install and run
 
-You need [uv](https://docs.astral.sh/uv/getting-started/installation/) and `git`.
+You need [uv](https://docs.astral.sh/uv/getting-started/installation/) and [git](https://git-scm.com).
 
 ```bash
-git clone <repository-url> vox-paginae
+git clone https://github.com/nlesc-rags2riches/vox-paginae vox-paginae
 cd vox-paginae
 uv sync
 ```
@@ -17,25 +17,43 @@ Vox Paginae has two notebooks. Use the one that fits how your scans are stored:
 Both take `--data-root`: where the folder picker starts. The picker cannot go above it.
 Without it, the picker starts in the folder you started the tool from.
 
+The scans should be images and various formats are supported (`.jpg`, `.jpeg`, `.png`,
+`.tif` or `.tiff` files). If your image is in a different format, [open an
+issue](https://github.com/nlesc-rags2riches/vox-paginae/issues) to let us know.
+
+See [Input and output](../reference/input-and-output.md) for more details on
+the assumptions and expectations we have for the input and output.
+
 ## Single deed folders
+
+From the `vox-paginae` folder, after `uv sync`:
 
 ```bash
 uv run marimo run notebooks/single_deed_annotation.py -- --data-root /path/to/deeds
 ```
 
-- Point `--data-root` at a single deed folder or at any folder above it.
-- Every folder under the root that has an `input.json` is a **single deed folder**;
-  see [Input and output](../reference/input-and-output.md#single-deed-folders).
+!!! warning "Limitation: `input.json` is required"
+    Every folder under the root that has an `input.json` is a **single deed folder**.
+    It should be possible to annotate a deed without one, but that use case is
+    still not supported.
+    If you need it, let us know by [opening an issue](https://github.com/nlesc-rags2riches/vox-paginae/issues).
 
 ## Books
+
+From the `vox-paginae` folder, after `uv sync`:
 
 ```bash
 uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
 ```
 
-- Every folder under the root that directly holds scans (`.jpg`, `.jpeg`, `.png`, `.tif`
-  or `.tiff` files, in lower or upper case) is a **book**; see
-  [Input and output](../reference/input-and-output.md).
-- The book notebook resumes where the saved files left off.
+The book notebook resumes where the saved files left off.
+
+!!! warning "Limitation: `deeds.json` is required"
+    Every folder under the root that has an `deeds.json` is a **book folder**.
+    It should be possible to annotate a book without one, but that use case is
+    still not supported.
+    If you need it, let us know by [opening an issue](https://github.com/nlesc-rags2riches/vox-paginae/issues).
+
+## Contributing
 
 To work on Vox Paginae itself, see [Development](../development.md).
