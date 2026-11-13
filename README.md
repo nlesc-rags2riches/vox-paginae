@@ -1,6 +1,6 @@
 # Vox Paginae
 
-A [marimo](https://marimo.io) notebook for annotating scanned death-duty deeds: each
+[Marimo](https://marimo.io) notebooks for annotating scanned death-duty deeds: each
 deed's header, balance and items (type, amount, description, boxes), saved as
 one JSON file per deed.
 
@@ -9,9 +9,17 @@ one JSON file per deed.
 > AI coding assistant and has not been reviewed line by line by a human. Check the files
 > it writes, keep a copy of your scans, and open an issue for anything odd.
 
-```bash
-uv sync
-uv run marimo run notebooks/deed_annotation.py -- --data-root /path/to/scans
-```
+## Documentation main links
 
-Documentation is in [`docs/`](docs/index.md). Preview it with `uv run --group docs zensical serve`.
+- [Home](https://nlesc-rags2riches.github.io/vox-paginae/)
+- [How to install and run](https://nlesc-rags2riches.github.io/vox-paginae/how-to/install-and-run/)
+- [How to annotate a deed](https://nlesc-rags2riches.github.io/vox-paginae/how-to/annotate-a-deed/)
+- [Developer Documentation](https://nlesc-rags2riches.github.io/vox-paginae/development/)
+
+## Additional information
+
+These notebooks were created as part of the
+[Rags2Riches](https://research-software-directory.org/projects/rags2riches)
+project.
+
+This repository is licensed under the [Apache 2.0](LICENSE) license.
