@@ -45,6 +45,8 @@ human-reviewed: keep changes small, one step at a time, with the user in the loo
   `tests/e2e/test_howtos.py` change only through that test: see `docs/development.md` ›
   Write the how-to pages. In your report, name each reference and how-to page the
   change touches, and say whether you updated it or why it still holds.
+- A change an annotator can see adds a line to `CHANGELOG.md`: see
+  `docs/development.md` › Update the changelog.
 
 ## Agent skills
 

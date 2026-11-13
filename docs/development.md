@@ -114,6 +114,18 @@ nothing should go untested:
 So when one of the other tests fails, the app has a bug. When a how-to test fails, its
 page or the flow it follows has changed.
 
+## Update the changelog
+
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). It
+lists only changes an annotator can see: a new feature, a changed behaviour, a fixed
+bug, a new or changed how-to page. Tests, CI, refactors and development tools stay out.
+
+A pull request with such a change adds one line under `## [Unreleased]`, in the section
+that fits (Added, Changed, Fixed, Removed), ending with the issue number, as in `(#90)`.
+
+On a release, rename `[Unreleased]` to the version and date, start a new empty
+`[Unreleased]` above it, and update the compare links at the bottom.
+
 ## Build the docs
 
 The docs use [Zensical](https://zensical.org). Preview them at
