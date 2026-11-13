@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-13
+
 ### Added
 
 - Scans can be `.png`, `.tif` or `.tiff` files, besides `.jpg` and `.jpeg` (#90).
@@ -28,5 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 First release.
 
-[Unreleased]: https://github.com/nlesc-rags2riches/vox-paginae/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/nlesc-rags2riches/vox-paginae/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nlesc-rags2riches/vox-paginae/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nlesc-rags2riches/vox-paginae/releases/tag/v0.1.0
