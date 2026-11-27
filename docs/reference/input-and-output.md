@@ -18,6 +18,9 @@ see Single deed folders.
   folder cannot be changed while a deed is open or boxes are pending.
 - A book's **pages** are its scans: the `.jpg`, `.jpeg`, `.png`, `.tif` and `.tiff`
   files, whatever the case of the extension (`.JPG` too), sorted by filename.
+- A scan is shown upright: a photo stored sideways or upside down is turned as the
+  camera's note in it says (its EXIF orientation), as Finder and browsers show it. A
+  photo taken the wrong way with no such note is shown as stored.
 - Every book must have a `deeds.json`; a book without one shows an error naming the
   book, and nothing can be annotated or saved in it. Its deeds are listed to pick from. A
   deed must have exactly one deed person, with `rol: overledene`; picking it shows that
@@ -83,7 +86,9 @@ see Single deed folders.
 - An item's **type** (asset or liability) is the list it's in. There is no separate
   field for it. Each item has:
   - `layout`: one entry per box, each with `scan` (the filename), `bbox`
-    (`[x0, y0, x1, y1]` in image pixels, origin top-left), and `pagexml_link` and
+    (`[x0, y0, x1, y1]` in pixels of the scan as it is shown: upright, after the
+    rotation the camera stored in the photo (its EXIF orientation); origin top-left),
+    and `pagexml_link` and
     `pagexml_baseline_ids` (always `null`)
   - `amount`: a string
   - `description`: free text describing the item. It can have several lines.
@@ -131,6 +136,7 @@ says otherwise.
 - A deed's **scans** are the `.jpg`, `.jpeg`, `.png`, `.tif` and `.tiff` files in its
   folder, whatever the case of the extension (`.JPG` too), sorted by filename. All of
   them are shown, not only those in `metadata.scans`.
+- Scans are shown upright, as for books (see In).
 - Of `input.json`, only `metadata` is read: `ref_reg`, `aktenummer`, `tax_office`,
   `deceased`, and the `amount` and `description` of each item in `assets.items` and
   `liabilities.items`. It is read as UTF-8.
@@ -242,3 +248,6 @@ says otherwise.
 - A file with a newer `format_version` than the tool writes was made by a newer
   version of the tool. Its deed can't be opened, reopened or deleted, and its file is
   never written. The tool says so and names the file. The other deeds work as usual.
+- `0.2.0`: `bbox` is in pixels of the upright scan. In `0.1.0` it was in pixels as
+  stored in the file: the same for most scans, but turned for a photo with an EXIF
+  orientation.

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Photos stored sideways or upside down are shown upright, as in Finder, turned as the
+  camera's note in them says (their EXIF orientation). Boxes are saved in the upright
+  photo's pixels, so the deed annotation file's format is now `0.2.0` (#174).
+
 ## [0.2.0] - 2026-11-13
 
 ### Added
