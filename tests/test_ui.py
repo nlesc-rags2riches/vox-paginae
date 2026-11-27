@@ -69,8 +69,9 @@ def test_scan_for_display_keeps_original_size_and_shows_height_at_dpi(scan):
 def test_thumbnail_shows_a_sideways_photo_upright(sideways_scan):
     im = Image.open(io.BytesIO(thumbnail(sideways_scan, 100)))
     assert im.size == (75, 100)
-    assert im.getpixel((70, 5)) < 50  # black top-right corner
-    assert im.getpixel((5, 5)) > 200
+    px = np.asarray(im)  # rows are y, columns are x
+    assert px[5, 70] < 50  # black top-right corner
+    assert px[5, 5] > 200
 
 
 def test_crop_of_a_sideways_photo_is_in_the_upright_pages_pixels(sideways_scan):
