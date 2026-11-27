@@ -86,7 +86,7 @@ what each field holds.
 <!-- markdownlint-disable MD013 MD046 -->
 ```json
 {
-  "format_version": "0.1.0",
+  "format_version": "0.2.0",
   "deed_id": "1#1001",
   "copied_deed_person_data": {
     "ref_reg": "1#1001",

@@ -31,6 +31,23 @@ def scan(tmp_path, request):
     return path
 
 
+EXIF_ORIENTATION = 0x0112
+
+
+@pytest.fixture
+def sideways_scan(tmp_path):
+    """A 600 x 800 page photographed sideways, as cameras store it: its pixels are
+    800 x 600, with an EXIF tag saying to turn them 90° clockwise (orientation 6).
+    The page's top-right corner is black; in the stored pixels that is the top-left."""
+    path = tmp_path / "sideways.jpg"
+    im = Image.new("RGB", (800, 600), "white")
+    im.paste("black", (0, 0, 100, 100))
+    exif = Image.Exif()
+    exif[EXIF_ORIENTATION] = 6
+    im.save(path, exif=exif)
+    return path
+
+
 def test_thumbnail_is_a_grayscale_jpeg_of_the_given_height(scan):
     im = Image.open(io.BytesIO(thumbnail(scan, 100)))
     assert (im.format, im.mode, im.height) == ("JPEG", "L", 100)
@@ -47,6 +64,27 @@ def test_scan_for_display_keeps_original_size_and_shows_height_at_dpi(scan):
     assert size == (600, 800)  # boxes stay in original pixels
     assert pixels.shape == (400, 300)  # 4 in at 100 px/in, grayscale
     assert dpi == 100
+
+
+def test_thumbnail_shows_a_sideways_photo_upright(sideways_scan):
+    im = Image.open(io.BytesIO(thumbnail(sideways_scan, 100)))
+    assert im.size == (75, 100)
+    px = np.asarray(im)  # rows are y, columns are x
+    assert px[5, 70] < 50  # black top-right corner
+    assert px[5, 5] > 200
+
+
+def test_crop_of_a_sideways_photo_is_in_the_upright_pages_pixels(sideways_scan):
+    corner = Image.open(io.BytesIO(crop(sideways_scan, [500, 0, 600, 100])))
+    assert np.asarray(corner).max() < 50  # all of it black
+
+
+def test_scan_for_display_shows_a_sideways_photo_upright(sideways_scan):
+    pixels, size, _ = scan_for_display(sideways_scan, height_in=4, dpi=100)
+    assert size == (600, 800)  # boxes are in the upright page's pixels
+    assert pixels.shape == (400, 300)
+    assert pixels[5, 295] < 50  # black top-right corner
+    assert pixels[5, 5] > 200
 
 
 def test_scan_for_display_caps_resolution_on_a_large_scan(tmp_path):

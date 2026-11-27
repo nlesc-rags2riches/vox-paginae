@@ -8,7 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
-from PIL import Image
+from PIL import Image, ImageOps
 
 from vox_paginae.annotation import deed_path
 
@@ -16,13 +16,36 @@ from vox_paginae.annotation import deed_path
 # can be one) shows white, as convert("L") clips its values. Rescale it first if the
 # archives deliver such scans.
 
+# Many scans are photos stored sideways, with an EXIF tag saying how to turn them, as
+# Finder and browsers do. Scans are shown, cropped and measured turned that way, so
+# boxes are in the upright scan's pixels.
+EXIF_ORIENTATION = 0x0112
+TURNED_A_QUARTER = {5, 6, 7, 8}  # orientations that swap width and height
+
+
+def upright_size(im: Image.Image) -> tuple[int, int]:
+    """``im``'s size once turned upright as its EXIF tag says."""
+    turned = im.getexif().get(EXIF_ORIENTATION, 1) in TURNED_A_QUARTER
+    return (im.height, im.width) if turned else im.size
+
+
+def open_upright(scan: Path, height: int | None = None) -> Image.Image:
+    """``scan`` turned upright as its EXIF tag says.
+
+    With ``height``, a JPEG is decoded at a reduced scale (fast) that is still at least
+    ``height`` px tall once upright.
+    """
+    im = Image.open(scan)
+    if height is not None:
+        turned = upright_size(im) != im.size
+        im.draft("L", (height, 1) if turned else (1, height))
+    return ImageOps.exif_transpose(im)
+
 
 @functools.lru_cache(maxsize=512)
 def thumbnail(scan: Path, height: int) -> bytes:
     """``scan`` as a small grayscale JPEG, ``height`` px tall (cached: scans never change)."""
-    im = Image.open(scan)
-    im.draft("L", (1, height))
-    im = im.convert("L")
+    im = open_upright(scan, height).convert("L")
     im.thumbnail((im.width, height))
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=80)
@@ -32,7 +55,7 @@ def thumbnail(scan: Path, height: int) -> bytes:
 def crop(scan: Path, bbox: list[int]) -> bytes:
     """``bbox`` of ``scan`` at full resolution, as a grayscale JPEG."""
     x0, y0, x1, y1 = bbox
-    im = Image.open(scan).crop((x0, y0, x1, y1)).convert("L")
+    im = open_upright(scan).crop((x0, y0, x1, y1)).convert("L")
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=90)
     return buf.getvalue()
@@ -50,17 +73,16 @@ def scan_for_display(
 ) -> tuple[np.ndarray, tuple[int, int], float]:
     """``scan`` as grayscale pixels ``height_in`` inches tall at ``dpi`` px per inch.
 
-    Returns the pixels, the scan's original size (boxes stay in original pixels) and the
-    dpi used: ``dpi``, unless capped at ``MAX_DISPLAY_PX`` pixels.
+    Returns the pixels, the scan's original size, upright (boxes stay in original
+    pixels), and the dpi used: ``dpi``, unless capped at ``MAX_DISPLAY_PX`` pixels.
     """
-    im = Image.open(scan)
-    size = im.size
+    with Image.open(scan) as im:
+        size = upright_size(im)
     area = height_in**2 * size[0] / size[1]  # square inches
     dpi = min(dpi, (MAX_DISPLAY_PX / area) ** 0.5)
     px = round(height_in * dpi)
     # Decode at reduced scale (fast), then Lanczos down to exactly px tall (sharp).
-    im.draft("L", (1, px))
-    im = im.convert("L")
+    im = open_upright(scan, px).convert("L")
     im.thumbnail((size[0], px), Image.Resampling.LANCZOS)
     return np.asarray(im), size, dpi
 

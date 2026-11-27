@@ -49,7 +49,7 @@ TYPES = ("assets", "liabilities")
 HEADER_FIELDS = ("full_name", "date_of_death", "place_of_residence")
 # The version of the deed annotation file's format (Semantic Versioning 2.0.0), written
 # into every file. The reference's Format versions section says when it changes.
-FORMAT_VERSION = "0.1.0"
+FORMAT_VERSION = "0.2.0"
 
 
 def is_newer_format_version(version: str | None) -> bool:
